@@ -1,0 +1,197 @@
+package com.saurabh.financewidget.ui.detail
+
+import android.content.Context
+import android.content.Intent
+import android.os.Bundle
+import android.view.View
+import androidx.activity.viewModels
+import androidx.appcompat.app.AppCompatActivity
+import com.google.android.material.chip.Chip
+import com.saurabh.financewidget.R
+import com.saurabh.financewidget.data.database.PriceHistoryEntity
+import com.saurabh.financewidget.data.database.StockEntity
+import com.saurabh.financewidget.databinding.ActivityStockDetailBinding
+import com.saurabh.financewidget.utils.FormatUtils
+import com.saurabh.financewidget.utils.Resource
+import dagger.hilt.android.AndroidEntryPoint
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+
+@AndroidEntryPoint
+class StockDetailActivity : AppCompatActivity() {
+
+    private lateinit var binding: ActivityStockDetailBinding
+    private val viewModel: StockDetailViewModel by viewModels()
+    private var currentResolution = "D"
+
+    companion object {
+        const val EXTRA_SYMBOL = "extra_symbol"
+
+        fun start(context: Context, symbol: String) {
+            Intent(context, StockDetailActivity::class.java).also {
+                it.putExtra(EXTRA_SYMBOL, symbol)
+                context.startActivity(it)
+            }
+        }
+    }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        binding = ActivityStockDetailBinding.inflate(layoutInflater)
+        setContentView(binding.root)
+
+        val symbol = intent.getStringExtra(EXTRA_SYMBOL) ?: run {
+            finish()
+            return
+        }
+
+        setupToolbar()
+        setupChart()
+        setupTimeframeChips()
+        observeViewModel()
+
+        viewModel.loadStock(symbol)
+    }
+
+    private fun setupToolbar() {
+        setSupportActionBar(binding.toolbar)
+        supportActionBar?.setDisplayHomeAsUpEnabled(true)
+        supportActionBar?.title = ""
+        binding.toolbar.setNavigationOnClickListener { onBackPressedDispatcher.onBackPressed() }
+    }
+
+    private fun setupChart() {
+        binding.lineChart.setNoDataText("Loading chart data...")
+        binding.lineChart.setNoDataTextColor(android.graphics.Color.WHITE)
+    }
+
+    private fun setupTimeframeChips() {
+        TIMEFRAME_OPTIONS.keys.forEach { label ->
+            val chip = Chip(this).apply {
+                text = label
+                isCheckable = true
+                chipStrokeWidth = 0f
+
+                // Background: transparent when unchecked, subtle surface tint when checked
+                chipBackgroundColor = android.content.res.ColorStateList(
+                    arrayOf(
+                        intArrayOf(android.R.attr.state_checked),
+                        intArrayOf()
+                    ),
+                    intArrayOf(
+                        getColor(R.color.surface_variant),
+                        android.graphics.Color.TRANSPARENT
+                    )
+                )
+
+                // Text: white when checked, muted when not
+                setTextColor(
+                    android.content.res.ColorStateList(
+                        arrayOf(
+                            intArrayOf(android.R.attr.state_checked),
+                            intArrayOf()
+                        ),
+                        intArrayOf(
+                            getColor(R.color.text_primary),
+                            getColor(R.color.text_tertiary)
+                        )
+                    )
+                )
+
+                textSize = 13f
+                chipMinHeight = 32f
+                chipStartPadding = 10f
+                chipEndPadding = 10f
+                tag = label
+            }
+            binding.timeframeChipGroup.addView(chip)
+        }
+
+        binding.timeframeChipGroup.setOnCheckedStateChangeListener { group, _ ->
+            val checkedChip = group.findViewById<Chip>(group.checkedChipId)
+            val label = checkedChip?.tag as? String ?: "1D"
+            currentResolution = label
+            viewModel.loadPriceHistory(label)
+        }
+
+        // Default to 1D (index 0)
+        (binding.timeframeChipGroup.getChildAt(0) as? Chip)?.isChecked = true
+    }
+
+
+    private fun observeViewModel() {
+        viewModel.stock.observe(this) { stock ->
+            stock?.let { displayStockData(it) }
+        }
+
+        viewModel.priceHistory.observe(this) { resource ->
+            when (resource) {
+                is Resource.Success -> displayChart(resource.data)
+                is Resource.Loading -> binding.chartProgress.visibility = View.VISIBLE
+                is Resource.Error -> {
+                    binding.chartProgress.visibility = View.GONE
+                    binding.lineChart.setNoDataText("Chart data unavailable")
+                }
+            }
+        }
+
+        viewModel.isLoading.observe(this) { isLoading ->
+            binding.loadingOverlay.visibility = if (isLoading) View.VISIBLE else View.GONE
+        }
+    }
+
+    private fun displayStockData(stock: StockEntity) {
+        binding.tvDetailSymbol.text = stock.symbol
+        binding.tvDetailCompanyName.text = stock.companyName
+        binding.tvDetailPrice.text = FormatUtils.formatPrice(stock.currentPrice, stock.currency)
+        binding.tvDetailChange.text = "${FormatUtils.formatChange(stock.change)}  ${FormatUtils.formatChangePercent(stock.changePercent)}"
+
+        val changeColor = if (stock.isPositive) getColor(R.color.gain_green) else getColor(R.color.loss_red)
+        binding.tvDetailChange.setTextColor(changeColor)
+
+        // Show Open when non-zero; may equal Prev Close for some indices — that's valid
+        binding.tvStatOpen.text = if (stock.openPrice != 0.0)
+            FormatUtils.formatPrice(stock.openPrice, stock.currency) else "—"
+
+        // High must be >= open by definition; guard against mismatched data sources
+        val displayHigh = maxOf(stock.highPrice, stock.openPrice)
+        binding.tvStatHigh.text = FormatUtils.formatPrice(displayHigh, stock.currency)
+        binding.tvStatLow.text = FormatUtils.formatPrice(stock.lowPrice, stock.currency)
+        binding.tvStatPrevClose.text = if (stock.previousClose != 0.0)
+            FormatUtils.formatPrice(stock.previousClose, stock.currency) else "—"
+
+
+        if (stock.industry.isNotEmpty()) {
+            binding.tvDetailIndustry.text = stock.industry
+            binding.tvDetailIndustry.visibility = View.VISIBLE
+        }
+
+        if (stock.exchange.isNotEmpty()) {
+            binding.tvDetailExchange.text = "• ${stock.exchange}"
+            binding.tvDetailExchange.visibility = View.VISIBLE
+        }
+
+        binding.tvLastUpdatedDetail.text = "Updated ${FormatUtils.formatLastUpdated(stock.lastUpdated)}"
+        supportActionBar?.title = stock.symbol
+    }
+
+    private fun displayChart(history: List<PriceHistoryEntity>) {
+        binding.chartProgress.visibility = View.GONE
+
+        if (history.isEmpty()) {
+            binding.lineChart.setNoDataText("No chart data available")
+            return
+        }
+
+        val points = history.map { it.close.toFloat() }
+        val timestamps = history.map { it.timestamp }
+
+        // Use entity-level change (vs prev close) for chart color, not intraday first-to-last.
+        // Intraday comparison would show green even when the stock is down on the day if the
+        // first 5-min candle happened to be below the current price.
+        val isPositive = viewModel.stock.value?.isPositive ?: (points.last() >= points.first())
+
+        binding.lineChart.setData(points, timestamps, isPositive)
+    }
+}

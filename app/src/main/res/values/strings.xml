@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Finance Widget</string>
+    <string name="widget_description">Stock market watchlist widget</string>
+    <string name="action_add_stock">Add Stock</string>
+    <string name="action_refresh">Refresh</string>
+    <string name="action_settings">Settings</string>
+    <string name="watchlist_empty_title">Your watchlist is empty</string>
+    <string name="watchlist_empty_subtitle">Search and add stocks to get started</string>
+    <string name="market_open">Market Open</string>
+    <string name="market_closed">Market Closed</string>
+    <string name="error_network">Network error. Showing cached data.</string>
+    <string name="error_api">Failed to fetch latest data.</string>
+    <string name="added_to_watchlist">Added to watchlist</string>
+    <string name="removed_from_watchlist">Removed from watchlist</string>
+    <string name="undo">UNDO</string>
+    <string name="refresh">Refresh</string>
+    <string name="add_to_watchlist">Add to watchlist</string>
+    <string name="remove_from_watchlist">Remove from watchlist</string>
+    <string name="search_hint">Search stocks (e.g. AAPL, Tesla)</string>
+    <string name="key_statistics">Key Statistics</string>
+    <string name="open">Open</string>
+    <string name="high">High</string>
+    <string name="low">Low</string>
+    <string name="prev_close">Prev. Close</string>
+    <string name="market_cap">Market Cap</string>
+    <string name="volume">Volume</string>
+    <string name="configure_widget">Configure Widget</string>
+</resources>

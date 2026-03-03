@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Blue accent circle backdrop -->
+    <path
+        android:fillColor="#4285F4"
+        android:pathData="M54,20 C35.2,20 20,35.2 20,54 C20,72.8 35.2,88 54,88 C72.8,88 88,72.8 88,54 C88,35.2 72.8,20 54,20z" />
+
+    <!-- Candlestick chart bars -->
+    <!-- Bar 1 (left) — green gain -->
+    <path
+        android:fillColor="#4CAF50"
+        android:pathData="M36,65 L36,50 L40,50 L40,65 Z" />
+    <path
+        android:fillColor="#4CAF50"
+        android:pathData="M38,47 L38,44" android:strokeColor="#4CAF50" android:strokeWidth="1.5" />
+    <path
+        android:fillColor="#4CAF50"
+        android:pathData="M38,68 L38,66" android:strokeColor="#4CAF50" android:strokeWidth="1.5" />
+
+    <!-- Bar 2 (middle) — red loss -->
+    <path
+        android:fillColor="#F44336"
+        android:pathData="M46,58 L46,70 L50,70 L50,58 Z" />
+    <path
+        android:fillColor="#F44336"
+        android:pathData="M48,55 L48,52" android:strokeColor="#F44336" android:strokeWidth="1.5" />
+    <path
+        android:fillColor="#F44336"
+        android:pathData="M48,73 L48,71" android:strokeColor="#F44336" android:strokeWidth="1.5" />
+
+    <!-- Bar 3 (right) — green gain, taller -->
+    <path
+        android:fillColor="#4CAF50"
+        android:pathData="M56,48 L56,62 L60,62 L60,48 Z" />
+    <path
+        android:fillColor="#4CAF50"
+        android:pathData="M58,44 L58,42" android:strokeColor="#4CAF50" android:strokeWidth="1.5" />
+    <path
+        android:fillColor="#4CAF50"
+        android:pathData="M58,65 L58,63" android:strokeColor="#4CAF50" android:strokeWidth="1.5" />
+
+    <!-- Bar 4 (far right) — green -->
+    <path
+        android:fillColor="#4CAF50"
+        android:pathData="M66,43 L66,58 L70,58 L70,43 Z" />
+    <path
+        android:fillColor="#4CAF50"
+        android:pathData="M68,40 L68,38" android:strokeColor="#4CAF50" android:strokeWidth="1.5" />
+    <path
+        android:fillColor="#4CAF50"
+        android:pathData="M68,61 L68,59" android:strokeColor="#4CAF50" android:strokeWidth="1.5" />
+
+    <!-- Trend line over the bars -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="2"
+        android:fillColor="#00000000"
+        android:pathData="M36,57 Q48,55 58,45 Q64,39 72,36" />
+
+</vector>

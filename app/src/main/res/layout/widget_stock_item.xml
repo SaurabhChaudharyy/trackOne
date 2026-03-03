@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_item_root"
+    android:layout_width="match_parent"
+    android:layout_height="48dp"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:paddingHorizontal="8dp"
+    android:paddingVertical="2dp">
+
+    <!-- Symbol & Name -->
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1.4"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/widget_item_symbol"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="NVDA"
+            android:textColor="#FFFFFF"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:singleLine="true"/>
+
+        <TextView
+            android:id="@+id/widget_item_name"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="NVIDIA Corp"
+            android:textColor="#B3B3B3"
+            android:textSize="10sp"
+            android:singleLine="true"
+            android:ellipsize="end"/>
+    </LinearLayout>
+
+    <!-- Price -->
+    <TextView
+        android:id="@+id/widget_item_price"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:text="$187.62"
+        android:textColor="#FFFFFF"
+        android:textSize="12sp"
+        android:gravity="end"
+        android:singleLine="true"/>
+
+    <!-- Change % with icon -->
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="horizontal"
+        android:gravity="end|center_vertical"
+        android:layout_marginStart="4dp">
+
+        <TextView
+            android:id="@+id/widget_item_change"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="-7.94"
+            android:textColor="#F44336"
+            android:textSize="11sp"
+            android:singleLine="true"
+            android:visibility="gone"/>
+
+        <TextView
+            android:id="@+id/widget_item_change_percent"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="-4.06%"
+            android:textColor="#F44336"
+            android:textSize="12sp"
+            android:singleLine="true"/>
+
+        <ImageView
+            android:id="@+id/widget_item_indicator"
+            android:layout_width="12dp"
+            android:layout_height="12dp"
+            android:layout_marginStart="2dp"
+            android:src="@drawable/ic_trending_down"
+            android:contentDescription="Trend"/>
+    </LinearLayout>
+
+</LinearLayout>
