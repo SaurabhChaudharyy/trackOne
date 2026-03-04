@@ -3,17 +3,19 @@
     xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/widget_item_root"
     android:layout_width="match_parent"
-    android:layout_height="48dp"
+    android:layout_height="46dp"
     android:orientation="horizontal"
     android:gravity="center_vertical"
-    android:paddingHorizontal="8dp"
-    android:paddingVertical="2dp">
+    android:paddingLeft="8dp"
+    android:paddingRight="8dp"
+    android:paddingTop="2dp"
+    android:paddingBottom="2dp">
 
     <!-- Symbol & Name -->
     <LinearLayout
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_weight="1.4"
+        android:layout_weight="1.5"
         android:orientation="vertical">
 
         <TextView
@@ -21,7 +23,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="NVDA"
-            android:textColor="#FFFFFF"
+            android:textColor="#FAFAFA"
             android:textSize="13sp"
             android:textStyle="bold"
             android:singleLine="true"/>
@@ -31,7 +33,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="NVIDIA Corp"
-            android:textColor="#B3B3B3"
+            android:textColor="#52525B"
             android:textSize="10sp"
             android:singleLine="true"
             android:ellipsize="end"/>
@@ -44,26 +46,26 @@
         android:layout_height="wrap_content"
         android:layout_weight="1"
         android:text="$187.62"
-        android:textColor="#FFFFFF"
+        android:textColor="#FAFAFA"
         android:textSize="12sp"
         android:gravity="end"
         android:singleLine="true"/>
 
-    <!-- Change % with icon -->
+    <!-- Change % -->
     <LinearLayout
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_weight="1"
         android:orientation="horizontal"
         android:gravity="end|center_vertical"
-        android:layout_marginStart="4dp">
+        android:layout_marginLeft="4dp">
 
         <TextView
             android:id="@+id/widget_item_change"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="-7.94"
-            android:textColor="#F44336"
+            android:textColor="#EF4444"
             android:textSize="11sp"
             android:singleLine="true"
             android:visibility="gone"/>
@@ -73,16 +75,17 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="-4.06%"
-            android:textColor="#F44336"
+            android:textColor="#EF4444"
             android:textSize="12sp"
+            android:textStyle="bold"
             android:singleLine="true"/>
 
         <ImageView
             android:id="@+id/widget_item_indicator"
-            android:layout_width="12dp"
-            android:layout_height="12dp"
-            android:layout_marginStart="2dp"
-            android:src="@drawable/ic_trending_down"
+            android:layout_width="11dp"
+            android:layout_height="11dp"
+            android:layout_marginLeft="2dp"
+            android:src="@drawable/ic_arrow_down"
             android:contentDescription="Trend"/>
     </LinearLayout>
 

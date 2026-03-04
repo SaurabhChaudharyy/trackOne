@@ -51,7 +51,7 @@ class WatchlistAdapter(
             binding.tvChange.setTextColor(changeColor)
             binding.tvChangePercent.setTextColor(changeColor)
             binding.ivTrend.setImageResource(
-                if (stock.isPositive) R.drawable.ic_trending_up else R.drawable.ic_trending_down
+                if (stock.isPositive) R.drawable.ic_arrow_up else R.drawable.ic_arrow_down
             )
             binding.ivTrend.setColorFilter(changeColor)
 

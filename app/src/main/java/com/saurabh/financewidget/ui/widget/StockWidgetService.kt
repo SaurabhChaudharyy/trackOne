@@ -74,8 +74,7 @@ class StockRemoteViewsFactory(
         views.setTextColor(R.id.widget_item_change, changeColor)
         views.setTextColor(R.id.widget_item_change_percent, changeColor)
         views.setInt(R.id.widget_item_indicator, "setImageResource",
-            if (stock.isPositive) R.drawable.ic_trending_up else R.drawable.ic_trending_down)
-        views.setInt(R.id.widget_item_indicator, "setColorFilter", changeColor)
+            if (stock.isPositive) R.drawable.ic_arrow_up else R.drawable.ic_arrow_down)
 
         val clickIntent = Intent().apply {
             putExtra(StockWidgetProvider.EXTRA_SYMBOL, stock.symbol)

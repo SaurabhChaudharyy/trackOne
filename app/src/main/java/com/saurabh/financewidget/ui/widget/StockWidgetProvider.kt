@@ -7,10 +7,8 @@ import android.content.Context
 import android.content.Intent
 import android.widget.RemoteViews
 import com.saurabh.financewidget.R
-import com.saurabh.financewidget.data.database.StockEntity
 import com.saurabh.financewidget.data.repository.StockRepository
 import com.saurabh.financewidget.ui.detail.StockDetailActivity
-import com.saurabh.financewidget.utils.FormatUtils
 import com.saurabh.financewidget.workers.StockUpdateWorker
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
@@ -75,8 +73,11 @@ class StockWidgetProvider : AppWidgetProvider() {
     private fun updateWidget(context: Context, appWidgetManager: AppWidgetManager, widgetId: Int) {
         val views = RemoteViews(context.packageName, R.layout.widget_stock_list)
 
+        // IMPORTANT: data URI must be set to uniquely identify this widget's factory instance.
+        // Without it, Android's RemoteViewsService binding silently fails on many devices.
         val serviceIntent = Intent(context, StockWidgetService::class.java).apply {
             putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId)
+            data = android.net.Uri.parse("widget://$widgetId")
         }
         views.setRemoteAdapter(R.id.widget_list_view, serviceIntent)
         views.setEmptyView(R.id.widget_list_view, R.id.widget_empty_view)
@@ -101,8 +102,9 @@ class StockWidgetProvider : AppWidgetProvider() {
         )
         views.setOnClickPendingIntent(R.id.widget_refresh_button, refreshPendingIntent)
 
-        val openAppIntent = Intent(context, StockDetailActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        // Open main app (MainActivity doesn't need extras unlike StockDetailActivity)
+        val openAppIntent = Intent(context, com.saurabh.financewidget.ui.main.MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
         }
         val openAppPendingIntent = PendingIntent.getActivity(
             context, widgetId + 2000,

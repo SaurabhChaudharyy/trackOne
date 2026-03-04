@@ -7,33 +7,40 @@
     android:background="@drawable/widget_background"
     android:padding="4dp">
 
-    <!-- Widget Header -->
+    <!-- Widget Header — tappable; click handled via PendingIntent in provider -->
     <LinearLayout
         android:id="@+id/widget_header"
         android:layout_width="match_parent"
-        android:layout_height="36dp"
+        android:layout_height="34dp"
         android:orientation="horizontal"
         android:gravity="center_vertical"
-        android:paddingHorizontal="8dp">
+        android:paddingLeft="8dp"
+        android:paddingRight="8dp">
 
         <TextView
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="Finance"
-            android:textColor="#FFFFFF"
-            android:textSize="13sp"
+            android:text="TrackOne"
+            android:textColor="#FAFAFA"
+            android:textSize="12sp"
             android:textStyle="bold"/>
 
-        <ImageButton
+        <!-- ImageView instead of ImageButton — no theme attrs needed in widgets -->
+        <ImageView
             android:id="@+id/widget_refresh_button"
-            android:layout_width="28dp"
-            android:layout_height="28dp"
-            android:src="@drawable/ic_refresh"
-            android:background="?android:attr/selectableItemBackgroundBorderless"
-            android:tint="#B3B3B3"
-            android:contentDescription="Refresh stocks"/>
+            android:layout_width="22dp"
+            android:layout_height="22dp"
+            android:src="@drawable/ic_refresh_widget"
+            android:background="@android:color/transparent"
+            android:contentDescription="Refresh"/>
     </LinearLayout>
+
+    <!-- hairline separator — hardcoded color, no theme ref -->
+    <ImageView
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="#27272A"/>
 
     <!-- Stocks List -->
     <ListView
@@ -58,15 +65,15 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="No stocks in watchlist"
-            android:textColor="#B3B3B3"
+            android:text="No stocks added"
+            android:textColor="#71717A"
             android:textSize="12sp"/>
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Tap to configure"
-            android:textColor="#666666"
+            android:text="Tap to add stocks"
+            android:textColor="#52525B"
             android:textSize="11sp"
             android:layout_marginTop="4dp"/>
     </LinearLayout>

@@ -28,7 +28,7 @@
                 android:text="Markets"
                 android:textSize="18sp"
                 android:textColor="@color/text_primary"
-                android:fontFamily="@font/inter_semi_bold"
+                android:fontFamily="@font/geist_mono_semi_bold"
                 android:textStyle="bold"
                 android:letterSpacing="-0.02"/>
         </com.google.android.material.appbar.MaterialToolbar>
@@ -74,7 +74,7 @@
                     android:text="No stocks yet"
                     android:textColor="@color/text_primary"
                     android:textSize="16sp"
-                    android:fontFamily="@font/inter_semi_bold"
+                    android:fontFamily="@font/geist_mono_semi_bold"
                     android:textStyle="bold"/>
 
                 <TextView
@@ -168,7 +168,7 @@
                 android:text="Closed"
                 android:textColor="@color/text_tertiary"
                 android:textSize="13sp"
-                android:fontFamily="@font/inter_semi_bold"
+                android:fontFamily="@font/geist_mono_semi_bold"
                 android:textStyle="bold"/>
         </LinearLayout>
 
@@ -200,7 +200,7 @@
                 android:text="Closed"
                 android:textColor="@color/text_tertiary"
                 android:textSize="13sp"
-                android:fontFamily="@font/inter_semi_bold"
+                android:fontFamily="@font/geist_mono_semi_bold"
                 android:textStyle="bold"/>
         </LinearLayout>
     </LinearLayout>

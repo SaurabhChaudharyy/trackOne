@@ -1,7 +1,7 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
-    alias(libs.plugins.kotlin.kapt)
+    alias(libs.plugins.ksp)                  // KSP replaces KAPT for Hilt + Room
     alias(libs.plugins.kotlin.parcelize)
     alias(libs.plugins.hilt)
 }
@@ -18,7 +18,6 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        // No API key needed — Yahoo Finance is free and keyless
     }
 
     buildTypes {
@@ -66,10 +65,10 @@ dependencies {
     implementation(libs.androidx.lifecycle.livedata)
     implementation(libs.androidx.lifecycle.runtime)
 
-    // Room
+    // Room — KSP compiler
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
-    kapt(libs.androidx.room.compiler)
+    ksp(libs.androidx.room.compiler)
 
     // Networking
     implementation(libs.retrofit)
@@ -82,25 +81,23 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.kotlinx.coroutines.core)
 
-    // Hilt
+    // Hilt — KSP compiler
     implementation(libs.hilt.android)
-    kapt(libs.hilt.compiler)
+    ksp(libs.hilt.compiler)
     implementation(libs.hilt.work)
-    kapt(libs.hilt.work.compiler)
+    ksp(libs.hilt.work.compiler)
 
     // WorkManager
     implementation(libs.androidx.work.runtime)
 
-    // Image Loading
+    // Image Loading (no annotation processor needed for basic Glide usage)
     implementation(libs.glide)
-    kapt(libs.glide.compiler)
+
+    // Charts
+    implementation(libs.mpandroidchart)
 
     // Testing
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso)
-}
-
-kapt {
-    correctErrorTypes = true
 }

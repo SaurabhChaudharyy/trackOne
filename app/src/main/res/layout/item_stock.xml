@@ -27,7 +27,7 @@
                 android:layout_height="wrap_content"
                 android:textColor="@color/text_primary"
                 android:textSize="14sp"
-                android:fontFamily="@font/inter_semi_bold"
+                android:fontFamily="@font/geist_mono_semi_bold"
                 android:textStyle="bold"
                 android:letterSpacing="-0.01"
                 tools:text="AAPL"/>
@@ -60,7 +60,7 @@
             android:layout_weight="1.5"
             android:textColor="@color/text_primary"
             android:textSize="14sp"
-            android:fontFamily="@font/inter_regular"
+            android:fontFamily="@font/geist_mono_regular"
             android:gravity="end"
             tools:text="$187.62"/>
 

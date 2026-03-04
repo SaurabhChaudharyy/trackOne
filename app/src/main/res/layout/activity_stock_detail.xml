@@ -66,7 +66,7 @@
                     android:layout_marginTop="2dp"
                     android:textColor="@color/text_primary"
                     android:textSize="20sp"
-                    android:fontFamily="@font/inter_semi_bold"
+                    android:fontFamily="@font/geist_mono_semi_bold"
                     android:textStyle="bold"
                     android:letterSpacing="-0.02"
                     tools:text="Apple Inc."/>
@@ -104,7 +104,7 @@
                     android:layout_marginTop="20dp"
                     android:textColor="@color/text_primary"
                     android:textSize="36sp"
-                    android:fontFamily="@font/inter_bold"
+                    android:fontFamily="@font/geist_mono_bold"
                     android:textStyle="bold"
                     android:letterSpacing="-0.02"
                     tools:text="$187.62"/>
@@ -146,7 +146,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="200dp">
 
-                    <com.saurabh.financewidget.ui.detail.StockLineChartView
+                    <com.github.mikephil.charting.charts.LineChart
                         android:id="@+id/line_chart"
                         android:layout_width="match_parent"
                         android:layout_height="match_parent"
@@ -221,7 +221,7 @@
                             android:layout_marginTop="4dp"
                             android:textColor="@color/text_primary"
                             android:textSize="14sp"
-                            android:fontFamily="@font/inter_regular"
+                            android:fontFamily="@font/geist_mono_regular"
                             tools:text="$195.50"/>
                     </LinearLayout>
 
@@ -244,7 +244,7 @@
                             android:layout_marginTop="4dp"
                             android:textColor="@color/gain_green"
                             android:textSize="14sp"
-                            android:fontFamily="@font/inter_regular"
+                            android:fontFamily="@font/geist_mono_regular"
                             tools:text="$196.30"/>
                     </LinearLayout>
                 </LinearLayout>
@@ -274,7 +274,7 @@
                             android:layout_marginTop="4dp"
                             android:textColor="@color/loss_red"
                             android:textSize="14sp"
-                            android:fontFamily="@font/inter_regular"
+                            android:fontFamily="@font/geist_mono_regular"
                             tools:text="$185.20"/>
                     </LinearLayout>
 
@@ -297,7 +297,7 @@
                             android:layout_marginTop="4dp"
                             android:textColor="@color/text_primary"
                             android:textSize="14sp"
-                            android:fontFamily="@font/inter_regular"
+                            android:fontFamily="@font/geist_mono_regular"
                             tools:text="$195.56"/>
                     </LinearLayout>
                 </LinearLayout>

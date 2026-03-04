@@ -1,6 +1,7 @@
 [versions]
 agp = "8.13.2"
 kotlin = "1.9.23"
+ksp = "1.9.23-1.0.20"
 coreKtx = "1.13.1"
 activityKtx = "1.9.3"
 appcompat = "1.7.0"
@@ -17,6 +18,7 @@ glide = "4.16.0"
 gson = "2.11.0"
 swiperefresh = "1.1.0"
 splashscreen = "1.0.1"
+mpandroidchart = "v3.1.0"
 junit = "4.13.2"
 junitAndroid = "1.2.1"
 espresso = "3.6.1"
@@ -66,6 +68,9 @@ hilt-work-compiler = { group = "androidx.hilt", name = "hilt-compiler", version 
 glide = { group = "com.github.bumptech.glide", name = "glide", version.ref = "glide" }
 glide-compiler = { group = "com.github.bumptech.glide", name = "compiler", version.ref = "glide" }
 
+# Charts
+mpandroidchart = { group = "com.github.PhilJay", name = "MPAndroidChart", version.ref = "mpandroidchart" }
+
 # Testing
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitAndroid" }
@@ -77,3 +82,4 @@ kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-kapt = { id = "org.jetbrains.kotlin.kapt", version.ref = "kotlin" }
 kotlin-parcelize = { id = "org.jetbrains.kotlin.plugin.parcelize", version.ref = "kotlin" }
 hilt = { id = "com.google.dagger.hilt.android", version.ref = "hilt" }
+ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
