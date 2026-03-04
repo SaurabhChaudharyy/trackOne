@@ -92,4 +92,8 @@ object AppModule {
     @Provides
     @Singleton
     fun providePriceHistoryDao(database: FinanceDatabase): PriceHistoryDao = database.priceHistoryDao()
+
+    @Provides
+    @Singleton
+    fun provideNetWorthDao(database: FinanceDatabase): NetWorthDao = database.netWorthDao()
 }

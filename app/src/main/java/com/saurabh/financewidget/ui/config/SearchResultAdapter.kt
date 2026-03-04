@@ -77,7 +77,7 @@ class SearchResultAdapter(
 
         private fun applySelectionState(
             isSelected: Boolean,
-            result: YahooSearchResult,
+            @Suppress("UNUSED_PARAMETER") result: YahooSearchResult,
             ctx: android.content.Context
         ) {
             if (isSelected) {

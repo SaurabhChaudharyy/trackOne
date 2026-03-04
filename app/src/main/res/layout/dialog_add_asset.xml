@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="20dp">
+
+    <!-- ── FETCHABLE mode (stocks / gold / crypto) ── -->
+
+    <!-- Symbol field (shown only in fetchable mode) -->
+    <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/til_symbol"
+        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Symbol (e.g. RELIANCE.NS, BTC-USD)"
+        app:boxStrokeColor="@color/border_color"
+        app:hintTextColor="@color/text_tertiary"
+        android:visibility="gone">
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/et_symbol"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="text"
+            android:textColor="@color/text_primary"
+            android:fontFamily="@font/geist_mono"/>
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <!-- Quantity field (shown only in fetchable mode) -->
+    <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/til_quantity"
+        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:hint="Quantity / Units"
+        app:boxStrokeColor="@color/border_color"
+        app:hintTextColor="@color/text_tertiary"
+        android:visibility="gone">
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/et_quantity"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="numberDecimal"
+            android:textColor="@color/text_primary"
+            android:fontFamily="@font/geist_mono"/>
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <!-- Fetch price button + status (fetchable mode only) -->
+    <LinearLayout
+        android:id="@+id/ll_fetch_row"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:visibility="gone">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_fetch_price"
+            style="@style/Widget.App.Button.Tonal"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Fetch Price"
+            android:textSize="12sp"/>
+
+        <TextView
+            android:id="@+id/tv_fetch_status"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="12dp"
+            android:text=""
+            android:textColor="@color/text_tertiary"
+            android:textSize="12sp"
+            android:maxLines="2"
+            android:ellipsize="end"/>
+    </LinearLayout>
+
+    <!-- ── MANUAL mode (MF, cash, bank) ── -->
+
+    <!-- Name field (only for manual mode) -->
+    <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/til_name"
+        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Label / Account name"
+        app:boxStrokeColor="@color/border_color"
+        app:hintTextColor="@color/text_tertiary"
+        android:visibility="gone">
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/et_name"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="text"
+            android:textColor="@color/text_primary"
+            android:fontFamily="@font/geist_mono"/>
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <!-- Amount field (always shown → fetched value for fetchable, manual for others) -->
+    <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/til_value"
+        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:hint="Current Value (₹)"
+        app:boxStrokeColor="@color/border_color"
+        app:hintTextColor="@color/text_tertiary">
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/et_value"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="numberDecimal"
+            android:textColor="@color/text_primary"
+            android:fontFamily="@font/geist_mono"/>
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <!-- Notes (optional, always shown) -->
+    <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/til_notes"
+        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:hint="Notes (optional)"
+        app:boxStrokeColor="@color/border_color"
+        app:hintTextColor="@color/text_tertiary">
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/et_notes"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="text"
+            android:textColor="@color/text_primary"
+            android:fontFamily="@font/geist_mono"/>
+    </com.google.android.material.textfield.TextInputLayout>
+
+</LinearLayout>

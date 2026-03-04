@@ -8,6 +8,7 @@
     android:background="@color/background_dark"
     tools:context=".ui.main.MainActivity">
 
+    <!-- AppBar -->
     <com.google.android.material.appbar.AppBarLayout
         android:id="@+id/app_bar"
         android:layout_width="match_parent"
@@ -23,6 +24,7 @@
             android:paddingHorizontal="4dp">
 
             <TextView
+                android:id="@+id/tv_toolbar_title"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Markets"
@@ -40,169 +42,37 @@
             android:background="@color/divider_color"/>
     </com.google.android.material.appbar.AppBarLayout>
 
-    <!-- Content -->
-    <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
-        android:id="@+id/swipe_refresh_layout"
+    <!-- Fragment container -->
+    <FrameLayout
+        android:id="@+id/fragment_container"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        app:layout_behavior="@string/appbar_scrolling_view_behavior">
+        app:layout_behavior="@string/appbar_scrolling_view_behavior"
+        android:paddingBottom="56dp"
+        android:clipToPadding="false"/>
 
-        <FrameLayout
-            android:layout_width="match_parent"
-            android:layout_height="match_parent">
-
-            <androidx.recyclerview.widget.RecyclerView
-                android:id="@+id/recycler_view_watchlist"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:clipToPadding="false"
-                android:paddingBottom="80dp"
-                tools:listitem="@layout/item_stock"/>
-
-            <!-- Empty state -->
-            <LinearLayout
-                android:id="@+id/empty_state_layout"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:orientation="vertical"
-                android:gravity="center"
-                android:visibility="gone">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="No stocks yet"
-                    android:textColor="@color/text_primary"
-                    android:textSize="16sp"
-                    android:fontFamily="@font/geist_mono_semi_bold"
-                    android:textStyle="bold"/>
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="6dp"
-                    android:text="Add a symbol to start tracking"
-                    android:textColor="@color/text_tertiary"
-                    android:textSize="13sp"/>
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btn_add_stock"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="24dp"
-                    android:text="Add stock"
-                    android:textSize="13sp"
-                    android:textColor="@color/on_primary"
-                    android:paddingHorizontal="20dp"
-                    app:backgroundTint="@color/text_primary"
-                    app:cornerRadius="8dp"/>
-            </LinearLayout>
-
-            <!-- Error banner -->
-            <LinearLayout
-                android:id="@+id/error_view"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_gravity="top"
-                android:orientation="horizontal"
-                android:background="@color/error_background"
-                android:paddingHorizontal="16dp"
-                android:paddingVertical="10dp"
-                android:gravity="center_vertical"
-                android:visibility="gone">
-
-                <TextView
-                    android:id="@+id/error_text"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="Failed to refresh"
-                    android:textColor="@color/loss_red"
-                    android:textSize="12sp"/>
-            </LinearLayout>
-
-        </FrameLayout>
-    </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
-
-    <!-- Dual market status bar — bottom of screen -->
-    <LinearLayout
-        android:id="@+id/market_bar"
+    <!-- Top border for bottom nav -->
+    <View
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="1dp"
         android:layout_gravity="bottom"
-        android:orientation="horizontal"
+        android:layout_marginBottom="56dp"
+        android:background="@color/divider_color"/>
+
+    <!-- Bottom Navigation -->
+    <com.google.android.material.bottomnavigation.BottomNavigationView
+        android:id="@+id/bottom_nav"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:layout_gravity="bottom"
         android:background="@color/background_dark"
-        android:paddingHorizontal="16dp"
-        android:paddingVertical="12dp">
-
-        <!-- Top border of bar -->
-        <View
-            android:layout_width="0dp"
-            android:layout_height="0dp"
-            android:layout_weight="0"/>
-
-        <!-- US Market chip -->
-        <LinearLayout
-            android:id="@+id/chip_us_market"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:orientation="vertical"
-            android:paddingHorizontal="12dp"
-            android:paddingVertical="8dp"
-            android:background="@drawable/bg_market_chip"
-            android:layout_marginEnd="6dp">
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="NYSE / NASDAQ"
-                android:textColor="@color/text_tertiary"
-                android:textSize="10sp"
-                android:letterSpacing="0.04"/>
-
-            <TextView
-                android:id="@+id/tv_us_market_status"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="2dp"
-                android:text="Closed"
-                android:textColor="@color/text_tertiary"
-                android:textSize="13sp"
-                android:fontFamily="@font/geist_mono_semi_bold"
-                android:textStyle="bold"/>
-        </LinearLayout>
-
-        <!-- India Market chip -->
-        <LinearLayout
-            android:id="@+id/chip_india_market"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:orientation="vertical"
-            android:paddingHorizontal="12dp"
-            android:paddingVertical="8dp"
-            android:background="@drawable/bg_market_chip"
-            android:layout_marginStart="6dp">
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="NSE / BSE"
-                android:textColor="@color/text_tertiary"
-                android:textSize="10sp"
-                android:letterSpacing="0.04"/>
-
-            <TextView
-                android:id="@+id/tv_india_market_status"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="2dp"
-                android:text="Closed"
-                android:textColor="@color/text_tertiary"
-                android:textSize="13sp"
-                android:fontFamily="@font/geist_mono_semi_bold"
-                android:textStyle="bold"/>
-        </LinearLayout>
-    </LinearLayout>
+        app:menu="@menu/bottom_nav_menu"
+        app:labelVisibilityMode="labeled"
+        app:itemTextColor="@drawable/selector_nav_text"
+        app:itemIconTint="@drawable/selector_nav_text"
+        app:itemPaddingTop="4dp"
+        app:itemPaddingBottom="4dp"
+        app:elevation="0dp"
+        style="@style/Widget.App.BottomNav"/>
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

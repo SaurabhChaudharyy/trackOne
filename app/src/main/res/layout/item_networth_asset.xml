@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="52dp"
+    android:orientation="horizontal"
+    android:paddingStart="28dp"
+    android:paddingEnd="12dp"
+    android:gravity="center_vertical"
+    android:background="?attr/selectableItemBackground">
+
+    <!-- Left accent line -->
+    <View
+        android:layout_width="2dp"
+        android:layout_height="28dp"
+        android:layout_marginEnd="12dp"
+        android:background="@color/divider_color"/>
+
+    <!-- Name & notes column -->
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/tv_asset_name"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@color/text_primary"
+            android:textSize="13sp"
+            android:fontFamily="@font/geist_mono_semi_bold"
+            android:textStyle="bold"
+            tools:text="RELIANCE.NS"/>
+
+        <TextView
+            android:id="@+id/tv_asset_notes"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="1dp"
+            android:textColor="@color/text_tertiary"
+            android:textSize="11sp"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:visibility="gone"
+            tools:text="2 units · ₹1,200/unit"/>
+    </LinearLayout>
+
+    <!-- Value -->
+    <TextView
+        android:id="@+id/tv_asset_value"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="8dp"
+        android:textColor="@color/text_primary"
+        android:textSize="13sp"
+        android:fontFamily="@font/geist_mono_regular"
+        tools:text="₹1,20,000"/>
+
+    <!-- Delete button -->
+    <ImageButton
+        android:id="@+id/btn_delete_asset"
+        android:layout_width="28dp"
+        android:layout_height="28dp"
+        android:src="@drawable/ic_close"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:alpha="0.35"
+        android:contentDescription="Delete asset"/>
+
+</LinearLayout>

@@ -126,4 +126,13 @@
         <item name="android:fontFamily">@font/geist_mono</item>
     </style>
 
+    <!-- Bottom Navigation -->
+    <style name="Widget.App.BottomNav" parent="Widget.Material3.BottomNavigationView">
+        <item name="itemActiveIndicatorStyle">@style/Widget.App.BottomNav.ActiveIndicator</item>
+    </style>
+
+    <style name="Widget.App.BottomNav.ActiveIndicator" parent="Widget.Material3.BottomNavigationView.ActiveIndicator">
+        <item name="android:color">@color/surface_variant</item>
+    </style>
+
 </resources>

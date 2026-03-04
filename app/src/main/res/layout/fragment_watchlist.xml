@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/swipe_refresh_layout"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/recycler_view_watchlist"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:clipToPadding="false"
+            android:paddingBottom="8dp"
+            tools:listitem="@layout/item_stock"/>
+
+        <!-- Empty state -->
+        <LinearLayout
+            android:id="@+id/empty_state_layout"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:visibility="gone">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="No stocks yet"
+                android:textColor="@color/text_primary"
+                android:textSize="16sp"
+                android:fontFamily="@font/geist_mono_semi_bold"
+                android:textStyle="bold"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:text="Add a symbol to start tracking"
+                android:textColor="@color/text_tertiary"
+                android:textSize="13sp"/>
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_add_stock"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="24dp"
+                android:text="Add stock"
+                android:textSize="13sp"
+                android:textColor="@color/on_primary"
+                android:paddingHorizontal="20dp"
+                app:backgroundTint="@color/text_primary"
+                app:cornerRadius="8dp"/>
+        </LinearLayout>
+
+        <!-- Error banner -->
+        <LinearLayout
+            android:id="@+id/error_view"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="top"
+            android:orientation="horizontal"
+            android:background="@color/error_background"
+            android:paddingHorizontal="16dp"
+            android:paddingVertical="10dp"
+            android:gravity="center_vertical"
+            android:visibility="gone">
+
+            <TextView
+                android:id="@+id/error_text"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Failed to refresh"
+                android:textColor="@color/loss_red"
+                android:textSize="12sp"/>
+        </LinearLayout>
+
+        <!-- Dual market status bar — bottom -->
+        <LinearLayout
+            android:id="@+id/market_bar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom"
+            android:orientation="horizontal"
+            android:background="@color/background_dark"
+            android:paddingHorizontal="16dp"
+            android:paddingVertical="12dp">
+
+            <!-- US Market chip -->
+            <LinearLayout
+                android:id="@+id/chip_us_market"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:paddingHorizontal="12dp"
+                android:paddingVertical="8dp"
+                android:background="@drawable/bg_market_chip"
+                android:layout_marginEnd="6dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="NYSE / NASDAQ"
+                    android:textColor="@color/text_tertiary"
+                    android:textSize="10sp"
+                    android:letterSpacing="0.04"/>
+
+                <TextView
+                    android:id="@+id/tv_us_market_status"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="Closed"
+                    android:textColor="@color/text_tertiary"
+                    android:textSize="13sp"
+                    android:fontFamily="@font/geist_mono_semi_bold"
+                    android:textStyle="bold"/>
+            </LinearLayout>
+
+            <!-- India Market chip -->
+            <LinearLayout
+                android:id="@+id/chip_india_market"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:paddingHorizontal="12dp"
+                android:paddingVertical="8dp"
+                android:background="@drawable/bg_market_chip"
+                android:layout_marginStart="6dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="NSE / BSE"
+                    android:textColor="@color/text_tertiary"
+                    android:textSize="10sp"
+                    android:letterSpacing="0.04"/>
+
+                <TextView
+                    android:id="@+id/tv_india_market_status"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="Closed"
+                    android:textColor="@color/text_tertiary"
+                    android:textSize="13sp"
+                    android:fontFamily="@font/geist_mono_semi_bold"
+                    android:textStyle="bold"/>
+            </LinearLayout>
+        </LinearLayout>
+
+    </FrameLayout>
+</androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
