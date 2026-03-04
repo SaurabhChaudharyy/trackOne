@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Finance Widget</string>
-    <string name="widget_description">Stock market watchlist widget</string>
+    <string name="app_name">trackOne</string>
+    <string name="widget_description">trackOne</string>
     <string name="action_add_stock">Add Stock</string>
     <string name="action_refresh">Refresh</string>
     <string name="action_settings">Settings</string>

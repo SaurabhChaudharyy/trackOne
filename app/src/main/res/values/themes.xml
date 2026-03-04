@@ -17,6 +17,10 @@
         <item name="android:windowLightStatusBar">false</item>
         <item name="android:windowLightNavigationBar">false</item>
 
+        <!-- Disable Android 12+ default splash screen icon/background -->
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/transparent_splash</item>
+        <item name="android:windowSplashScreenBackground">@color/background_dark</item>
+
         <!-- Global font: Geist Mono everywhere -->
         <item name="android:fontFamily">@font/geist_mono</item>
         <item name="fontFamily">@font/geist_mono</item>
@@ -45,12 +49,6 @@
         <item name="materialButtonStyle">@style/Widget.App.Button</item>
     </style>
 
-    <!-- Splash screen -->
-    <style name="Theme.FinanceWidget.Splash" parent="Theme.SplashScreen">
-        <item name="windowSplashScreenBackground">@color/background_dark</item>
-        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_candlestick</item>
-        <item name="postSplashScreenTheme">@style/Theme.FinanceWidget</item>
-    </style>
 
     <!-- ── Typography (all use Geist Mono) ────────────────── -->
     <style name="TextAppearance.App.Display" parent="TextAppearance.Material3.DisplayLarge">
