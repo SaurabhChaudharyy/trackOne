@@ -15,7 +15,6 @@
   <img src="https://img.shields.io/badge/Target%20SDK-34-blue?style=flat-square"/>
   <img src="https://img.shields.io/badge/Language-Kotlin-7F52FF?style=flat-square&logo=kotlin&logoColor=white"/>
   <img src="https://img.shields.io/badge/Architecture-MVVM-orange?style=flat-square"/>
-  <img src="https://img.shields.io/badge/License-MIT-lightgrey?style=flat-square"/>
 </p>
 
 ---
