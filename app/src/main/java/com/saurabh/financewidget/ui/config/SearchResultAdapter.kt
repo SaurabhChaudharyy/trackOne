@@ -81,7 +81,6 @@ class SearchResultAdapter(
             ctx: android.content.Context
         ) {
             if (isSelected) {
-                // Show green tick, hide Add button
                 binding.ivSelected.visibility = View.VISIBLE
                 binding.btnAdd.text = "Added"
                 binding.btnAdd.backgroundTintList =

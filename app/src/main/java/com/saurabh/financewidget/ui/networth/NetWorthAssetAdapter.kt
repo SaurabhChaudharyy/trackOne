@@ -25,7 +25,6 @@ class NetWorthAssetAdapter(
             binding.tvAssetName.text = asset.name
             binding.tvAssetValue.text = inrFormat.format(asset.currentValue)
 
-            // Build subtitle: quantity info for fetchable types, or custom notes
             val subtitle = buildSubtitle(asset)
             if (subtitle.isNotBlank()) {
                 binding.tvAssetNotes.text = subtitle

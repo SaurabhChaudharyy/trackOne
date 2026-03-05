@@ -13,8 +13,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-// ─── UI state ─────────────────────────────────────────────────────────────────
-
 sealed class BackupUiState {
     object Idle : BackupUiState()
     object Loading : BackupUiState()
@@ -22,8 +20,6 @@ sealed class BackupUiState {
     data class ImportSuccess(val watchlistCount: Int, val assetCount: Int) : BackupUiState()
     data class Error(val message: String) : BackupUiState()
 }
-
-// ─── ViewModel ────────────────────────────────────────────────────────────────
 
 @HiltViewModel
 class SettingsViewModel @Inject constructor(

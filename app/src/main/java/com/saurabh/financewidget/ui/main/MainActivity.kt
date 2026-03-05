@@ -19,7 +19,6 @@ class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private val viewModel: MainViewModel by viewModels()
 
-    // Keep fragment instances to avoid recreation on tab switch
     private val watchlistFragment by lazy { WatchlistFragment() }
     private val netWorthFragment  by lazy { NetWorthFragment() }
     private val settingsFragment  by lazy { SettingsFragment() }
@@ -58,7 +57,6 @@ class MainActivity : AppCompatActivity() {
             binding.tvToolbarTitle.text = title
             true
         }
-        // Ensure the indicator matches the default tab
         binding.bottomNav.selectedItemId = R.id.nav_watchlist
     }
 

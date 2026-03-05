@@ -33,10 +33,8 @@ class NetWorthFragment : Fragment() {
     private val viewModel: NetWorthViewModel by viewModels()
     private val inrFormat = NumberFormat.getCurrencyInstance(Locale("en", "IN"))
 
-    // Map type → adapter
     private val adapters = mutableMapOf<AssetType, NetWorthAssetAdapter>()
 
-    // Track collapsed state per section (default: all expanded)
     private val sectionExpanded = mutableMapOf(
         AssetType.STOCK_IN to true,
         AssetType.STOCK_US to true,
@@ -47,7 +45,6 @@ class NetWorthFragment : Fragment() {
         AssetType.BANK     to true
     )
 
-    // Whether a type uses auto-fetch (symbol + qty) vs manual (label + amount)
     private val isFetchable = setOf(
         AssetType.STOCK_IN, AssetType.STOCK_US, AssetType.CRYPTO, AssetType.GOLD
     )
@@ -66,8 +63,6 @@ class NetWorthFragment : Fragment() {
         setupAddButtons()
         observeViewModel()
     }
-
-    // ── RecyclerViews ────────────────────────────────────────────────────────
 
     private fun setupRecyclerViews() {
         val map = mapOf(
@@ -89,8 +84,6 @@ class NetWorthFragment : Fragment() {
             }
         }
     }
-
-    // ── Section collapse / expand ───────────────────────────────────────────
 
     private fun setupHeaders() {
         fun wireHeader(header: View, rv: RecyclerView, chevron: View, type: AssetType) {
@@ -114,8 +107,6 @@ class NetWorthFragment : Fragment() {
         wireHeader(binding.headerBank,    binding.rvBank,    binding.chevronBank,    AssetType.BANK)
     }
 
-    // ── Add buttons ─────────────────────────────────────────────────────────
-
     private fun setupAddButtons() {
         binding.btnAddStockIn.setOnClickListener { showAddDialog(AssetType.STOCK_IN, "Add Indian Stock") }
         binding.btnAddStockUs.setOnClickListener { showAddDialog(AssetType.STOCK_US, "Add US Stock") }
@@ -125,8 +116,6 @@ class NetWorthFragment : Fragment() {
         binding.btnAddCash.setOnClickListener    { showAddDialog(AssetType.CASH,     "Add Cash on Hand") }
         binding.btnAddBank.setOnClickListener    { showAddDialog(AssetType.BANK,     "Add Bank Balance") }
     }
-
-    // ── ViewModel ───────────────────────────────────────────────────────────
 
     private fun observeViewModel() {
         viewModel.totalNetWorth.observe(viewLifecycleOwner) { total ->
@@ -151,19 +140,15 @@ class NetWorthFragment : Fragment() {
         }
     }
 
-    // ── Smart Add dialog ────────────────────────────────────────────────────
-
     private fun showAddDialog(type: AssetType, title: String) {
         val d = DialogAddAssetBinding.inflate(layoutInflater)
         val fetchable = type in isFetchable
 
-        // Show correct mode
         d.tilSymbol.isVisible   = fetchable
         d.tilQuantity.isVisible = fetchable
         d.llFetchRow.isVisible  = fetchable
         d.tilName.isVisible     = !fetchable
 
-        // Hint depends on type
         when (type) {
             AssetType.GOLD     -> {
                 d.tilSymbol.hint   = "Symbol — leave blank for spot price"
@@ -184,10 +169,8 @@ class NetWorthFragment : Fragment() {
             else -> {}
         }
 
-        // Track fetched price per unit
         var fetchedPricePerUnit = 0.0
 
-        // Fetch button
         d.btnFetchPrice.setOnClickListener {
             val symbolInput = d.etSymbol.text?.toString()?.trim()
                 ?: if (type == AssetType.GOLD) "GC=F" else ""
@@ -220,7 +203,6 @@ class NetWorthFragment : Fragment() {
             }
         }
 
-        // Auto-update total when qty changes (if we already have price)
         d.etQuantity.addTextChangedListener(object : android.text.TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
@@ -235,7 +217,7 @@ class NetWorthFragment : Fragment() {
         val dialog = AlertDialog.Builder(requireContext(), R.style.ThemeOverlay_App_MaterialAlertDialog)
             .setTitle(title)
             .setView(d.root)
-            .setPositiveButton("Add", null) // set below to prevent auto-dismiss on validation failure
+            .setPositiveButton("Add", null)
             .setNegativeButton("Cancel", null)
             .create()
 
@@ -273,7 +255,6 @@ class NetWorthFragment : Fragment() {
                     )
                 )
 
-                // Auto-expand section if collapsed
                 if (sectionExpanded[type] == false) {
                     sectionExpanded[type] = true
                     rvForType(type)?.isVisible = true
@@ -287,8 +268,6 @@ class NetWorthFragment : Fragment() {
         dialog.show()
     }
 
-    // ── Delete confirm ───────────────────────────────────────────────────────
-
     private fun confirmDelete(asset: NetWorthAssetEntity) {
         AlertDialog.Builder(requireContext(), R.style.ThemeOverlay_App_MaterialAlertDialog)
             .setTitle("Remove ${asset.name}?")
@@ -297,8 +276,6 @@ class NetWorthFragment : Fragment() {
             .setNegativeButton("Cancel", null)
             .show()
     }
-
-    // ── Helpers ──────────────────────────────────────────────────────────────
 
     private fun rvForType(type: AssetType): RecyclerView? = when (type) {
         AssetType.STOCK_IN -> binding.rvStockIn

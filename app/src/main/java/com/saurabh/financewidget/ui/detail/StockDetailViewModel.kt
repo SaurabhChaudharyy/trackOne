@@ -58,7 +58,6 @@ class StockDetailViewModel @Inject constructor(
                 else -> {}
             }
             _isLoading.value = false
-            // Default to 1D view
             loadPriceHistory("1D")
         }
     }

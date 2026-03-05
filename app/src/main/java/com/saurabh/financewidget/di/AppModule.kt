@@ -34,7 +34,6 @@ object AppModule {
         return OkHttpClient.Builder()
             .addInterceptor(loggingInterceptor)
             .addInterceptor { chain ->
-                // Yahoo Finance requires browser-like headers to avoid 403
                 val original = chain.request()
                 val request = original.newBuilder()
                     .header("User-Agent", "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36")
@@ -56,7 +55,6 @@ object AppModule {
     @Singleton
     fun provideRetrofit(okHttpClient: OkHttpClient): Retrofit {
         return Retrofit.Builder()
-            // Yahoo Finance query endpoint (no API key required)
             .baseUrl("https://query1.finance.yahoo.com/")
             .client(okHttpClient)
             .addConverterFactory(GsonConverterFactory.create())
