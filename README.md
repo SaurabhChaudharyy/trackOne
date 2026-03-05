@@ -1,7 +1,7 @@
 # trackOne — Finance Widget for Android
 
 <p align="center">
-  <img src="app/src/main/res/mipmap-xxxhdpi/ic_launcher_foreground" width="96" alt="trackOne icon"/>
+  <img src="app/src/main/res/mipmap-xxxhdpi/ic_launcher_foreground.png" width="96" alt="trackOne icon"/>
 </p>
 
 <p align="center">
