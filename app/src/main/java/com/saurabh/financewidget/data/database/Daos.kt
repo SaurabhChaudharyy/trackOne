@@ -46,6 +46,9 @@ interface WatchlistDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun addToWatchlist(item: WatchlistEntity)
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertWatchlistItems(items: List<WatchlistEntity>)
+
     @Query("DELETE FROM watchlist WHERE symbol = :symbol")
     suspend fun removeFromWatchlist(symbol: String)
 

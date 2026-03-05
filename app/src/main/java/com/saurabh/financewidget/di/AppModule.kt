@@ -97,3 +97,4 @@ object AppModule {
     @Singleton
     fun provideNetWorthDao(database: FinanceDatabase): NetWorthDao = database.netWorthDao()
 }
+

@@ -20,5 +20,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "FinanceWidget"
+rootProject.name = "TrackOne"
 include(":app")
