@@ -65,16 +65,12 @@ class StockDetailActivity : AppCompatActivity() {
         viewModel.loadStock(symbol)
     }
 
-    // ── Toolbar ───────────────────────────────────────────────────────────────
-
     private fun setupToolbar() {
         setSupportActionBar(binding.toolbar)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
         supportActionBar?.title = ""
         binding.toolbar.setNavigationOnClickListener { onBackPressedDispatcher.onBackPressed() }
     }
-
-    // ── Chart ─────────────────────────────────────────────────────────────────
 
     private fun setupChart() {
         binding.lineChart.apply {
@@ -84,7 +80,6 @@ class StockDetailActivity : AppCompatActivity() {
             setNoDataText("Loading chart data...")
             setNoDataTextColor(Color.WHITE)
 
-            // Touch / interaction
             setTouchEnabled(true)
             isDragEnabled = true
             setScaleEnabled(false)
@@ -93,7 +88,6 @@ class StockDetailActivity : AppCompatActivity() {
             isHighlightPerTapEnabled = true
             isHighlightPerDragEnabled = true
 
-            // Hide all axes
             xAxis.isEnabled = false
             axisLeft.isEnabled = false
             axisRight.isEnabled = false
@@ -102,7 +96,6 @@ class StockDetailActivity : AppCompatActivity() {
             setDrawBorders(false)
             extraBottomOffset = 8f
 
-            // Show selected price in the description area on touch
             setOnChartValueSelectedListener(object : OnChartValueSelectedListener {
                 override fun onValueSelected(e: Entry, h: Highlight) {
                     val stock = viewModel.stock.value ?: return
@@ -146,12 +139,10 @@ class StockDetailActivity : AppCompatActivity() {
             mode = LineDataSet.Mode.CUBIC_BEZIER
             cubicIntensity = 0.15f
 
-            // Gradient fill under the line
             setDrawFilled(true)
             fillAlpha = 60
             fillColor = lineColor
 
-            // Highlight indicator when user touches
             highLightColor = Color.WHITE
             highlightLineWidth = 1.2f
             enableDashedHighlightLine(8f, 4f, 0f)
@@ -164,8 +155,6 @@ class StockDetailActivity : AppCompatActivity() {
             invalidate()
         }
     }
-
-    // ── Timeframe chips ───────────────────────────────────────────────────────
 
     private fun setupTimeframeChips() {
         TIMEFRAME_OPTIONS.keys.forEach { label ->
@@ -214,11 +203,8 @@ class StockDetailActivity : AppCompatActivity() {
             viewModel.loadPriceHistory(label)
         }
 
-        // Default to 1D (index 0)
         (binding.timeframeChipGroup.getChildAt(0) as? Chip)?.isChecked = true
     }
-
-    // ── Observers ─────────────────────────────────────────────────────────────
 
     private fun observeViewModel() {
         viewModel.stock.observe(this) { stock ->
@@ -241,8 +227,6 @@ class StockDetailActivity : AppCompatActivity() {
             binding.loadingOverlay.visibility = if (isLoading) View.VISIBLE else View.GONE
         }
     }
-
-    // ── Data display ──────────────────────────────────────────────────────────
 
     private fun displayStockData(stock: StockEntity) {
         binding.tvDetailSymbol.text = stock.symbol

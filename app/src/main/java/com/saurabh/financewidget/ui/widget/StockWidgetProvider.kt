@@ -102,7 +102,6 @@ class StockWidgetProvider : AppWidgetProvider() {
         )
         views.setOnClickPendingIntent(R.id.widget_refresh_button, refreshPendingIntent)
 
-        // Open main app (MainActivity doesn't need extras unlike StockDetailActivity)
         val openAppIntent = Intent(context, com.saurabh.financewidget.ui.main.MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
         }

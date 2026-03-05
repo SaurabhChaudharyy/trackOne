@@ -12,12 +12,9 @@ import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
 
-// ─── Constants ───────────────────────────────────────────────────────────────
-
 const val BACKUP_SCHEMA_VERSION = 1
 val BACKUP_IMPORT_MIME_TYPES = arrayOf("application/json", "text/plain", "*/*")
 
-// ─── Backup envelope ──────────────────────────────────────────────────────────
 
 /**
  * Root JSON object written/read for every backup.
@@ -40,7 +37,7 @@ data class WatchlistBackup(
 
 data class NetWorthAssetBackup(
     @SerializedName("name") val name: String,
-    @SerializedName("asset_type") val assetType: String,   // stored as enum name string
+    @SerializedName("asset_type") val assetType: String,
     @SerializedName("quantity") val quantity: Double,
     @SerializedName("buy_price") val buyPrice: Double,
     @SerializedName("current_value") val currentValue: Double,
@@ -50,7 +47,6 @@ data class NetWorthAssetBackup(
     @SerializedName("updated_at_ms") val updatedAt: Long
 )
 
-// ─── Result types ─────────────────────────────────────────────────────────────
 
 sealed class BackupResult {
     data class Success(val message: String) : BackupResult()
@@ -67,8 +63,6 @@ sealed class ImportResult {
     data class Failure(val reason: String, val cause: Throwable? = null) : ImportResult()
 }
 
-// ─── Repository ───────────────────────────────────────────────────────────────
-
 @Singleton
 class BackupRepository @Inject constructor(
     @ApplicationContext private val context: Context,
@@ -76,21 +70,13 @@ class BackupRepository @Inject constructor(
     private val netWorthDao: NetWorthDao
 ) {
     companion object {
-        // MIME types exposed for the fragment's SAF file picker
         val IMPORT_MIME_TYPES = BACKUP_IMPORT_MIME_TYPES
     }
 
     private val gson: Gson = GsonBuilder().setPrettyPrinting().create()
 
-    // ── Export ────────────────────────────────────────────────────────────────
-
-    /**
-     * Reads all local data and writes a pretty-printed JSON file to [uri].
-     * Uses SAF — no WRITE_EXTERNAL_STORAGE permission needed.
-     */
     suspend fun exportToUri(uri: Uri): BackupResult = withContext(Dispatchers.IO) {
         try {
-            // 1. Read data
             val watchlistEntities = watchlistDao.getWatchlistSync()
             val assetEntities = netWorthDao.getAllAssetsSync()
 
@@ -100,7 +86,6 @@ class BackupRepository @Inject constructor(
                 )
             }
 
-            // 2. Map to backup DTOs
             val watchlistBackup = watchlistEntities.map { e ->
                 WatchlistBackup(e.symbol, e.displayName, e.position, e.addedAt)
             }
@@ -123,7 +108,6 @@ class BackupRepository @Inject constructor(
                 networthAssets = assetBackup
             )
 
-            // 3. Write JSON → URI via SAF
             context.contentResolver.openOutputStream(uri)?.use { stream ->
                 stream.bufferedWriter().use { writer ->
                     writer.write(gson.toJson(envelope))
@@ -139,18 +123,13 @@ class BackupRepository @Inject constructor(
         }
     }
 
-    // ── Import ────────────────────────────────────────────────────────────────
-
     /**
      * Reads a backup JSON from [uri], validates it, then atomically replaces
      * all local data (watchlist + net worth assets) with the restored rows.
-     *
-     * The `stocks` cache table is intentionally NOT restored — prices will be
-     * re-fetched live once the watchlist symbols are back in the DB.
+     * The stocks cache table is intentionally not restored — prices re-fetch live.
      */
     suspend fun importFromUri(uri: Uri): ImportResult = withContext(Dispatchers.IO) {
         try {
-            // 1. Read file
             val json = context.contentResolver.openInputStream(uri)
                 ?.bufferedReader()
                 ?.use { it.readText() }
@@ -160,7 +139,6 @@ class BackupRepository @Inject constructor(
                 return@withContext ImportResult.Failure("The selected file is empty.")
             }
 
-            // 2. Parse + validate
             val envelope = try {
                 gson.fromJson(json, BackupEnvelope::class.java)
             } catch (e: Exception) {
@@ -174,7 +152,6 @@ class BackupRepository @Inject constructor(
                 return@withContext ImportResult.Failure("Backup file appears to be corrupt (null envelope).")
             }
 
-            // 2a. Wrong app package guard
             if (envelope.appPackage.isNotBlank() &&
                 envelope.appPackage != "com.saurabh.financewidget") {
                 return@withContext ImportResult.Failure(
@@ -183,7 +160,6 @@ class BackupRepository @Inject constructor(
                 )
             }
 
-            // 2b. Future schema guard
             if (envelope.schemaVersion > BACKUP_SCHEMA_VERSION) {
                 return@withContext ImportResult.Failure(
                     "This backup was created with a newer version of trackOne " +
@@ -191,7 +167,6 @@ class BackupRepository @Inject constructor(
                 )
             }
 
-            // 2c. Validate enum names before committing anything
             val invalidTypes = envelope.networthAssets
                 .filter { runCatching { AssetType.valueOf(it.assetType) }.isFailure }
                 .map { it.assetType }
@@ -202,7 +177,6 @@ class BackupRepository @Inject constructor(
                 )
             }
 
-            // 3. Convert back to Room entities (reset auto-generated IDs to 0 so Room assigns fresh ones)
             val watchlistEntities = envelope.watchlist.map { b ->
                 WatchlistEntity(
                     symbol = b.symbol.trim().uppercase(),
@@ -213,7 +187,7 @@ class BackupRepository @Inject constructor(
             }
             val assetEntities = envelope.networthAssets.map { b ->
                 NetWorthAssetEntity(
-                    id = 0,   // let Room auto-generate
+                    id = 0,
                     name = b.name,
                     assetType = AssetType.valueOf(b.assetType),
                     quantity = b.quantity,
@@ -226,7 +200,6 @@ class BackupRepository @Inject constructor(
                 )
             }
 
-            // 4. Atomic replace: clear → bulk-insert
             watchlistDao.clearWatchlist()
             netWorthDao.deleteAllAssets()
 

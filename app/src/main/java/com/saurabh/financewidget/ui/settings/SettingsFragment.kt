@@ -30,30 +30,24 @@ class SettingsFragment : Fragment() {
 
     private val viewModel: SettingsViewModel by viewModels()
 
-    // ── SAF: Create a new document (Export) ──────────────────────────────────
     private val exportLauncher = registerForActivityResult(
         ActivityResultContracts.CreateDocument("application/json")
     ) { uri: Uri? ->
         if (uri == null) {
-            // User cancelled the save dialog — do nothing
             return@registerForActivityResult
         }
         viewModel.exportData(uri)
     }
 
-    // ── SAF: Open an existing document (Import) ───────────────────────────────
     private val importLauncher = registerForActivityResult(
         ActivityResultContracts.OpenDocument()
     ) { uri: Uri? ->
         if (uri == null) {
-            // User cancelled the file picker — do nothing
             return@registerForActivityResult
         }
-        // Show warning before clobbering existing data
         showImportConfirmationDialog(uri)
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -69,8 +63,6 @@ class SettingsFragment : Fragment() {
         observeViewModel()
     }
 
-    // ── Click handlers ────────────────────────────────────────────────────────
-
     private fun setupClickListeners() {
         binding.cardExport.setOnClickListener {
             val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault())
@@ -82,8 +74,6 @@ class SettingsFragment : Fragment() {
             importLauncher.launch(BackupRepository.IMPORT_MIME_TYPES)
         }
     }
-
-    // ── State observation ─────────────────────────────────────────────────────
 
     private fun observeViewModel() {
         viewLifecycleOwner.lifecycleScope.launch {
@@ -139,8 +129,6 @@ class SettingsFragment : Fragment() {
         }
     }
 
-    // ── Dialogs ───────────────────────────────────────────────────────────────
-
     /** Warn the user that importing will replace ALL their current data. */
     private fun showImportConfirmationDialog(uri: Uri) {
         MaterialAlertDialogBuilder(requireContext())
@@ -177,8 +165,6 @@ class SettingsFragment : Fragment() {
             .setPositiveButton("OK") { dialog, _ -> dialog.dismiss() }
             .show()
     }
-
-    // ── Helpers ───────────────────────────────────────────────────────────────
 
     private fun setLoadingVisible(visible: Boolean) {
         binding.layoutLoading.isVisible = visible

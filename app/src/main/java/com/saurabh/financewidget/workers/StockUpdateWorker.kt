@@ -21,7 +21,6 @@ class StockUpdateWorker @AssistedInject constructor(
 
     override suspend fun doWork(): Result {
         return try {
-            // Actually refresh stock data from network before updating the widget
             repository.refreshWatchlistStocks()
 
             val appWidgetManager = AppWidgetManager.getInstance(applicationContext)

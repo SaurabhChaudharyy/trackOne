@@ -2,7 +2,6 @@ package com.saurabh.financewidget.data.model
 
 import com.google.gson.annotations.SerializedName
 
-// ─── Chart / Quote response ──────────────────────────────────────────────────
 
 data class YahooChartResponse(
     @SerializedName("chart") val chart: YahooChart?
@@ -77,8 +76,6 @@ data class YahooError(
     @SerializedName("description") val description: String = ""
 )
 
-// ─── Quote summary (for batch / multiple fields) ─────────────────────────────
-
 data class YahooQuoteResponse(
     @SerializedName("quoteResponse") val quoteResponse: YahooQuoteContainer?
 )
@@ -108,8 +105,6 @@ data class YahooQuoteItem(
     @SerializedName("fiftyTwoWeekLow")        val fiftyTwoWeekLow: Double = 0.0,
     @SerializedName("dividendYield")          val dividendYield: Double = 0.0
 )
-
-// ─── Search response ──────────────────────────────────────────────────────────
 
 data class YahooSearchResponse(
     @SerializedName("quotes") val quotes: List<YahooSearchResult>?

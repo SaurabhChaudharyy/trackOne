@@ -130,8 +130,6 @@ class WatchlistFragment : Fragment() {
         )
     }
 
-    // ── Market hours popup ───────────────────────────────────────────────────
-
     private enum class Market { US, INDIA }
 
     private fun showMarketHoursDialog(market: Market) {
