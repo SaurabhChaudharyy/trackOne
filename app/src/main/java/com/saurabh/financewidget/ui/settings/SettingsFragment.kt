@@ -65,12 +65,14 @@ class SettingsFragment : Fragment() {
 
     private fun setupClickListeners() {
         binding.cardExport.setOnClickListener {
+            binding.cardExport.performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY)
             val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault())
                 .format(Date())
             exportLauncher.launch("trackone_backup_$timestamp.json")
         }
 
         binding.cardImport.setOnClickListener {
+            binding.cardImport.performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY)
             importLauncher.launch(BackupRepository.IMPORT_MIME_TYPES)
         }
     }

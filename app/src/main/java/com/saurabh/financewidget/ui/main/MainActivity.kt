@@ -47,6 +47,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupBottomNav() {
         binding.bottomNav.setOnItemSelectedListener { item ->
+            binding.bottomNav.performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY)
             val (fragment, title) = when (item.itemId) {
                 R.id.nav_watchlist -> watchlistFragment to getString(R.string.tab_markets)
                 R.id.nav_networth  -> netWorthFragment  to getString(R.string.tab_networth)

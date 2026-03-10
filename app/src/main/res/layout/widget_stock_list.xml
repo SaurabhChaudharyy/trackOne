@@ -18,13 +18,15 @@
         android:paddingRight="8dp">
 
         <TextView
+            android:id="@+id/widget_header_title"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:text="TrackOne"
             android:textColor="#FAFAFA"
             android:textSize="12sp"
-            android:textStyle="bold"/>
+            android:textStyle="bold"
+            android:fontFamily="@font/geist_mono_bold"/>
 
         <!-- ImageView instead of ImageButton — no theme attrs needed in widgets -->
         <ImageView
@@ -63,19 +65,23 @@
         android:visibility="gone">
 
         <TextView
+            android:id="@+id/widget_empty_title"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="No stocks added"
             android:textColor="#71717A"
-            android:textSize="12sp"/>
+            android:textSize="12sp"
+            android:fontFamily="@font/geist_mono_regular"/>
 
         <TextView
+            android:id="@+id/widget_empty_subtitle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Tap to add stocks"
             android:textColor="#52525B"
             android:textSize="11sp"
-            android:layout_marginTop="4dp"/>
+            android:layout_marginTop="4dp"
+            android:fontFamily="@font/geist_mono_regular"/>
     </LinearLayout>
 
 </LinearLayout>

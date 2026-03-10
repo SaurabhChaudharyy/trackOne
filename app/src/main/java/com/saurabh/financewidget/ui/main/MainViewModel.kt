@@ -43,6 +43,12 @@ class MainViewModel @Inject constructor(
         }
     }
 
+    fun addToWatchlist(symbol: String, displayName: String) {
+        viewModelScope.launch {
+            repository.addToWatchlist(symbol, displayName)
+        }
+    }
+
     fun reorderWatchlist(items: List<WatchlistEntity>) {
         viewModelScope.launch {
             repository.updateWatchlistOrder(items)

@@ -97,6 +97,7 @@ class WidgetConfigActivity : AppCompatActivity() {
 
         // Done button commits all selected
         binding.btnDone.setOnClickListener {
+            binding.btnDone.performHapticFeedback(android.view.HapticFeedbackConstants.CONFIRM)
             val selected = searchAdapter.getSelectedItems()
             if (selected.isEmpty()) {
                 finishConfiguration()

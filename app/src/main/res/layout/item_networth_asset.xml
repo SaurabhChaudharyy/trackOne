@@ -3,11 +3,14 @@
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:layout_height="52dp"
+    android:layout_height="wrap_content"
     android:orientation="horizontal"
     android:paddingStart="28dp"
     android:paddingEnd="12dp"
+    android:paddingTop="10dp"
+    android:paddingBottom="10dp"
     android:gravity="center_vertical"
+    android:minHeight="52dp"
     android:background="?attr/selectableItemBackground">
 
     <!-- Left accent line -->
@@ -17,7 +20,7 @@
         android:layout_marginEnd="12dp"
         android:background="@color/divider_color"/>
 
-    <!-- Name & notes column -->
+    <!-- Name, subtitle & P&L column -->
     <LinearLayout
         android:layout_width="0dp"
         android:layout_height="wrap_content"
@@ -45,18 +48,48 @@
             android:ellipsize="end"
             android:visibility="gone"
             tools:text="2 units · ₹1,200/unit"/>
+
+        <!-- P&L line — shown only when buyPrice is set -->
+        <TextView
+            android:id="@+id/tv_asset_pl"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:textSize="11sp"
+            android:fontFamily="@font/geist_mono"
+            android:visibility="gone"
+            tools:text="▲ ₹3,200 (+2.74%)"/>
     </LinearLayout>
 
-    <!-- Value -->
-    <TextView
-        android:id="@+id/tv_asset_value"
+    <!-- Right column: value + P&L amount -->
+    <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginEnd="8dp"
-        android:textColor="@color/text_primary"
-        android:textSize="13sp"
-        android:fontFamily="@font/geist_mono_regular"
-        tools:text="₹1,20,000"/>
+        android:orientation="vertical"
+        android:gravity="end"
+        android:layout_marginEnd="8dp">
+
+        <TextView
+            android:id="@+id/tv_asset_value"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@color/text_primary"
+            android:textSize="13sp"
+            android:fontFamily="@font/geist_mono_regular"
+            tools:text="₹1,20,000"/>
+
+        <!-- Invested amount — shown only when buyPrice is set -->
+        <TextView
+            android:id="@+id/tv_asset_invested"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="1dp"
+            android:textSize="10sp"
+            android:textColor="@color/text_tertiary"
+            android:fontFamily="@font/geist_mono"
+            android:visibility="gone"
+            tools:text="inv ₹1,16,800"/>
+    </LinearLayout>
 
     <!-- Delete button -->
     <ImageButton

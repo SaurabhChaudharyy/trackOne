@@ -26,7 +26,8 @@
             android:textColor="#FAFAFA"
             android:textSize="13sp"
             android:textStyle="bold"
-            android:singleLine="true"/>
+            android:singleLine="true"
+            android:fontFamily="@font/geist_mono_semi_bold"/>
 
         <TextView
             android:id="@+id/widget_item_name"
@@ -36,7 +37,8 @@
             android:textColor="#52525B"
             android:textSize="10sp"
             android:singleLine="true"
-            android:ellipsize="end"/>
+            android:ellipsize="end"
+            android:fontFamily="@font/geist_mono_regular"/>
     </LinearLayout>
 
     <!-- Price -->
@@ -49,7 +51,8 @@
         android:textColor="#FAFAFA"
         android:textSize="12sp"
         android:gravity="end"
-        android:singleLine="true"/>
+        android:singleLine="true"
+        android:fontFamily="@font/geist_mono_regular"/>
 
     <!-- Change % -->
     <LinearLayout
@@ -68,7 +71,8 @@
             android:textColor="#EF4444"
             android:textSize="11sp"
             android:singleLine="true"
-            android:visibility="gone"/>
+            android:visibility="gone"
+            android:fontFamily="@font/geist_mono_regular"/>
 
         <TextView
             android:id="@+id/widget_item_change_percent"
@@ -77,8 +81,8 @@
             android:text="-4.06%"
             android:textColor="#EF4444"
             android:textSize="12sp"
-            android:textStyle="bold"
-            android:singleLine="true"/>
+            android:singleLine="true"
+            android:fontFamily="@font/geist_mono_regular"/>
 
         <ImageView
             android:id="@+id/widget_item_indicator"

@@ -8,6 +8,7 @@ enum class AssetType {
     STOCK_US,   // US stock
     MF,         // Mutual Fund
     GOLD,       // Gold (digital/physical)
+    SILVER,     // Silver (digital/physical)
     CRYPTO,     // Cryptocurrency
     CASH,       // Cash on hand
     BANK        // Bank balance

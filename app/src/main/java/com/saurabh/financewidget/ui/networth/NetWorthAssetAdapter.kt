@@ -9,6 +9,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.saurabh.financewidget.data.database.AssetType
 import com.saurabh.financewidget.data.database.NetWorthAssetEntity
 import com.saurabh.financewidget.databinding.ItemNetworthAssetBinding
+import com.saurabh.financewidget.R
 import java.text.NumberFormat
 import java.util.Locale
 
@@ -33,25 +34,57 @@ class NetWorthAssetAdapter(
                 binding.tvAssetNotes.visibility = View.GONE
             }
 
-            binding.btnDeleteAsset.setOnClickListener { onDeleteClick(asset) }
+            // P&L — only shown when a buy price was recorded
+            if (asset.buyPrice > 0 && asset.quantity > 0) {
+                val invested    = asset.buyPrice * asset.quantity
+                val gain        = asset.currentValue - invested
+                val gainPct     = (gain / invested) * 100.0
+                val isGain      = gain >= 0
+                val arrow       = if (isGain) "▲" else "▼"
+                val colour      = if (isGain) R.color.gain_green else R.color.loss_red
+                val ctx         = binding.root.context
+
+                // Left: "▲ ₹3,200 (+2.74%)"
+                binding.tvAssetPl.text = "%s %s (%+.2f%%)".format(
+                    arrow, inrFormat.format(gain), gainPct
+                )
+                binding.tvAssetPl.setTextColor(ctx.getColor(colour))
+                binding.tvAssetPl.visibility = View.VISIBLE
+
+                // Right: "inv ₹1,16,800"
+                binding.tvAssetInvested.text = "inv ${inrFormat.format(invested)}"
+                binding.tvAssetInvested.visibility = View.VISIBLE
+            } else {
+                binding.tvAssetPl.visibility      = View.GONE
+                binding.tvAssetInvested.visibility = View.GONE
+            }
+
+            binding.btnDeleteAsset.setOnClickListener {
+                binding.btnDeleteAsset.performHapticFeedback(android.view.HapticFeedbackConstants.CONFIRM)
+                onDeleteClick(asset)
+            }
         }
 
         private fun buildSubtitle(asset: NetWorthAssetEntity): String {
             val isFetchable = asset.assetType in listOf(
-                AssetType.STOCK_IN, AssetType.STOCK_US, AssetType.CRYPTO, AssetType.GOLD
+                AssetType.STOCK_IN, AssetType.STOCK_US, AssetType.CRYPTO, AssetType.GOLD, AssetType.SILVER
             )
             return when {
                 isFetchable && asset.quantity > 0 -> {
                     val pricePerUnit = if (asset.quantity != 0.0) asset.currentValue / asset.quantity else 0.0
                     val qtyStr = if (asset.quantity % 1.0 == 0.0) asset.quantity.toInt().toString()
                                  else "%.4f".format(asset.quantity)
-                    val unitLabel = if (asset.assetType == AssetType.GOLD) "g" else " units"
+                    val unitLabel = when (asset.assetType) {
+                        AssetType.GOLD, AssetType.SILVER -> "g"
+                        else -> " units"
+                    }
                     "$qtyStr$unitLabel · ${inrFormat.format(pricePerUnit)}/unit"
                 }
                 asset.notes.isNotBlank() -> asset.notes
                 else -> ""
             }
         }
+
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {

@@ -44,6 +44,7 @@ class WatchlistFragment : Fragment() {
         observeViewModel()
 
         binding.btnAddStock.setOnClickListener {
+            binding.btnAddStock.performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY)
             WidgetConfigActivity.start(requireActivity())
         }
 
@@ -53,11 +54,15 @@ class WatchlistFragment : Fragment() {
 
     private fun setupRecyclerView() {
         adapter = WatchlistAdapter(
-            onStockClick = { stock -> StockDetailActivity.start(requireActivity(), stock.symbol) },
+            onStockClick = { stock -> 
+                binding.root.performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY)
+                StockDetailActivity.start(requireActivity(), stock.symbol) 
+            },
             onRemoveClick = { stock ->
+                binding.root.performHapticFeedback(android.view.HapticFeedbackConstants.CONFIRM)
                 viewModel.removeFromWatchlist(stock.symbol)
                 Snackbar.make(binding.root, "${stock.symbol} removed", Snackbar.LENGTH_LONG)
-                    .setAction("UNDO") { viewModel.refresh() }
+                    .setAction("UNDO") { viewModel.addToWatchlist(stock.symbol, stock.companyName) }
                     .show()
             }
         )
@@ -68,13 +73,45 @@ class WatchlistFragment : Fragment() {
             setHasFixedSize(true)
         }
 
-        val swipeCallback = object : ItemTouchHelper.SimpleCallback(0, ItemTouchHelper.LEFT) {
-            override fun onMove(rv: RecyclerView, vh: RecyclerView.ViewHolder, t: RecyclerView.ViewHolder) = false
+        val swipeCallback = object : ItemTouchHelper.SimpleCallback(
+            ItemTouchHelper.UP or ItemTouchHelper.DOWN, 
+            ItemTouchHelper.LEFT
+        ) {
+            override fun onMove(rv: RecyclerView, vh: RecyclerView.ViewHolder, t: RecyclerView.ViewHolder): Boolean {
+                val fromPos = vh.adapterPosition
+                val toPos = t.adapterPosition
+                if (fromPos == RecyclerView.NO_POSITION || toPos == RecyclerView.NO_POSITION) return false
+                
+                adapter.moveItem(fromPos, toPos)
+                rv.performHapticFeedback(android.view.HapticFeedbackConstants.SEGMENT_TICK)
+                return true
+            }
+
+            override fun clearView(recyclerView: RecyclerView, viewHolder: RecyclerView.ViewHolder) {
+                super.clearView(recyclerView, viewHolder)
+                recyclerView.performHapticFeedback(android.view.HapticFeedbackConstants.GESTURE_END)
+                val watchlists = adapter.items.mapIndexed { index, stock -> 
+                    com.saurabh.financewidget.data.database.WatchlistEntity(stock.symbol, stock.companyName, index)
+                }
+                viewModel.reorderWatchlist(watchlists)
+            }
+            
+            override fun onSelectedChanged(viewHolder: RecyclerView.ViewHolder?, actionState: Int) {
+                super.onSelectedChanged(viewHolder, actionState)
+                if (actionState == ItemTouchHelper.ACTION_STATE_DRAG) {
+                    binding.swipeRefreshLayout.isEnabled = false
+                    viewHolder?.itemView?.performHapticFeedback(android.view.HapticFeedbackConstants.GESTURE_START)
+                } else if (actionState == ItemTouchHelper.ACTION_STATE_IDLE) {
+                    binding.swipeRefreshLayout.isEnabled = true
+                }
+            }
+
             override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) {
-                val stock = adapter.currentList[viewHolder.adapterPosition]
+                val stock = adapter.items[viewHolder.adapterPosition]
                 viewModel.removeFromWatchlist(stock.symbol)
+                viewHolder.itemView.performHapticFeedback(android.view.HapticFeedbackConstants.CONFIRM)
                 Snackbar.make(binding.root, "${stock.symbol} removed", Snackbar.LENGTH_LONG)
-                    .setAction("UNDO") { viewModel.refresh() }
+                    .setAction("UNDO") { viewModel.addToWatchlist(stock.symbol, stock.companyName) }
                     .show()
             }
         }
@@ -100,7 +137,7 @@ class WatchlistFragment : Fragment() {
         viewModel.refreshState.observe(viewLifecycleOwner) { state ->
             when (state) {
                 is Resource.Error -> {
-                    if (adapter.currentList.isEmpty()) {
+                    if (adapter.items.isEmpty()) {
                         binding.errorView.visibility = View.VISIBLE
                         binding.errorText.text = state.message
                     }

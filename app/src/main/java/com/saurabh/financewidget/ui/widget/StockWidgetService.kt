@@ -3,7 +3,6 @@ package com.saurabh.financewidget.ui.widget
 import android.appwidget.AppWidgetManager
 import android.content.Context
 import android.content.Intent
-import android.graphics.Color
 import android.widget.RemoteViews
 import android.widget.RemoteViewsService
 import com.saurabh.financewidget.R
@@ -90,7 +89,8 @@ class StockRemoteViewsFactory(
 
     override fun getViewTypeCount(): Int = 1
 
-    override fun getItemId(position: Int): Long = stocks.getOrNull(position)?.symbol?.hashCode()?.toLong() ?: position.toLong()
+    override fun getItemId(position: Int): Long =
+        stocks.getOrNull(position)?.symbol?.hashCode()?.toLong() ?: position.toLong()
 
     override fun hasStableIds(): Boolean = true
 }

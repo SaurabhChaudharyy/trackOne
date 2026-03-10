@@ -69,6 +69,7 @@ class SearchResultAdapter(
         }
 
         private fun toggleSelection(result: YahooSearchResult) {
+            binding.root.performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY)
             if (result in selectedItems) selectedItems.remove(result)
             else selectedItems.add(result)
             onSelectionChanged(selectedItems.toSet())
