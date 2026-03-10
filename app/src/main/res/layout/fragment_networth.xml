@@ -84,13 +84,7 @@
                     android:layout_marginEnd="8dp"
                     tools:text="₹5,00,000"/>
 
-                <ImageView
-                    android:id="@+id/chevron_stock_in"
-                    android:layout_width="16dp"
-                    android:layout_height="16dp"
-                    android:src="@drawable/ic_chevron_down"
-                    android:layout_marginEnd="4dp"
-                    android:contentDescription="Expand"/>
+
 
                 <ImageButton
                     android:id="@+id/btn_add_stock_in"
@@ -150,13 +144,7 @@
                     android:textSize="12sp"
                     android:layout_marginEnd="8dp"/>
 
-                <ImageView
-                    android:id="@+id/chevron_stock_us"
-                    android:layout_width="16dp"
-                    android:layout_height="16dp"
-                    android:src="@drawable/ic_chevron_down"
-                    android:layout_marginEnd="4dp"
-                    android:contentDescription="Expand"/>
+
 
                 <ImageButton
                     android:id="@+id/btn_add_stock_us"
@@ -215,13 +203,7 @@
                     android:textSize="12sp"
                     android:layout_marginEnd="8dp"/>
 
-                <ImageView
-                    android:id="@+id/chevron_mf"
-                    android:layout_width="16dp"
-                    android:layout_height="16dp"
-                    android:src="@drawable/ic_chevron_down"
-                    android:layout_marginEnd="4dp"
-                    android:contentDescription="Expand"/>
+
 
                 <ImageButton
                     android:id="@+id/btn_add_mf"
@@ -280,13 +262,7 @@
                     android:textSize="12sp"
                     android:layout_marginEnd="8dp"/>
 
-                <ImageView
-                    android:id="@+id/chevron_gold"
-                    android:layout_width="16dp"
-                    android:layout_height="16dp"
-                    android:src="@drawable/ic_chevron_down"
-                    android:layout_marginEnd="4dp"
-                    android:contentDescription="Expand"/>
+
 
                 <ImageButton
                     android:id="@+id/btn_add_gold"
@@ -312,7 +288,65 @@
                 android:background="@color/divider_color"/>
         </LinearLayout>
 
+        <!-- ══ SILVER ══ -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <LinearLayout
+                android:id="@+id/header_silver"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:orientation="horizontal"
+                android:paddingHorizontal="16dp"
+                android:gravity="center_vertical"
+                android:background="?attr/selectableItemBackground">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Silver"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="13sp"
+                    android:fontFamily="@font/geist_mono_semi_bold"/>
+
+                <TextView
+                    android:id="@+id/tv_total_silver"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="₹0"
+                    android:textColor="@color/text_tertiary"
+                    android:textSize="12sp"
+                    android:layout_marginEnd="8dp"/>
+
+                <ImageButton
+                    android:id="@+id/btn_add_silver"
+                    android:layout_width="28dp"
+                    android:layout_height="28dp"
+                    android:src="@drawable/ic_add"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="Add silver"
+                    android:tint="@color/text_tertiary"/>
+            </LinearLayout>
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/rv_silver"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:nestedScrollingEnabled="false"
+                android:visibility="visible"
+                tools:listitem="@layout/item_networth_asset"/>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="@color/divider_color"/>
+        </LinearLayout>
+
         <!-- ══ CRYPTO ══ -->
+
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -345,13 +379,7 @@
                     android:textSize="12sp"
                     android:layout_marginEnd="8dp"/>
 
-                <ImageView
-                    android:id="@+id/chevron_crypto"
-                    android:layout_width="16dp"
-                    android:layout_height="16dp"
-                    android:src="@drawable/ic_chevron_down"
-                    android:layout_marginEnd="4dp"
-                    android:contentDescription="Expand"/>
+
 
                 <ImageButton
                     android:id="@+id/btn_add_crypto"
@@ -410,13 +438,7 @@
                     android:textSize="12sp"
                     android:layout_marginEnd="8dp"/>
 
-                <ImageView
-                    android:id="@+id/chevron_cash"
-                    android:layout_width="16dp"
-                    android:layout_height="16dp"
-                    android:src="@drawable/ic_chevron_down"
-                    android:layout_marginEnd="4dp"
-                    android:contentDescription="Expand"/>
+
 
                 <ImageButton
                     android:id="@+id/btn_add_cash"
@@ -475,13 +497,7 @@
                     android:textSize="12sp"
                     android:layout_marginEnd="8dp"/>
 
-                <ImageView
-                    android:id="@+id/chevron_bank"
-                    android:layout_width="16dp"
-                    android:layout_height="16dp"
-                    android:src="@drawable/ic_chevron_down"
-                    android:layout_marginEnd="4dp"
-                    android:contentDescription="Expand"/>
+
 
                 <ImageButton
                     android:id="@+id/btn_add_bank"

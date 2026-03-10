@@ -14,13 +14,29 @@ import com.saurabh.financewidget.utils.FormatUtils
 class WatchlistAdapter(
     private val onStockClick: (StockEntity) -> Unit,
     private val onRemoveClick: (StockEntity) -> Unit
-) : ListAdapter<StockEntity, WatchlistAdapter.StockViewHolder>(DIFF_CALLBACK) {
+) : RecyclerView.Adapter<WatchlistAdapter.StockViewHolder>() {
 
-    companion object {
-        private val DIFF_CALLBACK = object : DiffUtil.ItemCallback<StockEntity>() {
-            override fun areItemsTheSame(old: StockEntity, new: StockEntity) = old.symbol == new.symbol
-            override fun areContentsTheSame(old: StockEntity, new: StockEntity) = old == new
+    var items: MutableList<StockEntity> = mutableListOf()
+
+    fun submitList(newItems: List<StockEntity>) {
+        val diffCallback = object : DiffUtil.Callback() {
+            override fun getOldListSize() = items.size
+            override fun getNewListSize() = newItems.size
+            override fun areItemsTheSame(op: Int, np: Int) = items[op].symbol == newItems[np].symbol
+            override fun areContentsTheSame(op: Int, np: Int) = items[op] == newItems[np]
         }
+        val diffResult = DiffUtil.calculateDiff(diffCallback)
+        items.clear()
+        items.addAll(newItems)
+        diffResult.dispatchUpdatesTo(this)
+    }
+
+    override fun getItemCount() = items.size
+    
+    fun moveItem(fromPosition: Int, toPosition: Int) {
+        val item = items.removeAt(fromPosition)
+        items.add(toPosition, item)
+        notifyItemMoved(fromPosition, toPosition)
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): StockViewHolder {
@@ -29,7 +45,7 @@ class WatchlistAdapter(
     }
 
     override fun onBindViewHolder(holder: StockViewHolder, position: Int) {
-        holder.bind(getItem(position))
+        holder.bind(items[position])
     }
 
     inner class StockViewHolder(private val binding: ItemStockBinding) :

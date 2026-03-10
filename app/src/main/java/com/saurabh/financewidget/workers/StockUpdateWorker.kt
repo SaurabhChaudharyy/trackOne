@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import androidx.hilt.work.HiltWorker
 import androidx.work.*
+import com.saurabh.financewidget.data.repository.NetWorthRepository
 import com.saurabh.financewidget.data.repository.StockRepository
 import com.saurabh.financewidget.ui.widget.StockWidgetProvider
 import dagger.assisted.Assisted
@@ -16,12 +17,14 @@ import java.util.concurrent.TimeUnit
 class StockUpdateWorker @AssistedInject constructor(
     @Assisted context: Context,
     @Assisted workerParams: WorkerParameters,
-    private val repository: StockRepository
+    private val repository: StockRepository,
+    private val netWorthRepository: NetWorthRepository
 ) : CoroutineWorker(context, workerParams) {
 
     override suspend fun doWork(): Result {
         return try {
             repository.refreshWatchlistStocks()
+            netWorthRepository.refreshNetWorthAssets()
 
             val appWidgetManager = AppWidgetManager.getInstance(applicationContext)
             val componentName = ComponentName(applicationContext, StockWidgetProvider::class.java)

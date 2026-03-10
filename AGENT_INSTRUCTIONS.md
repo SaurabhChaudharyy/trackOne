@@ -32,10 +32,30 @@ Welcome, future AI Agent! If you are working on this project, please read this d
         *   US Stocks
         *   Mutual Funds
         *   Gold
+        *   Silver
         *   Crypto
         *   Cash
         *   Bank Balance
-    *   Includes an "Add Asset" dialog that dynamically prompts for a Symbol and Quantity to automatically fetch current values (for Stocks, Gold, Crypto), while other types only require absolute amounts.
+    *   Includes an "Add Asset" dialog that dynamically prompts for a Symbol and Quantity to automatically fetch current values (for Stocks, Gold, Silver, Crypto), while other types only require absolute amounts.
+
+    ### Add Asset Dialog — Behaviour by Type
+
+    | Asset Type | Symbol field | Price source | Unit label | Name stored |
+    |---|---|---|---|---|
+    | `STOCK_IN` | Shown — autocomplete with `.NS` suffix list; bare tickers (e.g. `TRENT`) are auto-normalised to `TRENT.NS` before the API call | Yahoo Finance ticker (e.g. `TRENT.NS`) | `/share` | Typed symbol (uppercased) |
+    | `STOCK_US` | Shown — autocomplete with US tickers | Yahoo Finance ticker (e.g. `AAPL`) | `/share` | Typed symbol (uppercased) |
+    | `GOLD` | **Hidden** — always uses `GC=F` (Gold Futures) | Auto-fetched on dialog open | `/gram` | Always `"GOLD"` |
+    | `SILVER` | **Hidden** — always uses `SI=F` (Silver Futures) | Auto-fetched on dialog open | `/gram` | Always `"SILVER"` |
+    | `CRYPTO` | Shown — user types pair e.g. `BTC-INR`; fetch triggers on focus-loss OR Enter key | Yahoo Finance ticker as typed | `/coin` | Typed symbol (uppercased) |
+    | `MF`, `CASH`, `BANK` | Hidden — manual value entry only | n/a | n/a | User-entered label |
+
+    ### Yahoo Finance Ticker Mapping (Precious Metals)
+    *   **Gold**: `GC=F` — Gold Futures, priced in USD per troy ounce. Converted: USD → INR via `USDINR=X`, then ÷ 31.1035 = **INR per gram**.
+    *   **Silver**: `SI=F` — Silver Futures, priced in USD per troy ounce. Same conversion pipeline.
+
+    ### NSE Symbol Normalisation
+    Indian stocks require the `.NS` suffix on Yahoo Finance (e.g. `TRENT.NS`). The `normaliseSymbol()` helper in `NetWorthFragment` automatically appends `.NS` to any bare ticker (no `.` in the string) for `STOCK_IN` type before making the API call.
+
 3.  **App Widget**
     *   `StockWidgetProvider` utilizing `RemoteViews`.
     *   **Crucial Context**: The widget is sensitive to standard Android `RemoteViews` limitations. We had previous issues ("Can't load widget") caused by unsupported XML tags and attributes in the widget layout. Any necessary tinting *must* be handled either programmatically or via pre-colored drawables. Do not use complex modern tags inside widget XMLs.
@@ -84,12 +104,14 @@ The app uses a **single Room database** for all persistent storage. There is **n
 | `stocks` | `StockEntity` | `symbol` (String) | Cached stock data (price, change %, market cap, etc.) fetched from Yahoo Finance |
 | `watchlist` | `WatchlistEntity` | `symbol` (String) | User's watchlist — symbols the user has added, with display order (`position`) |
 | `price_history` | `PriceHistoryEntity` | `id` (auto-increment Long) | OHLCV candlestick / line chart data per symbol and resolution |
-| `networth_assets` | `NetWorthAssetEntity` | `id` (auto-increment Long) | All Net Worth entries across all asset types (Indian Stocks, US Stocks, MF, Gold, Crypto, Cash, Bank) |
+| `networth_assets` | `NetWorthAssetEntity` | `id` (auto-increment Long) | All Net Worth entries across all asset types (Indian Stocks, US Stocks, MF, Gold, Silver, Crypto, Cash, Bank) |
 
 ### What Lives Where
 
 *   **Watchlist** — stored in the `watchlist` table. The `stocks` table caches the latest fetched price data for those symbols.
 *   **Net Worth assets** — stored in `networth_assets`. Fields include `name`, `assetType` (enum), `quantity`, `buyPrice`, `currentValue`, `currency`, and timestamps.
+        *   `assetType` valid values: `STOCK_IN`, `STOCK_US`, `MF`, `GOLD`, `SILVER`, `CRYPTO`, `CASH`, `BANK`.
+        *   Precious metals (`GOLD`, `SILVER`) store quantity in **grams** and always use a fixed Yahoo Finance futures ticker — no user-entered symbol.
 *   **Price history** — stored in `price_history` for charting in `StockDetailActivity`. Old records are periodically purged via `deleteOldHistory(cutoffTime)`.
 *   **Widget configuration** — the widget reads from the same `watchlist` / `stocks` tables. There are **no separate SharedPreferences** for the widget; its data source is purely the Room DB.
 
@@ -166,7 +188,7 @@ Files are saved as **pretty-printed JSON** with the default filename `trackone_b
 - `schema_version` — integer; currently `1`. Bumping this in future lets the app refuse to import incompatible backups gracefully.
 - `app_package` — presence of `"com.saurabh.financewidget"` is validated on import to prevent importing a backup from a different app.
 - All timestamps are **Unix epoch milliseconds**.
-- `asset_type` is the **enum name string** — valid values: `STOCK_IN`, `STOCK_US`, `MF`, `GOLD`, `CRYPTO`, `CASH`, `BANK`.
+- `asset_type` is the **enum name string** — valid values: `STOCK_IN`, `STOCK_US`, `MF`, `GOLD`, `SILVER`, `CRYPTO`, `CASH`, `BANK`.
 
 ### Import Behaviour
 
@@ -199,6 +221,84 @@ If you add new fields to `NetWorthAssetEntity` or `WatchlistEntity` that must be
 1. Add the new field to `NetWorthAssetBackup` / `WatchlistBackup` with a sensible default.
 2. Bump `BACKUP_SCHEMA_VERSION` in `BackupRepository.kt`.
 3. Add a migration branch in `importFromUri()` that handles the older schema version gracefully instead of rejecting it.
+
+### Adding a New Asset Type (Future Agents)
+
+When adding a new `AssetType` enum value (e.g. a new asset class), you must touch **all** of the following — missing any one will cause a compile error or silent data gap:
+
+| File | What to add |
+|---|---|
+| `NetWorthEntities.kt` | Add the enum value to `AssetType` |
+| `fragment_networth.xml` | Add header `LinearLayout`, `RecyclerView`, divider, and `+` `ImageButton` with unique IDs |
+| `NetWorthFragment.kt` — `sectionExpanded` | Add `AssetType.NEW_TYPE to true` |
+| `NetWorthFragment.kt` — `isFetchable` | Add to the set **only** if price can be auto-fetched from Yahoo Finance |
+| `NetWorthFragment.kt` — `setupRecyclerViews()` | Add `AssetType.NEW_TYPE to binding.rvNewType` |
+| `NetWorthFragment.kt` — `setupHeaders()` | Add `wireHeader(binding.headerNewType, binding.rvNewType, AssetType.NEW_TYPE)` |
+| `NetWorthFragment.kt` — `setupAddButtons()` | Add `binding.btnAddNewType.setOnClickListener { showAddDialog(...) }` |
+| `NetWorthFragment.kt` — `observeViewModel()` | Add `binding.tvTotalNewType.text = ...` |
+| `NetWorthFragment.kt` — `showAddDialog()` | Add `AssetType.NEW_TYPE -> { ... }` case in the fetchable `when` block |
+| `NetWorthFragment.kt` — `showAddDialog()` name `when` | Add `type == AssetType.NEW_TYPE -> "FIXED_NAME"` if name is fixed (like Gold/Silver) |
+| `NetWorthFragment.kt` — blank-name guard | Add `&& type != AssetType.NEW_TYPE` if name is auto-assigned |
+| `NetWorthFragment.kt` — `triggerFetch()` `unitLabel` | Add the correct unit string (`/gram`, `/coin`, `/share`, etc.) |
+| `NetWorthFragment.kt` — `rvForType()` | Add `AssetType.NEW_TYPE -> binding.rvNewType` (**exhaustive `when` — compile error if missed**) |
+| `NetWorthRepository.kt` — `fetchLivePrice()` | Add the Yahoo Finance ticker mapping in the `fetchSymbol when` block |
+| `NetWorthRepository.kt` — `refreshNetWorthAssets()` | Add `AssetType.NEW_TYPE` to `fetchableTypes` set |
+| `AGENT_INSTRUCTIONS.md` | Update asset categories list, table, and `asset_type` valid values |
+
+---
+
+## Portfolio P&L Tracking — Roadmap
+
+Groww/Zerodha-style gain/loss tracking. `buyPrice: Double` already exists on `NetWorthAssetEntity` (default `0.0`).
+
+### ✅ Phase 1 — Implemented (Basic P&L per holding)
+
+| What | Where |
+|---|---|
+| **Buy price input** in the Add dialog | `dialog_add_asset.xml` — `til_buy_price` / `et_buy_price`, visible after price fetch |
+| **Unit hint adapts** per type | `NetWorthFragment.triggerFetch()` — sets `₹/share`, `₹/gram`, `₹/coin` |
+| **P&L row in item** | `item_networth_asset.xml` — `tv_asset_pl` (left, coloured ▲/▼) + `tv_asset_invested` (right, tertiary) |
+| **Gain/loss computation** | `NetWorthAssetAdapter.bind()` — `gain = currentValue - (buyPrice * qty)`, colour `gain_green` / `loss_red` |
+| **Stored on save** | `NetWorthFragment.showAddDialog()` — reads `etBuyPrice`, passes to `NetWorthAssetEntity.buyPrice` |
+
+**Note:** No DB migration needed — `buyPrice` column was already in the schema.
+
+---
+
+### 🔲 Phase 2 — Planned (Portfolio Dashboard, ~1 day)
+
+> **Do NOT implement without user approval.**
+
+1. **Section-level P&L totals** — Add invested vs current labels next to each section header total in `fragment_networth.xml`. Requires a new `LiveData<Map<AssetType, Pair<Double, Double>>>` (invested, current) in `NetWorthViewModel` backed by a new DAO query that sums `buyPrice * quantity` and `currentValue` per type.
+
+2. **Total Net Worth P&L card** — Redesign the top-level header into a two-row card:
+   - Row 1: Current Net Worth (existing `tv_total_networth`)
+   - Row 2: `▲ ₹X (+Y%)` vs invested total, coloured gain_green / loss_red.
+
+3. **Edit asset dialog** — Tapping an asset row currently only offers delete. Add a long-press or pencil icon to open a pre-filled version of `showAddDialog` with the asset's current values, calling `viewModel.updateAsset(entity)` (already exists in `NetWorthDao`).
+
+**Files to touch for Phase 2:**
+- `fragment_networth.xml` — section header P&L labels + top card redesign
+- `NetWorthViewModel.kt` — new `assetPlSummary: LiveData<Map<...>>`
+- `NetWorthDao.kt` — `SELECT assetType, SUM(buy_price * quantity), SUM(current_value) GROUP BY assetType`
+- `NetWorthFragment.kt` — observe new LiveData, wire edit click
+
+---
+
+### 🔲 Phase 3 — Planned (Advanced, ~2–3 days)
+
+> **Do NOT implement without user approval.**
+
+1. **Multiple lots / average cost basis** — Each purchase of the same stock creates a new row currently. To auto-average:
+   - On add: if an asset with the same `name` + `assetType` exists, compute weighted average buy price `(existingQty * existingBuyPrice + newQty * newBuyPrice) / totalQty` and update rather than insert.
+   - Or: store each lot separately and aggregate in the ViewModel. Preserves history but requires more complex queries.
+
+2. **XIRR / CAGR return** — Needs `addedAt` timestamp per lot (already stored) and a numeric iterative XIRR solver. No Android/Kotlin library for this — write a custom Newton-Raphson implementation or port one from JVM finance libraries.
+
+3. **Watchlist personal return column** — The Markets tab shows market-level 1d% change. To also show personal return ("your return since buy"):
+   - New DAO query: `JOIN watchlist ON watchlist.symbol = networth_assets.name` to get `buyPrice` for each watched symbol.
+   - New column in `WatchlistAdapter` item layout.
+   - New `combine` of `watchlist` + `networth_assets` LiveData in `MainViewModel`.
 
 ---
 
