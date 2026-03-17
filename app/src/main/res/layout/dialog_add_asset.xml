@@ -212,6 +212,10 @@
         style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:hint="Label / Note (e.g. Physical, Digital, Jewellery)"
+        app:boxStrokeColor="@color/border_color"
+        app:hintTextColor="@color/text_tertiary"
         android:visibility="gone">
 
         <com.google.android.material.textfield.TextInputEditText

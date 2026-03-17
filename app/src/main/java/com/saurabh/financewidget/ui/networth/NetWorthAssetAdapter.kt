@@ -14,7 +14,8 @@ import java.text.NumberFormat
 import java.util.Locale
 
 class NetWorthAssetAdapter(
-    private val onDeleteClick: (NetWorthAssetEntity) -> Unit
+    private val onDeleteClick: (NetWorthAssetEntity) -> Unit,
+    private val onEditClick: (NetWorthAssetEntity) -> Unit
 ) : ListAdapter<NetWorthAssetEntity, NetWorthAssetAdapter.ViewHolder>(DIFF) {
 
     private val inrFormat = NumberFormat.getCurrencyInstance(Locale("en", "IN"))
@@ -59,6 +60,19 @@ class NetWorthAssetAdapter(
                 binding.tvAssetInvested.visibility = View.GONE
             }
 
+            // Label / note line (Gold, Silver, etc.) — own dedicated row below subtitle
+            if (asset.notes.isNotBlank()) {
+                binding.tvAssetLabel.text = asset.notes
+                binding.tvAssetLabel.visibility = View.VISIBLE
+            } else {
+                binding.tvAssetLabel.visibility = View.GONE
+            }
+
+            binding.btnEditAsset.setOnClickListener {
+                binding.btnEditAsset.performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY)
+                onEditClick(asset)
+            }
+
             binding.btnDeleteAsset.setOnClickListener {
                 binding.btnDeleteAsset.performHapticFeedback(android.view.HapticFeedbackConstants.CONFIRM)
                 onDeleteClick(asset)
@@ -78,8 +92,10 @@ class NetWorthAssetAdapter(
                         AssetType.GOLD, AssetType.SILVER -> "g"
                         else -> " units"
                     }
-                    "$qtyStr$unitLabel · ${inrFormat.format(pricePerUnit)}/unit"
+                    // Quantity + price per unit only — notes shown in tv_asset_label below
+                    "$qtyStr$unitLabel \u00b7 ${inrFormat.format(pricePerUnit)}/unit"
                 }
+                // For manual types (MF, Cash, Bank) show notes in subtitle if no label view
                 asset.notes.isNotBlank() -> asset.notes
                 else -> ""
             }

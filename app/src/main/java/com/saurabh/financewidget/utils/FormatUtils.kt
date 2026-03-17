@@ -21,6 +21,21 @@ object FormatUtils {
         }
     }
 
+    /**
+     * Formats a market index value (e.g. NIFTY 50, S&P 500) without any currency symbol.
+     * Uses Indian number grouping for INR-denominated indices, US grouping otherwise.
+     */
+    fun formatIndexPrice(price: Double, currency: String = "USD"): String {
+        val format = if (currency == "INR") {
+            NumberFormat.getNumberInstance(Locale("en", "IN"))
+        } else {
+            NumberFormat.getNumberInstance(Locale.US)
+        }
+        format.maximumFractionDigits = 2
+        format.minimumFractionDigits = 2
+        return format.format(price)
+    }
+
     fun formatChange(change: Double): String {
         val prefix = if (change >= 0) "+" else ""
         return "$prefix${String.format("%.2f", change)}"

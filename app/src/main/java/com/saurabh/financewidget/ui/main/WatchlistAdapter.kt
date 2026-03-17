@@ -53,10 +53,14 @@ class WatchlistAdapter(
 
         fun bind(stock: StockEntity) {
             val ctx = binding.root.context
+            val isIndex = stock.symbol.startsWith("^")
 
             binding.tvSymbol.text = stock.symbol
             binding.tvCompanyName.text = stock.companyName
-            binding.tvPrice.text = FormatUtils.formatPrice(stock.currentPrice, stock.currency)
+            binding.tvPrice.text = if (isIndex)
+                FormatUtils.formatIndexPrice(stock.currentPrice, stock.currency)
+            else
+                FormatUtils.formatPrice(stock.currentPrice, stock.currency)
             binding.tvChange.text = FormatUtils.formatChange(stock.change)
             binding.tvChangePercent.text = FormatUtils.formatChangePercent(stock.changePercent)
 
