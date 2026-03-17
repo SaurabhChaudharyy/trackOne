@@ -16,7 +16,6 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.saurabh.financewidget.data.repository.BackupRepository
 import com.saurabh.financewidget.databinding.FragmentSettingsBinding
 import dagger.hilt.android.AndroidEntryPoint
-
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -30,24 +29,33 @@ class SettingsFragment : Fragment() {
 
     private val viewModel: SettingsViewModel by viewModels()
 
-    private val exportLauncher = registerForActivityResult(
+    // ── Watchlist launchers ─────────────────────────────────────────
+
+    private val exportWatchlistLauncher = registerForActivityResult(
         ActivityResultContracts.CreateDocument("application/json")
     ) { uri: Uri? ->
-        if (uri == null) {
-            return@registerForActivityResult
-        }
-        viewModel.exportData(uri)
+        if (uri != null) viewModel.exportWatchlist(uri)
     }
 
-    private val importLauncher = registerForActivityResult(
+    private val importWatchlistLauncher = registerForActivityResult(
         ActivityResultContracts.OpenDocument()
     ) { uri: Uri? ->
-        if (uri == null) {
-            return@registerForActivityResult
-        }
-        showImportConfirmationDialog(uri)
+        if (uri != null) showWatchlistImportConfirmationDialog(uri)
     }
 
+    // ── Stocks & Investments launchers ──────────────────────────────
+
+    private val exportAssetsLauncher = registerForActivityResult(
+        ActivityResultContracts.CreateDocument("application/json")
+    ) { uri: Uri? ->
+        if (uri != null) viewModel.exportAssets(uri)
+    }
+
+    private val importAssetsLauncher = registerForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri: Uri? ->
+        if (uri != null) showAssetsImportConfirmationDialog(uri)
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -64,16 +72,28 @@ class SettingsFragment : Fragment() {
     }
 
     private fun setupClickListeners() {
-        binding.cardExport.setOnClickListener {
-            binding.cardExport.performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY)
-            val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault())
-                .format(Date())
-            exportLauncher.launch("trackone_backup_$timestamp.json")
+        val timestamp: () -> String = {
+            SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
         }
 
-        binding.cardImport.setOnClickListener {
-            binding.cardImport.performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY)
-            importLauncher.launch(BackupRepository.IMPORT_MIME_TYPES)
+        binding.cardExportWatchlist.setOnClickListener {
+            it.performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY)
+            exportWatchlistLauncher.launch("trackone_watchlist_${timestamp()}.json")
+        }
+
+        binding.cardImportWatchlist.setOnClickListener {
+            it.performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY)
+            importWatchlistLauncher.launch(BackupRepository.IMPORT_MIME_TYPES)
+        }
+
+        binding.cardExportAssets.setOnClickListener {
+            it.performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY)
+            exportAssetsLauncher.launch("trackone_investments_${timestamp()}.json")
+        }
+
+        binding.cardImportAssets.setOnClickListener {
+            it.performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY)
+            importAssetsLauncher.launch(BackupRepository.IMPORT_MIME_TYPES)
         }
     }
 
@@ -97,28 +117,48 @@ class SettingsFragment : Fragment() {
                 setCardsEnabled(false)
             }
 
-            is BackupUiState.ExportSuccess -> {
+            is BackupUiState.WatchlistExportSuccess -> {
                 setLoadingVisible(false)
                 setCardsEnabled(true)
                 showSuccessDialog(
-                    title = "Export complete",
+                    title = "Watchlist exported",
                     message = state.message +
-                        "\n\nYour backup has been saved to the location you chose. " +
-                        "Keep the file safe — you can restore it anytime via Import Data."
+                        "\n\nKeep the file safe — you can restore it anytime via Import Watchlist."
                 )
                 viewModel.resetState()
             }
 
-            is BackupUiState.ImportSuccess -> {
+            is BackupUiState.WatchlistImportSuccess -> {
                 setLoadingVisible(false)
                 setCardsEnabled(true)
-                val detail = buildString {
-                    append("Restored successfully:\n\n")
-                    append("• ${state.watchlistCount} watchlist symbol(s)\n")
-                    append("• ${state.assetCount} net worth asset(s)\n\n")
-                    append("Stock prices will refresh automatically.")
-                }
-                showSuccessDialog(title = "Import complete", message = detail)
+                showSuccessDialog(
+                    title = "Watchlist imported",
+                    message = "Restored ${state.count} watchlist symbol(s).\n\n" +
+                        "Your stocks & investments were not affected."
+                )
+                viewModel.resetState()
+            }
+
+            is BackupUiState.AssetsExportSuccess -> {
+                setLoadingVisible(false)
+                setCardsEnabled(true)
+                showSuccessDialog(
+                    title = "Investments exported",
+                    message = state.message +
+                        "\n\nKeep the file safe — you can restore it anytime via Import Stocks & Investments."
+                )
+                viewModel.resetState()
+            }
+
+            is BackupUiState.AssetsImportSuccess -> {
+                setLoadingVisible(false)
+                setCardsEnabled(true)
+                showSuccessDialog(
+                    title = "Investments imported",
+                    message = "Restored ${state.count} investment(s).\n\n" +
+                        "Stock prices will refresh automatically.\n" +
+                        "Your watchlist was not affected."
+                )
                 viewModel.resetState()
             }
 
@@ -131,24 +171,45 @@ class SettingsFragment : Fragment() {
         }
     }
 
-    /** Warn the user that importing will replace ALL their current data. */
-    private fun showImportConfirmationDialog(uri: Uri) {
+    // ── Confirmation dialogs ────────────────────────────────────────
+
+    private fun showWatchlistImportConfirmationDialog(uri: Uri) {
+        if (!isAdded) return
         MaterialAlertDialogBuilder(requireContext())
-            .setTitle("Replace existing data?")
+            .setTitle("Replace your watchlist?")
             .setMessage(
-                "Importing will permanently delete your current watchlist and all net worth assets, " +
-                "then replace them with the data from the backup file.\n\n" +
+                "Importing will permanently delete your current watchlist and replace it with " +
+                "the symbols from the backup file.\n\n" +
+                "Your stocks & investments will NOT be affected.\n\n" +
                 "This cannot be undone. Continue?"
             )
             .setPositiveButton("Import") { dialog, _ ->
                 dialog.dismiss()
-                viewModel.importData(uri)
+                viewModel.importWatchlist(uri)
             }
-            .setNegativeButton("Cancel") { dialog, _ ->
-                dialog.dismiss()
-            }
+            .setNegativeButton("Cancel") { dialog, _ -> dialog.dismiss() }
             .show()
     }
+
+    private fun showAssetsImportConfirmationDialog(uri: Uri) {
+        if (!isAdded) return
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle("Replace your investments?")
+            .setMessage(
+                "Importing will permanently delete all your current stocks & investments " +
+                "and replace them with the data from the backup file.\n\n" +
+                "Your watchlist will NOT be affected.\n\n" +
+                "This cannot be undone. Continue?"
+            )
+            .setPositiveButton("Import") { dialog, _ ->
+                dialog.dismiss()
+                viewModel.importAssets(uri)
+            }
+            .setNegativeButton("Cancel") { dialog, _ -> dialog.dismiss() }
+            .show()
+    }
+
+    // ── Utility ────────────────────────────────────────────────────
 
     private fun showSuccessDialog(title: String, message: String) {
         if (!isAdded) return
@@ -170,16 +231,19 @@ class SettingsFragment : Fragment() {
 
     private fun setLoadingVisible(visible: Boolean) {
         binding.layoutLoading.isVisible = visible
-        if (visible) {
-            binding.tvLoadingLabel.text = "Working…"
-        }
+        if (visible) binding.tvLoadingLabel.text = "Working…"
     }
 
     private fun setCardsEnabled(enabled: Boolean) {
-        binding.cardExport.isEnabled = enabled
-        binding.cardImport.isEnabled = enabled
-        binding.cardExport.alpha = if (enabled) 1f else 0.5f
-        binding.cardImport.alpha = if (enabled) 1f else 0.5f
+        val alpha = if (enabled) 1f else 0.5f
+        binding.cardExportWatchlist.isEnabled = enabled
+        binding.cardExportWatchlist.alpha = alpha
+        binding.cardImportWatchlist.isEnabled = enabled
+        binding.cardImportWatchlist.alpha = alpha
+        binding.cardExportAssets.isEnabled = enabled
+        binding.cardExportAssets.alpha = alpha
+        binding.cardImportAssets.isEnabled = enabled
+        binding.cardImportAssets.alpha = alpha
     }
 
     override fun onDestroyView() {
