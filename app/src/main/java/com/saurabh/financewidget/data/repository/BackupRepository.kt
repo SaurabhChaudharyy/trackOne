@@ -15,10 +15,6 @@ import javax.inject.Singleton
 const val BACKUP_SCHEMA_VERSION = 1
 val BACKUP_IMPORT_MIME_TYPES = arrayOf("application/json", "text/plain", "*/*")
 
-/**
- * Root JSON object written/read for every backup.
- * [schemaVersion] lets us detect incompatible files in future migrations.
- */
 data class BackupEnvelope(
     @SerializedName("schema_version") val schemaVersion: Int = BACKUP_SCHEMA_VERSION,
     @SerializedName("exported_at_ms") val exportedAtMs: Long = System.currentTimeMillis(),
@@ -61,7 +57,6 @@ sealed class ImportResult {
     data class Failure(val reason: String, val cause: Throwable? = null) : ImportResult()
 }
 
-/** Internal sealed type used by [BackupRepository.readAndValidateEnvelope]. */
 private sealed class EnvelopeResult {
     data class Ok(val envelope: BackupEnvelope) : EnvelopeResult()
     data class Err(val failure: ImportResult.Failure) : EnvelopeResult()
@@ -79,11 +74,6 @@ class BackupRepository @Inject constructor(
 
     private val gson: Gson = GsonBuilder().setPrettyPrinting().create()
 
-    // ──────────────────────────────────────────────
-    // Watchlist-only export / import
-    // ──────────────────────────────────────────────
-
-    /** Exports only the watchlist symbols to [uri] as a trackOne JSON file. */
     suspend fun exportWatchlistToUri(uri: Uri): BackupResult = withContext(Dispatchers.IO) {
         try {
             val entities = watchlistDao.getWatchlistSync()
@@ -100,10 +90,6 @@ class BackupRepository @Inject constructor(
         }
     }
 
-    /**
-     * Imports watchlist from [uri]. Clears the watchlist table and restores
-     * only the watchlist section — net worth assets are untouched.
-     */
     suspend fun importWatchlistFromUri(uri: Uri): ImportResult = withContext(Dispatchers.IO) {
         try {
             val envelope = when (val r = readAndValidateEnvelope(uri)) {
@@ -129,11 +115,6 @@ class BackupRepository @Inject constructor(
         }
     }
 
-    // ──────────────────────────────────────────────
-    // Stocks & Investments (net worth assets) export / import
-    // ──────────────────────────────────────────────
-
-    /** Exports only the net worth assets to [uri] as a trackOne JSON file. */
     suspend fun exportAssetsToUri(uri: Uri): BackupResult = withContext(Dispatchers.IO) {
         try {
             val entities = netWorthDao.getAllAssetsSync()
@@ -162,10 +143,6 @@ class BackupRepository @Inject constructor(
         }
     }
 
-    /**
-     * Imports net worth assets from [uri]. Clears the networth_assets table and
-     * restores only the assets section — watchlist is untouched.
-     */
     suspend fun importAssetsFromUri(uri: Uri): ImportResult = withContext(Dispatchers.IO) {
         try {
             val envelope = when (val r = readAndValidateEnvelope(uri)) {
@@ -207,21 +184,12 @@ class BackupRepository @Inject constructor(
         }
     }
 
-    // ──────────────────────────────────────────────
-    // Private helpers
-    // ──────────────────────────────────────────────
-
-    /** Writes [envelope] as pretty-printed JSON to [uri]. Returns null if the stream couldn't be opened. */
     private fun writeEnvelope(uri: Uri, envelope: BackupEnvelope): Unit? {
         return context.contentResolver.openOutputStream(uri)?.use { stream ->
             stream.bufferedWriter().use { it.write(gson.toJson(envelope)) }
         }
     }
 
-    /**
-     * Opens [uri], parses the JSON, and validates app package + schema version.
-     * Returns [EnvelopeResult.Ok] with the parsed envelope, or [EnvelopeResult.Err] on any failure.
-     */
     private fun readAndValidateEnvelope(uri: Uri): EnvelopeResult {
         val json = context.contentResolver.openInputStream(uri)
             ?.bufferedReader()

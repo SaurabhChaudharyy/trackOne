@@ -35,7 +35,6 @@ class NetWorthAssetAdapter(
                 binding.tvAssetNotes.visibility = View.GONE
             }
 
-            // P&L — only shown when a buy price was recorded
             if (asset.buyPrice > 0 && asset.quantity > 0) {
                 val invested    = asset.buyPrice * asset.quantity
                 val gain        = asset.currentValue - invested
@@ -45,14 +44,12 @@ class NetWorthAssetAdapter(
                 val colour      = if (isGain) R.color.gain_green else R.color.loss_red
                 val ctx         = binding.root.context
 
-                // Left: "▲ ₹3,200 (+2.74%)"
                 binding.tvAssetPl.text = "%s %s (%+.2f%%)".format(
                     arrow, inrFormat.format(gain), gainPct
                 )
                 binding.tvAssetPl.setTextColor(ctx.getColor(colour))
                 binding.tvAssetPl.visibility = View.VISIBLE
 
-                // Right: "inv ₹1,16,800"
                 binding.tvAssetInvested.text = "inv ${inrFormat.format(invested)}"
                 binding.tvAssetInvested.visibility = View.VISIBLE
             } else {
@@ -60,7 +57,6 @@ class NetWorthAssetAdapter(
                 binding.tvAssetInvested.visibility = View.GONE
             }
 
-            // Label / note line (Gold, Silver, etc.) — own dedicated row below subtitle
             if (asset.notes.isNotBlank()) {
                 binding.tvAssetLabel.text = asset.notes
                 binding.tvAssetLabel.visibility = View.VISIBLE
@@ -92,10 +88,10 @@ class NetWorthAssetAdapter(
                         AssetType.GOLD, AssetType.SILVER -> "g"
                         else -> " units"
                     }
-                    // Quantity + price per unit only — notes shown in tv_asset_label below
+
                     "$qtyStr$unitLabel \u00b7 ${inrFormat.format(pricePerUnit)}/unit"
                 }
-                // For manual types (MF, Cash, Bank) show notes in subtitle if no label view
+
                 asset.notes.isNotBlank() -> asset.notes
                 else -> ""
             }

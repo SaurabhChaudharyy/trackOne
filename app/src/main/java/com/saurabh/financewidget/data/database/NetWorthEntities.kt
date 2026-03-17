@@ -4,25 +4,25 @@ import androidx.room.Entity
 import androidx.room.PrimaryKey
 
 enum class AssetType {
-    STOCK_IN,   // Indian stock (NSE/BSE)
-    STOCK_US,   // US stock
-    MF,         // Mutual Fund
-    GOLD,       // Gold (digital/physical)
-    SILVER,     // Silver (digital/physical)
-    CRYPTO,     // Cryptocurrency
-    CASH,       // Cash on hand
-    BANK        // Bank balance
+    STOCK_IN,   
+    STOCK_US,   
+    MF,         
+    GOLD,       
+    SILVER,     
+    CRYPTO,     
+    CASH,       
+    BANK        
 }
 
 @Entity(tableName = "networth_assets")
 data class NetWorthAssetEntity(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
-    val name: String,           // e.g. "RELIANCE", "Bitcoin", "SBI Savings"
+    val name: String,           
     val assetType: AssetType,
-    val quantity: Double = 1.0, // units / grams / lots
-    val buyPrice: Double = 0.0, // avg buy price (optional, for stocks)
-    val currentValue: Double,   // total current value in INR
+    val quantity: Double = 1.0, 
+    val buyPrice: Double = 0.0, 
+    val currentValue: Double,   
     val currency: String = "INR",
     val notes: String = "",
     val addedAt: Long = System.currentTimeMillis(),

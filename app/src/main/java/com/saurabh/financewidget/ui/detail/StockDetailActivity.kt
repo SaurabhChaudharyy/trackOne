@@ -33,7 +33,6 @@ class StockDetailActivity : AppCompatActivity() {
     private val viewModel: StockDetailViewModel by viewModels()
     private var currentResolution = "D"
 
-    // Holds the timestamps so the X-axis formatter can look them up
     private var chartTimestamps: List<Long> = emptyList()
 
     companion object {

@@ -73,8 +73,6 @@ class StockWidgetProvider : AppWidgetProvider() {
     private fun updateWidget(context: Context, appWidgetManager: AppWidgetManager, widgetId: Int) {
         val views = RemoteViews(context.packageName, R.layout.widget_stock_list)
 
-        // IMPORTANT: data URI must be set to uniquely identify this widget's factory instance.
-        // Without it, Android's RemoteViewsService binding silently fails on many devices.
         val serviceIntent = Intent(context, StockWidgetService::class.java).apply {
             putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId)
             data = android.net.Uri.parse("widget://$widgetId")

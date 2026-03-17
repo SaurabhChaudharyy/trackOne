@@ -19,7 +19,6 @@
         android:layout_height="1dp"
         android:background="@color/divider_color"/>
 
-    <!-- Search input -->
     <com.google.android.material.textfield.TextInputLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -49,7 +48,6 @@
             android:textSize="14sp"/>
     </com.google.android.material.textfield.TextInputLayout>
 
-    <!-- Progress -->
     <ProgressBar
         android:id="@+id/search_progress"
         android:layout_width="wrap_content"
@@ -58,7 +56,6 @@
         android:layout_marginTop="6dp"
         android:visibility="gone"/>
 
-    <!-- Results list -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/rv_search_results"
         android:layout_width="match_parent"
@@ -68,7 +65,6 @@
         android:paddingBottom="80dp"
         android:visibility="gone"/>
 
-    <!-- Bottom action bar — shows count + confirm button -->
     <LinearLayout
         android:id="@+id/bottom_action_bar"
         android:layout_width="match_parent"
@@ -79,7 +75,6 @@
         android:paddingVertical="12dp"
         android:background="@color/background_dark">
 
-        <!-- Top border -->
         <View
             android:layout_width="0dp"
             android:layout_height="0dp"

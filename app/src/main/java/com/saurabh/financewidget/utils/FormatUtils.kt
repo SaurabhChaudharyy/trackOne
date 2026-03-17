@@ -21,10 +21,6 @@ object FormatUtils {
         }
     }
 
-    /**
-     * Formats a market index value (e.g. NIFTY 50, S&P 500) without any currency symbol.
-     * Uses Indian number grouping for INR-denominated indices, US grouping otherwise.
-     */
     fun formatIndexPrice(price: Double, currency: String = "USD"): String {
         val format = if (currency == "INR") {
             NumberFormat.getNumberInstance(Locale("en", "IN"))
@@ -96,7 +92,6 @@ object MarketUtils {
         return day != Calendar.SATURDAY && day != Calendar.SUNDAY && time in (9 * 60 + 15)..(15 * 60 + 30)
     }
 
-    /** Returns true if either US or India market is open */
     fun isMarketOpen(): Boolean = isUsMarketOpen() || isIndiaMarketOpen()
 
     fun getUpdateIntervalMinutes(): Long = if (isMarketOpen()) 15L else 60L

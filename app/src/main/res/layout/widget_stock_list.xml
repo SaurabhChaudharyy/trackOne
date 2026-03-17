@@ -7,7 +7,6 @@
     android:background="@drawable/widget_background"
     android:padding="4dp">
 
-    <!-- Widget Header — tappable; click handled via PendingIntent in provider -->
     <LinearLayout
         android:id="@+id/widget_header"
         android:layout_width="match_parent"
@@ -28,7 +27,6 @@
             android:textStyle="bold"
             android:fontFamily="@font/geist_mono_bold"/>
 
-        <!-- ImageView instead of ImageButton — no theme attrs needed in widgets -->
         <ImageView
             android:id="@+id/widget_refresh_button"
             android:layout_width="22dp"
@@ -38,13 +36,11 @@
             android:contentDescription="Refresh"/>
     </LinearLayout>
 
-    <!-- hairline separator — hardcoded color, no theme ref -->
     <ImageView
         android:layout_width="match_parent"
         android:layout_height="1dp"
         android:background="#27272A"/>
 
-    <!-- Stocks List -->
     <ListView
         android:id="@+id/widget_list_view"
         android:layout_width="match_parent"
@@ -54,7 +50,6 @@
         android:dividerHeight="0dp"
         android:scrollbars="none"/>
 
-    <!-- Empty view -->
     <LinearLayout
         android:id="@+id/widget_empty_view"
         android:layout_width="match_parent"

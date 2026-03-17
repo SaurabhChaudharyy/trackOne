@@ -8,7 +8,6 @@
     android:background="@color/background_dark"
     tools:context=".ui.detail.StockDetailActivity">
 
-    <!-- Top bar with hairline bottom border -->
     <com.google.android.material.appbar.AppBarLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -38,7 +37,6 @@
             android:layout_height="wrap_content"
             android:orientation="vertical">
 
-            <!-- ── Header ─────────────────────────────────────────── -->
             <LinearLayout
                 android:id="@+id/widget_header"
                 android:layout_width="match_parent"
@@ -48,7 +46,6 @@
                 android:paddingTop="20dp"
                 android:paddingBottom="16dp">
 
-                <!-- Symbol (muted, small) -->
                 <TextView
                     android:id="@+id/tv_detail_symbol"
                     android:layout_width="wrap_content"
@@ -58,7 +55,6 @@
                     android:letterSpacing="0.04"
                     tools:text="AAPL"/>
 
-                <!-- Company name -->
                 <TextView
                     android:id="@+id/tv_detail_company_name"
                     android:layout_width="wrap_content"
@@ -71,7 +67,6 @@
                     android:letterSpacing="-0.02"
                     tools:text="Apple Inc."/>
 
-                <!-- Exchange / industry row -->
                 <LinearLayout
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
@@ -96,7 +91,6 @@
                         android:visibility="gone"/>
                 </LinearLayout>
 
-                <!-- Price — large mono-weight -->
                 <TextView
                     android:id="@+id/tv_detail_price"
                     android:layout_width="wrap_content"
@@ -109,7 +103,6 @@
                     android:letterSpacing="-0.02"
                     tools:text="$187.62"/>
 
-                <!-- Change row -->
                 <TextView
                     android:id="@+id/tv_detail_change"
                     android:layout_width="wrap_content"
@@ -119,7 +112,6 @@
                     android:textSize="14sp"
                     tools:text="-7.94  -4.06%"/>
 
-                <!-- Last updated -->
                 <TextView
                     android:id="@+id/tv_last_updated_detail"
                     android:layout_width="wrap_content"
@@ -130,13 +122,11 @@
                     tools:text="Updated just now"/>
             </LinearLayout>
 
-            <!-- Hairline border -->
             <View
                 android:layout_width="match_parent"
                 android:layout_height="1dp"
                 android:background="@color/divider_color"/>
 
-            <!-- ── Chart ──────────────────────────────────────────── -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -160,7 +150,6 @@
                         android:visibility="gone"/>
                 </FrameLayout>
 
-                <!-- Timeframe selector — flat tab row -->
                 <com.google.android.material.chip.ChipGroup
                     android:id="@+id/timeframe_chip_group"
                     android:layout_width="wrap_content"
@@ -171,13 +160,11 @@
                     app:selectionRequired="true"/>
             </LinearLayout>
 
-            <!-- Hairline border -->
             <View
                 android:layout_width="match_parent"
                 android:layout_height="1dp"
                 android:background="@color/divider_color"/>
 
-            <!-- ── Key Statistics ─────────────────────────────────── -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -195,7 +182,6 @@
                     android:letterSpacing="0.08"
                     android:layout_marginBottom="16dp"/>
 
-                <!-- Row 1: Open & High -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -249,7 +235,6 @@
                     </LinearLayout>
                 </LinearLayout>
 
-                <!-- Row 2: Low & Prev Close -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -303,7 +288,6 @@
                 </LinearLayout>
             </LinearLayout>
 
-            <!-- Bottom spacer -->
             <View
                 android:layout_width="match_parent"
                 android:layout_height="40dp"/>
@@ -311,7 +295,6 @@
         </LinearLayout>
     </androidx.core.widget.NestedScrollView>
 
-    <!-- Loading overlay -->
     <FrameLayout
         android:id="@+id/loading_overlay"
         android:layout_width="match_parent"

@@ -32,7 +32,7 @@ class WatchlistAdapter(
     }
 
     override fun getItemCount() = items.size
-    
+
     fun moveItem(fromPosition: Int, toPosition: Int) {
         val item = items.removeAt(fromPosition)
         items.add(toPosition, item)

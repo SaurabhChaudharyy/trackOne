@@ -17,7 +17,6 @@
         android:paddingTop="24dp"
         android:paddingBottom="32dp">
 
-        <!-- ── Page title ──────────────────────────────────────────── -->
         <TextView
             android:id="@+id/tv_settings_title"
             android:layout_width="wrap_content"
@@ -39,7 +38,6 @@
             android:fontFamily="@font/geist_mono"
             android:layout_marginBottom="28dp"/>
 
-        <!-- ── Section label: Watchlist ──────────────────────────── -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -50,7 +48,6 @@
             android:letterSpacing="0.12"
             android:layout_marginBottom="10dp"/>
 
-        <!-- ── Export Watchlist card ─────────────────────────────── -->
         <LinearLayout
             android:id="@+id/card_export_watchlist"
             android:layout_width="match_parent"
@@ -117,7 +114,6 @@
 
         </LinearLayout>
 
-        <!-- ── Import Watchlist card ─────────────────────────────── -->
         <LinearLayout
             android:id="@+id/card_import_watchlist"
             android:layout_width="match_parent"
@@ -184,7 +180,6 @@
 
         </LinearLayout>
 
-        <!-- ── Section label: Stocks & Investments ───────────────── -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -195,7 +190,6 @@
             android:letterSpacing="0.12"
             android:layout_marginBottom="10dp"/>
 
-        <!-- ── Export Stocks & Investments card ──────────────────── -->
         <LinearLayout
             android:id="@+id/card_export_assets"
             android:layout_width="match_parent"
@@ -262,7 +256,6 @@
 
         </LinearLayout>
 
-        <!-- ── Import Stocks & Investments card ──────────────────── -->
         <LinearLayout
             android:id="@+id/card_import_assets"
             android:layout_width="match_parent"
@@ -329,7 +322,6 @@
 
         </LinearLayout>
 
-        <!-- ── Section label: About ───────────────────────────────── -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -340,7 +332,6 @@
             android:letterSpacing="0.12"
             android:layout_marginBottom="10dp"/>
 
-        <!-- ── App info card ──────────────────────────────────────── -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -389,7 +380,6 @@
             </LinearLayout>
         </LinearLayout>
 
-        <!-- Loading overlay (hidden by default) -->
         <LinearLayout
             android:id="@+id/layout_loading"
             android:layout_width="match_parent"

@@ -1,34 +1,28 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- shadcn/ui dark theme (zinc scale) -->
-    <!-- Backgrounds -->
-    <color name="background_dark">#09090b</color>   <!-- zinc-950 -->
-    <color name="surface_color">#09090b</color>     <!-- same as bg — cards use border not fill -->
-    <color name="surface_variant">#18181b</color>   <!-- zinc-900 — subtle row hover/selection -->
+
+    <color name="background_dark">#09090b</color>   
+    <color name="surface_color">#09090b</color>     
+    <color name="surface_variant">#18181b</color>   
     <color name="error_background">#1c0a0a</color>
 
-    <!-- Borders / Dividers -->
-    <color name="divider_color">#27272a</color>     <!-- zinc-800 — the defining shadcn border -->
+    <color name="divider_color">#27272a</color>     
     <color name="border_color">#27272a</color>
 
-    <!-- Text -->
-    <color name="text_primary">#fafafa</color>      <!-- zinc-50 -->
-    <color name="text_secondary">#a1a1aa</color>    <!-- zinc-400 -->
-    <color name="text_tertiary">#52525b</color>     <!-- zinc-600 -->
+    <color name="text_primary">#fafafa</color>      
+    <color name="text_secondary">#a1a1aa</color>    
+    <color name="text_tertiary">#52525b</color>     
 
-    <!-- Stock colors -->
-    <color name="gain_green">#22c55e</color>        <!-- green-500 -->
-    <color name="gain_green_bg">#052e16</color>     <!-- green-950 -->
-    <color name="loss_red">#ef4444</color>          <!-- red-500 -->
-    <color name="loss_red_bg">#1c0303</color>       <!-- red-950 -->
+    <color name="gain_green">#22c55e</color>        
+    <color name="gain_green_bg">#052e16</color>     
+    <color name="loss_red">#ef4444</color>          
+    <color name="loss_red_bg">#1c0303</color>       
 
-    <!-- Accent (shadcn default: neutral white) -->
     <color name="accent_blue">#fafafa</color>
     <color name="primary">#fafafa</color>
     <color name="primary_variant">#27272a</color>
     <color name="on_primary">#09090b</color>
 
-    <!-- Widget -->
     <color name="widget_background">#E609090b</color>
     <color name="widget_surface">#E618181b</color>
 </resources>

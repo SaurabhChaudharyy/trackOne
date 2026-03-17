@@ -38,21 +38,20 @@ class NetWorthFragment : Fragment() {
     private val adapters = mutableMapOf<AssetType, NetWorthAssetAdapter>()
 
     private val sectionExpanded = mutableMapOf(
-        AssetType.STOCK_IN to true,
-        AssetType.STOCK_US to true,
-        AssetType.MF       to true,
-        AssetType.GOLD     to true,
-        AssetType.SILVER   to true,
-        AssetType.CRYPTO   to true,
-        AssetType.CASH     to true,
-        AssetType.BANK     to true
+        AssetType.STOCK_IN to false,
+        AssetType.STOCK_US to false,
+        AssetType.MF       to false,
+        AssetType.GOLD     to false,
+        AssetType.SILVER   to false,
+        AssetType.CRYPTO   to false,
+        AssetType.CASH     to false,
+        AssetType.BANK     to false
     )
 
     private val isFetchable = setOf(
         AssetType.STOCK_IN, AssetType.STOCK_US, AssetType.CRYPTO, AssetType.GOLD, AssetType.SILVER
     )
 
-    // Curated lists of popular symbols shown as dropdown options
     private val indianStockSymbols = listOf(
         "RELIANCE.NS", "TCS.NS", "HDFCBANK.NS", "INFY.NS", "ICICIBANK.NS",
         "HINDUNILVR.NS", "ITC.NS", "SBIN.NS", "BAJFINANCE.NS", "LT.NS",
@@ -112,6 +111,7 @@ class NetWorthFragment : Fragment() {
                 layoutManager = LinearLayoutManager(requireContext())
                 this.adapter = adapter
                 isNestedScrollingEnabled = false
+                isVisible = sectionExpanded[type] == true
             }
         }
     }
@@ -157,20 +157,23 @@ class NetWorthFragment : Fragment() {
                 adapter.submitList(grouped[type] ?: emptyList())
             }
 
-            // Update section header labels with count appended inline
-            // e.g. "Indian Stocks" → "Indian Stocks  3"
-            fun updateLabel(labelView: android.widget.TextView, baseLabel: String, type: AssetType) {
+            fun updateCount(countView: android.widget.TextView, type: AssetType) {
                 val count = grouped[type]?.size ?: 0
-                labelView.text = if (count > 0) "$baseLabel\u2002$count" else baseLabel
+                if (count > 0) {
+                    countView.text = count.toString()
+                    countView.isVisible = true
+                } else {
+                    countView.isVisible = false
+                }
             }
-            updateLabel(binding.tvLabelStockIn, "Indian Stocks", AssetType.STOCK_IN)
-            updateLabel(binding.tvLabelStockUs, "US Stocks",     AssetType.STOCK_US)
-            updateLabel(binding.tvLabelMf,      "Mutual Funds",  AssetType.MF)
-            updateLabel(binding.tvLabelGold,    "Gold",          AssetType.GOLD)
-            updateLabel(binding.tvLabelSilver,  "Silver",        AssetType.SILVER)
-            updateLabel(binding.tvLabelCrypto,  "Crypto",        AssetType.CRYPTO)
-            updateLabel(binding.tvLabelCash,    "Cash on Hand",  AssetType.CASH)
-            updateLabel(binding.tvLabelBank,    "Bank Balance",  AssetType.BANK)
+            updateCount(binding.tvCountStockIn, AssetType.STOCK_IN)
+            updateCount(binding.tvCountStockUs, AssetType.STOCK_US)
+            updateCount(binding.tvCountMf,      AssetType.MF)
+            updateCount(binding.tvCountGold,    AssetType.GOLD)
+            updateCount(binding.tvCountSilver,  AssetType.SILVER)
+            updateCount(binding.tvCountCrypto,  AssetType.CRYPTO)
+            updateCount(binding.tvCountCash,    AssetType.CASH)
+            updateCount(binding.tvCountBank,    AssetType.BANK)
         }
 
         viewModel.assetSummary.observe(viewLifecycleOwner) { summary ->
@@ -189,14 +192,12 @@ class NetWorthFragment : Fragment() {
         val d = DialogAddAssetBinding.inflate(layoutInflater)
         val fetchable = type in isFetchable
 
-        // Initial visibility
         d.tilSymbol.isVisible    = fetchable
         d.llPriceCard.isVisible  = false
-        d.tilQuantity.isVisible  = false   // shown only after price is fetched
+        d.tilQuantity.isVisible  = false   
         d.tilName.isVisible      = !fetchable
-        d.llFetchRow.isVisible   = false   // legacy stub, always hidden
+        d.llFetchRow.isVisible   = false   
 
-        // For manual mode, show the value field immediately
         d.tilValue.isVisible = !fetchable
 
         var fetchedPricePerUnit = 0.0
@@ -218,35 +219,35 @@ class NetWorthFragment : Fragment() {
                     }
                 }
                 AssetType.GOLD -> {
-                    // Gold always uses GC=F — hide the symbol field and auto-fetch on dialog open
+
                     d.tilSymbol.isVisible  = false
                     d.tilQuantity.hint = "Quantity in grams"
-                    // Show notes field so user can label entries (e.g. Physical, Digital)
+
                     d.tilNotes.isVisible = true
-                    // Immediately fetch gold spot price (no user input needed)
+
                     triggerFetch(d, "GC=F", type) { price -> fetchedPricePerUnit = price }
                 }
                 AssetType.SILVER -> {
-                    // Silver always uses SI=F — hide the symbol field and auto-fetch on dialog open
+
                     d.tilSymbol.isVisible  = false
                     d.tilQuantity.hint = "Quantity in grams"
-                    // Show notes field so user can label entries (e.g. Physical, SGB)
+
                     d.tilNotes.isVisible = true
-                    // Immediately fetch silver spot price (no user input needed)
+
                     triggerFetch(d, "SI=F", type) { price -> fetchedPricePerUnit = price }
                 }
                 AssetType.CRYPTO -> {
                     d.tilSymbol.hint   = "Pair (e.g. BTC-INR, ETH-INR)"
                     d.tilQuantity.hint = "Quantity of coins"
                     val ac = d.etSymbol as? AutoCompleteTextView
-                    // Trigger on focus loss
+
                     ac?.setOnFocusChangeListener { _, hasFocus ->
                         if (!hasFocus) {
                             val sym = ac.text?.toString()?.trim() ?: return@setOnFocusChangeListener
                             if (sym.isNotBlank()) triggerFetch(d, sym, type) { price -> fetchedPricePerUnit = price }
                         }
                     }
-                    // Also trigger on Enter / Search key
+
                     ac?.setOnEditorActionListener { _, actionId, _ ->
                         if (actionId == EditorInfo.IME_ACTION_DONE ||
                             actionId == EditorInfo.IME_ACTION_SEARCH ||
@@ -264,14 +265,43 @@ class NetWorthFragment : Fragment() {
             }
         }
 
-        // As user types quantity → recompute total value
+        var isAutoUpdating = false
+
         d.etQuantity.addTextChangedListener(object : android.text.TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
             override fun afterTextChanged(s: android.text.Editable?) {
+                if (isAutoUpdating || !d.etQuantity.hasFocus()) return
                 if (fetchedPricePerUnit > 0) {
-                    val qty = s?.toString()?.toDoubleOrNull() ?: return
-                    d.etValue.setText("%.2f".format(fetchedPricePerUnit * qty))
+                    val qty = s?.toString()?.toDoubleOrNull()
+                    isAutoUpdating = true
+                    if (qty != null) {
+                        d.etValue.setText("%.2f".format(fetchedPricePerUnit * qty))
+                    } else if (s.isNullOrEmpty()) {
+                        d.etValue.text?.clear()
+                    }
+                    isAutoUpdating = false
+                }
+            }
+        })
+
+        d.etValue.addTextChangedListener(object : android.text.TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+            override fun afterTextChanged(s: android.text.Editable?) {
+                if (isAutoUpdating || !d.etValue.hasFocus()) return
+                if (fetchedPricePerUnit > 0) {
+                    val value = s?.toString()?.toDoubleOrNull()
+                    isAutoUpdating = true
+                    if (value != null) {
+                        val fmt = if (type == AssetType.CRYPTO) "%.8f" else "%.4f"
+                        val calcQty = value / fetchedPricePerUnit
+
+                        d.etQuantity.setText(fmt.format(calcQty))
+                    } else if (s.isNullOrEmpty()) {
+                        d.etQuantity.text?.clear()
+                    }
+                    isAutoUpdating = false
                 }
             }
         })
@@ -331,12 +361,6 @@ class NetWorthFragment : Fragment() {
         dialog.show()
     }
 
-    /**
-     * Populates [AutoCompleteTextView] with [symbols] using a case-insensitive CONTAINS filter,
-     * so typing any part of a symbol shows matches. Also wires the IME Done/Search action and
-     * focus-loss so the user can enter a completely custom symbol (not in the list) and still
-     * trigger the price fetch.
-     */
     private fun wireSymbolDropdown(
         d: DialogAddAssetBinding,
         symbols: List<String>,
@@ -345,7 +369,6 @@ class NetWorthFragment : Fragment() {
     ) {
         val autoComplete = d.etSymbol as? AutoCompleteTextView ?: return
 
-        // Custom ArrayAdapter with contains-based filter (case-insensitive)
         val adapter = object : ArrayAdapter<String>(
             requireContext(),
             android.R.layout.simple_dropdown_item_1line,
@@ -381,12 +404,11 @@ class NetWorthFragment : Fragment() {
         autoComplete.setAdapter(adapter)
         autoComplete.threshold = 1
 
-        // Trigger fetch when user taps a suggestion from the dropdown
         autoComplete.setOnItemClickListener { _, _, _, _ ->
             val selected = autoComplete.text?.toString()?.trim()?.uppercase() ?: return@setOnItemClickListener
             if (selected.isNotBlank()) {
                 val normalised = normaliseSymbol(selected, type)
-                // Update field text to show the normalised symbol (e.g. TRENT.NS)
+
                 autoComplete.setText(normalised)
                 autoComplete.setSelection(normalised.length)
                 d.tilSymbol.error = null
@@ -394,7 +416,6 @@ class NetWorthFragment : Fragment() {
             }
         }
 
-        // Trigger fetch when user presses Done / Search on keyboard (for custom symbols)
         autoComplete.setOnEditorActionListener { _, actionId, _ ->
             if (actionId == EditorInfo.IME_ACTION_DONE ||
                 actionId == EditorInfo.IME_ACTION_SEARCH ||
@@ -402,7 +423,7 @@ class NetWorthFragment : Fragment() {
                 val typed = autoComplete.text?.toString()?.trim()?.uppercase() ?: ""
                 if (typed.isNotBlank()) {
                     val normalised = normaliseSymbol(typed, type)
-                    // Update field to show the resolved symbol
+
                     autoComplete.setText(normalised)
                     autoComplete.setSelection(normalised.length)
                     d.tilSymbol.error = null
@@ -413,24 +434,18 @@ class NetWorthFragment : Fragment() {
         }
     }
 
-    /**
-     * Fetches live price for [symbol].
-     * - Shows the price card with a loading spinner immediately
-     * - On success: displays prominent price, reveals quantity + value fields
-     * - On error: shows error text in the card
-     */
     private fun triggerFetch(
         d: DialogAddAssetBinding,
         symbol: String,
         type: AssetType,
         onPriceFetched: (Double) -> Unit
     ) {
-        // Show the price card & loading state
+
         d.llPriceCard.isVisible    = true
         d.llPriceLoading.isVisible = true
         d.tvFetchStatus.isVisible  = false
         d.tvPriceError.isVisible   = false
-        // Hide quantity + value + buy price until success
+
         d.tilQuantity.isVisible  = false
         d.tilBuyPrice.isVisible  = false
         d.tilValue.isVisible     = false
@@ -453,11 +468,9 @@ class NetWorthFragment : Fragment() {
                     d.tvFetchStatus.isVisible = true
                     d.tvPriceError.isVisible  = false
 
-                    // Reveal the rest of the form
                     d.tilQuantity.isVisible = true
                     d.tilValue.isVisible    = true
 
-                    // Show optional buy-price field with the correct unit hint
                     val buyHint = when (type) {
                         AssetType.GOLD, AssetType.SILVER -> "Avg Buy Price (₹/gram) — optional"
                         AssetType.CRYPTO                 -> "Avg Buy Price (₹/coin) — optional"
@@ -466,17 +479,20 @@ class NetWorthFragment : Fragment() {
                     d.tilBuyPrice.hint    = buyHint
                     d.tilBuyPrice.isVisible = true
 
-                    // If quantity is already filled, recompute value
                     val qty = d.etQuantity.text?.toString()?.toDoubleOrNull()
+                    val prefilledValue = d.etValue.text?.toString()?.toDoubleOrNull()
                     if (qty != null && qty > 0) {
                         d.etValue.setText("%.2f".format(price * qty))
+                    } else if (prefilledValue != null && prefilledValue > 0) {
+                        val fmt = if (type == AssetType.CRYPTO) "%.8f" else "%.4f"
+                        d.etQuantity.setText(fmt.format(prefilledValue / price))
                     }
                 }
                 is Resource.Error -> {
                     d.tvPriceError.text    = "✗ ${result.message}"
                     d.tvPriceError.isVisible  = true
                     d.tvFetchStatus.isVisible = false
-                    // Still show quantity/value/buy-price so user can enter manually
+
                     d.tilQuantity.isVisible  = true
                     d.tilBuyPrice.isVisible  = true
                     d.tilValue.isVisible     = true
@@ -486,12 +502,6 @@ class NetWorthFragment : Fragment() {
         }
     }
 
-    /**
-     * Ensures the symbol is in the correct format for Yahoo Finance.
-     * - Indian stocks (STOCK_IN): appends ".NS" if no exchange suffix present.
-     *   e.g. "TRENT" → "TRENT.NS", "TRENT.NS" stays as-is.
-     * - Other types: returned as-is.
-     */
     private fun normaliseSymbol(symbol: String, type: AssetType): String {
         if (type == AssetType.STOCK_IN && !symbol.contains('.')) {
             return "$symbol.NS"
@@ -508,17 +518,11 @@ class NetWorthFragment : Fragment() {
             .show()
     }
 
-    /**
-     * Opens a pre-filled version of the add dialog for editing an existing asset.
-     * Calls viewModel.updateAsset() on save (preserving the original ID and addedAt).
-     */
     private fun showEditDialog(asset: NetWorthAssetEntity) {
         val type = asset.assetType
         val d = DialogAddAssetBinding.inflate(layoutInflater)
         val fetchable = type in isFetchable
 
-        // Mirror the same visibility rules as showAddDialog
-        // Symbol field: hide for Gold/Silver (fixed ticker) — only show for stocks/crypto
         val isMetalType = type == AssetType.GOLD || type == AssetType.SILVER
         d.tilSymbol.isVisible   = fetchable && !isMetalType
         d.llPriceCard.isVisible = false
@@ -527,10 +531,9 @@ class NetWorthFragment : Fragment() {
         d.llFetchRow.isVisible  = false
         d.tilValue.isVisible    = true
         d.tilBuyPrice.isVisible = asset.buyPrice > 0 || fetchable
-        // Notes: shown for Gold/Silver so users can distinguish multiple entries
+
         d.tilNotes.isVisible    = isMetalType
 
-        // Pre-fill existing values
         if (fetchable) {
             if (!isMetalType) {
                 (d.etSymbol as? AutoCompleteTextView)?.setText(asset.name)
@@ -544,10 +547,9 @@ class NetWorthFragment : Fragment() {
         }
         d.etValue.setText("%.2f".format(asset.currentValue))
         if (asset.buyPrice > 0) d.etBuyPrice.setText("%.2f".format(asset.buyPrice))
-        // Pre-fill notes for metal types
+
         if (isMetalType && asset.notes.isNotBlank()) d.etNotes.setText(asset.notes)
 
-        // Set hints for buy-price field
         val buyHint = when (type) {
             AssetType.GOLD, AssetType.SILVER -> "Avg Buy Price (₹/gram) — optional"
             AssetType.CRYPTO                 -> "Avg Buy Price (₹/coin) — optional"

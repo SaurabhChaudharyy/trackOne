@@ -14,7 +14,6 @@
         android:orientation="vertical"
         android:paddingBottom="16dp">
 
-        <!-- ── Total Net Worth header ── -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -49,13 +48,11 @@
             android:layout_height="1dp"
             android:background="@color/divider_color"/>
 
-        <!-- ══ INDIAN STOCKS ══ -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical">
 
-            <!-- Section header (clickable to collapse) -->
             <LinearLayout
                 android:id="@+id/header_stock_in"
                 android:layout_width="match_parent"
@@ -65,15 +62,37 @@
                 android:gravity="center_vertical"
                 android:background="?attr/selectableItemBackground">
 
-                <TextView
-                    android:id="@+id/tv_label_stock_in"
+                <LinearLayout
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="Indian Stocks"
-                    android:textColor="@color/text_secondary"
-                    android:textSize="13sp"
-                    android:fontFamily="@font/geist_mono_semi_bold"/>
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <TextView
+                        android:id="@+id/tv_label_stock_in"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Indian Stocks"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="13sp"
+                        android:fontFamily="@font/geist_mono_semi_bold"/>
+
+                    <TextView
+                        android:id="@+id/tv_count_stock_in"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="8dp"
+                        android:paddingHorizontal="6dp"
+                        android:paddingVertical="2dp"
+                        android:background="@drawable/bg_count_pill"
+                        android:textColor="@color/text_primary"
+                        android:textSize="10sp"
+                        android:fontFamily="@font/geist_mono_semi_bold"
+                        android:visibility="gone"
+                        tools:text="3"
+                        tools:visibility="visible"/>
+                </LinearLayout>
 
                 <TextView
                     android:id="@+id/tv_total_stock_in"
@@ -95,7 +114,6 @@
                     android:tint="@color/text_tertiary"/>
             </LinearLayout>
 
-            <!-- Collapsible items -->
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/rv_stock_in"
                 android:layout_width="match_parent"
@@ -110,7 +128,6 @@
                 android:background="@color/divider_color"/>
         </LinearLayout>
 
-        <!-- ══ US STOCKS ══ -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -125,15 +142,37 @@
                 android:gravity="center_vertical"
                 android:background="?attr/selectableItemBackground">
 
-                <TextView
-                    android:id="@+id/tv_label_stock_us"
+                <LinearLayout
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="US Stocks"
-                    android:textColor="@color/text_secondary"
-                    android:textSize="13sp"
-                    android:fontFamily="@font/geist_mono_semi_bold"/>
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <TextView
+                        android:id="@+id/tv_label_stock_us"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="US Stocks"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="13sp"
+                        android:fontFamily="@font/geist_mono_semi_bold"/>
+
+                    <TextView
+                        android:id="@+id/tv_count_stock_us"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="8dp"
+                        android:paddingHorizontal="6dp"
+                        android:paddingVertical="2dp"
+                        android:background="@drawable/bg_count_pill"
+                        android:textColor="@color/text_primary"
+                        android:textSize="10sp"
+                        android:fontFamily="@font/geist_mono_semi_bold"
+                        android:visibility="gone"
+                        tools:text="3"
+                        tools:visibility="visible"/>
+                </LinearLayout>
 
                 <TextView
                     android:id="@+id/tv_total_stock_us"
@@ -168,7 +207,6 @@
                 android:background="@color/divider_color"/>
         </LinearLayout>
 
-        <!-- ══ MUTUAL FUNDS ══ -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -183,15 +221,37 @@
                 android:gravity="center_vertical"
                 android:background="?attr/selectableItemBackground">
 
-                <TextView
-                    android:id="@+id/tv_label_mf"
+                <LinearLayout
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="Mutual Funds"
-                    android:textColor="@color/text_secondary"
-                    android:textSize="13sp"
-                    android:fontFamily="@font/geist_mono_semi_bold"/>
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <TextView
+                        android:id="@+id/tv_label_mf"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Mutual Funds"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="13sp"
+                        android:fontFamily="@font/geist_mono_semi_bold"/>
+
+                    <TextView
+                        android:id="@+id/tv_count_mf"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="8dp"
+                        android:paddingHorizontal="6dp"
+                        android:paddingVertical="2dp"
+                        android:background="@drawable/bg_count_pill"
+                        android:textColor="@color/text_primary"
+                        android:textSize="10sp"
+                        android:fontFamily="@font/geist_mono_semi_bold"
+                        android:visibility="gone"
+                        tools:text="3"
+                        tools:visibility="visible"/>
+                </LinearLayout>
 
                 <TextView
                     android:id="@+id/tv_total_mf"
@@ -226,7 +286,6 @@
                 android:background="@color/divider_color"/>
         </LinearLayout>
 
-        <!-- ══ GOLD ══ -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -241,15 +300,37 @@
                 android:gravity="center_vertical"
                 android:background="?attr/selectableItemBackground">
 
-                <TextView
-                    android:id="@+id/tv_label_gold"
+                <LinearLayout
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="Gold"
-                    android:textColor="@color/text_secondary"
-                    android:textSize="13sp"
-                    android:fontFamily="@font/geist_mono_semi_bold"/>
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <TextView
+                        android:id="@+id/tv_label_gold"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Gold"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="13sp"
+                        android:fontFamily="@font/geist_mono_semi_bold"/>
+
+                    <TextView
+                        android:id="@+id/tv_count_gold"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="8dp"
+                        android:paddingHorizontal="6dp"
+                        android:paddingVertical="2dp"
+                        android:background="@drawable/bg_count_pill"
+                        android:textColor="@color/text_primary"
+                        android:textSize="10sp"
+                        android:fontFamily="@font/geist_mono_semi_bold"
+                        android:visibility="gone"
+                        tools:text="3"
+                        tools:visibility="visible"/>
+                </LinearLayout>
 
                 <TextView
                     android:id="@+id/tv_total_gold"
@@ -284,7 +365,6 @@
                 android:background="@color/divider_color"/>
         </LinearLayout>
 
-        <!-- ══ SILVER ══ -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -299,15 +379,37 @@
                 android:gravity="center_vertical"
                 android:background="?attr/selectableItemBackground">
 
-                <TextView
-                    android:id="@+id/tv_label_silver"
+                <LinearLayout
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="Silver"
-                    android:textColor="@color/text_secondary"
-                    android:textSize="13sp"
-                    android:fontFamily="@font/geist_mono_semi_bold"/>
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <TextView
+                        android:id="@+id/tv_label_silver"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Silver"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="13sp"
+                        android:fontFamily="@font/geist_mono_semi_bold"/>
+
+                    <TextView
+                        android:id="@+id/tv_count_silver"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="8dp"
+                        android:paddingHorizontal="6dp"
+                        android:paddingVertical="2dp"
+                        android:background="@drawable/bg_count_pill"
+                        android:textColor="@color/text_primary"
+                        android:textSize="10sp"
+                        android:fontFamily="@font/geist_mono_semi_bold"
+                        android:visibility="gone"
+                        tools:text="3"
+                        tools:visibility="visible"/>
+                </LinearLayout>
 
                 <TextView
                     android:id="@+id/tv_total_silver"
@@ -342,8 +444,6 @@
                 android:background="@color/divider_color"/>
         </LinearLayout>
 
-        <!-- ══ CRYPTO ══ -->
-
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -358,15 +458,37 @@
                 android:gravity="center_vertical"
                 android:background="?attr/selectableItemBackground">
 
-                <TextView
-                    android:id="@+id/tv_label_crypto"
+                <LinearLayout
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="Crypto"
-                    android:textColor="@color/text_secondary"
-                    android:textSize="13sp"
-                    android:fontFamily="@font/geist_mono_semi_bold"/>
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <TextView
+                        android:id="@+id/tv_label_crypto"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Crypto"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="13sp"
+                        android:fontFamily="@font/geist_mono_semi_bold"/>
+
+                    <TextView
+                        android:id="@+id/tv_count_crypto"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="8dp"
+                        android:paddingHorizontal="6dp"
+                        android:paddingVertical="2dp"
+                        android:background="@drawable/bg_count_pill"
+                        android:textColor="@color/text_primary"
+                        android:textSize="10sp"
+                        android:fontFamily="@font/geist_mono_semi_bold"
+                        android:visibility="gone"
+                        tools:text="3"
+                        tools:visibility="visible"/>
+                </LinearLayout>
 
                 <TextView
                     android:id="@+id/tv_total_crypto"
@@ -401,7 +523,6 @@
                 android:background="@color/divider_color"/>
         </LinearLayout>
 
-        <!-- ══ CASH ══ -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -416,15 +537,37 @@
                 android:gravity="center_vertical"
                 android:background="?attr/selectableItemBackground">
 
-                <TextView
-                    android:id="@+id/tv_label_cash"
+                <LinearLayout
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="Cash on Hand"
-                    android:textColor="@color/text_secondary"
-                    android:textSize="13sp"
-                    android:fontFamily="@font/geist_mono_semi_bold"/>
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <TextView
+                        android:id="@+id/tv_label_cash"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Cash on Hand"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="13sp"
+                        android:fontFamily="@font/geist_mono_semi_bold"/>
+
+                    <TextView
+                        android:id="@+id/tv_count_cash"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="8dp"
+                        android:paddingHorizontal="6dp"
+                        android:paddingVertical="2dp"
+                        android:background="@drawable/bg_count_pill"
+                        android:textColor="@color/text_primary"
+                        android:textSize="10sp"
+                        android:fontFamily="@font/geist_mono_semi_bold"
+                        android:visibility="gone"
+                        tools:text="3"
+                        tools:visibility="visible"/>
+                </LinearLayout>
 
                 <TextView
                     android:id="@+id/tv_total_cash"
@@ -459,7 +602,6 @@
                 android:background="@color/divider_color"/>
         </LinearLayout>
 
-        <!-- ══ BANK ══ -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -474,15 +616,37 @@
                 android:gravity="center_vertical"
                 android:background="?attr/selectableItemBackground">
 
-                <TextView
-                    android:id="@+id/tv_label_bank"
+                <LinearLayout
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="Bank Balance"
-                    android:textColor="@color/text_secondary"
-                    android:textSize="13sp"
-                    android:fontFamily="@font/geist_mono_semi_bold"/>
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <TextView
+                        android:id="@+id/tv_label_bank"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Bank Balance"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="13sp"
+                        android:fontFamily="@font/geist_mono_semi_bold"/>
+
+                    <TextView
+                        android:id="@+id/tv_count_bank"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="8dp"
+                        android:paddingHorizontal="6dp"
+                        android:paddingVertical="2dp"
+                        android:background="@drawable/bg_count_pill"
+                        android:textColor="@color/text_primary"
+                        android:textSize="10sp"
+                        android:fontFamily="@font/geist_mono_semi_bold"
+                        android:visibility="gone"
+                        tools:text="3"
+                        tools:visibility="visible"/>
+                </LinearLayout>
 
                 <TextView
                     android:id="@+id/tv_total_bank"

@@ -16,7 +16,6 @@
         android:paddingVertical="10dp"
         android:gravity="center_vertical">
 
-        <!-- Checkbox tick indicator -->
         <ImageView
             android:id="@+id/iv_selected"
             android:layout_width="20dp"
@@ -26,7 +25,6 @@
             android:contentDescription="Selected"
             android:visibility="gone"/>
 
-        <!-- Symbol & Name -->
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
@@ -53,7 +51,6 @@
                 android:ellipsize="end"/>
         </LinearLayout>
 
-        <!-- Exchange · Type badge -->
         <TextView
             android:id="@+id/tv_search_type"
             android:layout_width="wrap_content"
@@ -65,7 +62,6 @@
             android:maxLines="2"
             android:gravity="end"/>
 
-        <!-- Add / Added button -->
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_add"
             android:layout_width="wrap_content"

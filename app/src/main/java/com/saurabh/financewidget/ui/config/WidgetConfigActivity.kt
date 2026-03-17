@@ -43,8 +43,6 @@ class WidgetConfigActivity : AppCompatActivity() {
         )
         setResult(RESULT_CANCELED)
 
-        // If launched by the widget picker AND stocks already exist,
-        // skip the search UI and immediately configure the widget.
         if (appWidgetId != AppWidgetManager.INVALID_APPWIDGET_ID) {
             lifecycleScope.launch {
                 val hasStocks = viewModel.hasAnyStocks()
@@ -52,11 +50,11 @@ class WidgetConfigActivity : AppCompatActivity() {
                     finishConfiguration()
                     return@launch
                 }
-                // No stocks yet — show the add UI so the user can populate the watchlist first
+
                 showAddUi()
             }
         } else {
-            // Opened from "Add Stock" button in the app — always show the search UI
+
             showAddUi()
         }
     }
@@ -95,7 +93,6 @@ class WidgetConfigActivity : AppCompatActivity() {
             adapter = searchAdapter
         }
 
-        // Done button commits all selected
         binding.btnDone.setOnClickListener {
             binding.btnDone.performHapticFeedback(android.view.HapticFeedbackConstants.CONFIRM)
             val selected = searchAdapter.getSelectedItems()
