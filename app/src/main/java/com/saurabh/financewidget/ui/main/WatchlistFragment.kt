@@ -81,7 +81,7 @@ class WatchlistFragment : Fragment() {
                 val fromPos = vh.adapterPosition
                 val toPos = t.adapterPosition
                 if (fromPos == RecyclerView.NO_POSITION || toPos == RecyclerView.NO_POSITION) return false
-                
+
                 adapter.moveItem(fromPos, toPos)
                 rv.performHapticFeedback(android.view.HapticFeedbackConstants.SEGMENT_TICK)
                 return true
@@ -95,7 +95,7 @@ class WatchlistFragment : Fragment() {
                 }
                 viewModel.reorderWatchlist(watchlists)
             }
-            
+
             override fun onSelectedChanged(viewHolder: RecyclerView.ViewHolder?, actionState: Int) {
                 super.onSelectedChanged(viewHolder, actionState)
                 if (actionState == ItemTouchHelper.ACTION_STATE_DRAG) {

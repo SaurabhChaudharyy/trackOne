@@ -19,7 +19,6 @@
         android:theme="@style/Theme.FinanceWidget"
         android:hardwareAccelerated="true">
 
-        <!-- Main Activity -->
         <activity
             android:name=".ui.main.MainActivity"
             android:exported="true"
@@ -31,14 +30,12 @@
             </intent-filter>
         </activity>
 
-        <!-- Stock Detail Activity -->
         <activity
             android:name=".ui.detail.StockDetailActivity"
             android:exported="false"
             android:parentActivityName=".ui.main.MainActivity"
             android:windowSoftInputMode="adjustResize" />
 
-        <!-- Widget Configuration Activity -->
         <activity
             android:name=".ui.config.WidgetConfigActivity"
             android:exported="true"
@@ -48,7 +45,6 @@
             </intent-filter>
         </activity>
 
-        <!-- Stock Market Widget Provider -->
         <receiver
             android:name=".ui.widget.StockWidgetProvider"
             android:exported="true">
@@ -62,13 +58,11 @@
                 android:resource="@xml/stock_widget_info" />
         </receiver>
 
-        <!-- RemoteViews Service for widget list -->
         <service
             android:name=".ui.widget.StockWidgetService"
             android:exported="false"
             android:permission="android.permission.BIND_REMOTEVIEWS" />
 
-        <!-- WorkManager initializer -->
         <provider
             android:name="androidx.startup.InitializationProvider"
             android:authorities="${applicationId}.androidx-startup"

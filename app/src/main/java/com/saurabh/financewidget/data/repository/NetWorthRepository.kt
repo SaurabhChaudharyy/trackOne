@@ -17,10 +17,10 @@ class NetWorthRepository @Inject constructor(
     suspend fun fetchLivePrice(symbol: String, assetType: AssetType): Resource<Double> =
         withContext(Dispatchers.IO) {
             try {
-                // For gold/silver we fetch futures in USD, then convert to INR per gram
+
                 val fetchSymbol = when (assetType) {
-                    AssetType.GOLD   -> "GC=F"  // Gold futures (USD/troy oz)
-                    AssetType.SILVER -> "SI=F"  // Silver futures (USD/troy oz)
+                    AssetType.GOLD   -> "GC=F"  
+                    AssetType.SILVER -> "SI=F"  
                     else             -> symbol.trim().uppercase()
                 }
 
@@ -37,7 +37,6 @@ class NetWorthRepository @Inject constructor(
                     return@withContext Resource.Error("Invalid price returned")
                 }
 
-                // Convert to INR if currency is USD
                 val currency = meta.currency
                 val priceInr = if (currency == "USD" || currency == "USX") {
                     val fxResp = apiService.getQuote("USDINR=X")
@@ -47,9 +46,8 @@ class NetWorthRepository @Inject constructor(
                     priceInNativeCurrency
                 }
 
-                // For gold and silver, prices are per troy ounce — convert to per gram
                 val finalPrice = when (assetType) {
-                    AssetType.GOLD, AssetType.SILVER -> priceInr / 31.1035 // 1 troy oz = 31.1035 g
+                    AssetType.GOLD, AssetType.SILVER -> priceInr / 31.1035 
                     else                             -> priceInr
                 }
 

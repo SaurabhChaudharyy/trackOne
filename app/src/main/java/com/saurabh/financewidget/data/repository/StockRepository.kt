@@ -50,9 +50,6 @@ class StockRepository @Inject constructor(
                 val meta = chartResult.meta
                 val inWatchlist = watchlistDao.isInWatchlist(symbol) > 0
 
-                // marketCap is rarely populated in the chart endpoint — supplement with a
-                // quote endpoint call which always includes it.
-                // Also use it to get a reliable regularMarketOpen (often 0 in chart meta for indices).
                 var marketCap = meta.marketCap.toDouble()
                 var supplementalOpen = meta.regularMarketOpen
                 var supplementalPrevClose = meta.effectivePreviousClose
@@ -72,7 +69,6 @@ class StockRepository @Inject constructor(
                     } catch (_: Exception) { }
                 }
 
-                // Only use prev close as a last resort for open (avoids showing same value twice)
                 val openPrice = if (supplementalOpen != 0.0) supplementalOpen
                                 else supplementalPrevClose
 
@@ -109,17 +105,6 @@ class StockRepository @Inject constructor(
         else Resource.Error(errorMsg)
     }
 
-    /**
-     * Fetches OHLCV candle data for charting.
-     *
-     * Yahoo Finance interval/range combinations:
-     *  1D  view → interval="5m",  range="1d"
-     *  1W  view → interval="60m", range="5d"
-     *  1M  view → interval="1d",  range="1mo"
-     *  3M  view → interval="1d",  range="3mo"
-     *  1Y  view → interval="1wk", range="1y"
-     *  5Y  view → interval="1mo", range="5y"
-     */
     suspend fun fetchPriceHistory(
         symbol: String,
         interval: String,
@@ -128,11 +113,10 @@ class StockRepository @Inject constructor(
         try {
             val cacheKey = "$interval-$range"
 
-            // Cache TTLs: intraday data expires quickly; daily/weekly data can live longer
             val cacheTtlMs = when {
-                range == "1d" || range == "5d" -> 15 * 60 * 1000L      // 15 min
-                range == "1mo" || range == "3mo" -> 4 * 60 * 60 * 1000L // 4 hours
-                else -> 24 * 60 * 60 * 1000L                            // 24 hours for 1y/5y
+                range == "1d" || range == "5d" -> 15 * 60 * 1000L      
+                range == "1mo" || range == "3mo" -> 4 * 60 * 60 * 1000L 
+                else -> 24 * 60 * 60 * 1000L                            
             }
 
             val cached = priceHistoryDao.getPriceHistory(symbol, cacheKey)

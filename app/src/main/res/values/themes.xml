@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <style name="Theme.FinanceWidget" parent="Theme.Material3.Dark.NoActionBar">
-        <!-- Colors -->
+
         <item name="colorPrimary">@color/primary</item>
         <item name="colorOnPrimary">@color/on_primary</item>
         <item name="colorSurface">@color/surface_color</item>
@@ -10,22 +10,18 @@
         <item name="colorOnSurfaceVariant">@color/text_secondary</item>
         <item name="colorOutline">@color/border_color</item>
 
-        <!-- Backgrounds -->
         <item name="android:windowBackground">@color/background_dark</item>
         <item name="android:statusBarColor">@color/background_dark</item>
         <item name="android:navigationBarColor">@color/background_dark</item>
         <item name="android:windowLightStatusBar">false</item>
         <item name="android:windowLightNavigationBar">false</item>
 
-        <!-- Disable Android 12+ default splash screen icon/background -->
         <item name="android:windowSplashScreenAnimatedIcon">@drawable/transparent_splash</item>
         <item name="android:windowSplashScreenBackground">@color/background_dark</item>
 
-        <!-- Global font: Geist Mono everywhere -->
         <item name="android:fontFamily">@font/geist_mono</item>
         <item name="fontFamily">@font/geist_mono</item>
 
-        <!-- Material 3 typography system → all → Geist Mono -->
         <item name="textAppearanceDisplayLarge">@style/TextAppearance.App.Display</item>
         <item name="textAppearanceDisplayMedium">@style/TextAppearance.App.Display</item>
         <item name="textAppearanceDisplaySmall">@style/TextAppearance.App.Display</item>
@@ -42,15 +38,11 @@
         <item name="textAppearanceLabelMedium">@style/TextAppearance.App.Label</item>
         <item name="textAppearanceLabelSmall">@style/TextAppearance.App.Label</item>
 
-        <!-- Dialogs -->
         <item name="materialAlertDialogTheme">@style/ThemeOverlay.App.MaterialAlertDialog</item>
 
-        <!-- MaterialButton — no rounded-pill at dialog level -->
         <item name="materialButtonStyle">@style/Widget.App.Button</item>
     </style>
 
-
-    <!-- ── Typography (all use Geist Mono) ────────────────── -->
     <style name="TextAppearance.App.Display" parent="TextAppearance.Material3.DisplayLarge">
         <item name="android:fontFamily">@font/geist_mono</item>
         <item name="android:textColor">@color/text_primary</item>
@@ -76,7 +68,6 @@
         <item name="android:textColor">@color/text_secondary</item>
     </style>
 
-    <!-- ── Legacy text styles (kept for compat) ───────────── -->
     <style name="TextAppearance.App.Symbol" parent="TextAppearance.Material3.TitleMedium">
         <item name="android:fontFamily">@font/geist_mono_bold</item>
         <item name="android:textColor">@color/text_primary</item>
@@ -103,7 +94,6 @@
         <item name="android:textColor">@color/loss_red</item>
     </style>
 
-    <!-- ── Components ─────────────────────────────────────── -->
     <style name="Widget.App.Button" parent="Widget.Material3.Button">
         <item name="android:fontFamily">@font/geist_mono_semi_bold</item>
         <item name="cornerRadius">8dp</item>
@@ -118,13 +108,11 @@
         <item name="android:fontFamily">@font/geist_mono</item>
     </style>
 
-    <!-- Dialogs -->
     <style name="ThemeOverlay.App.MaterialAlertDialog" parent="ThemeOverlay.Material3.MaterialAlertDialog">
         <item name="android:background">@color/surface_variant</item>
         <item name="android:fontFamily">@font/geist_mono</item>
     </style>
 
-    <!-- Bottom Navigation -->
     <style name="Widget.App.BottomNav" parent="Widget.Material3.BottomNavigationView">
         <item name="itemActiveIndicatorStyle">@style/Widget.App.BottomNav.ActiveIndicator</item>
     </style>

@@ -11,7 +11,6 @@
     android:paddingTop="2dp"
     android:paddingBottom="2dp">
 
-    <!-- Symbol & Name -->
     <LinearLayout
         android:layout_width="0dp"
         android:layout_height="wrap_content"
@@ -41,7 +40,6 @@
             android:fontFamily="@font/geist_mono_regular"/>
     </LinearLayout>
 
-    <!-- Price -->
     <TextView
         android:id="@+id/widget_item_price"
         android:layout_width="0dp"
@@ -54,7 +52,6 @@
         android:singleLine="true"
         android:fontFamily="@font/geist_mono_regular"/>
 
-    <!-- Change % -->
     <LinearLayout
         android:layout_width="0dp"
         android:layout_height="wrap_content"

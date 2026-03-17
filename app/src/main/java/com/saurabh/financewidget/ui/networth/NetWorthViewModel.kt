@@ -31,15 +31,11 @@ class NetWorthViewModel @Inject constructor(
         netWorthDao.deleteAsset(asset)
     }
 
-    /** Aggregated current value per asset type */
     val assetSummary: LiveData<Map<AssetType, Double>> = allAssets.map { assets ->
         assets.groupBy { it.assetType }
             .mapValues { (_, list) -> list.sumOf { it.currentValue } }
     }
 
-    /**
-     * Fetches the current price (in INR) for a symbol from Yahoo Finance.
-     */
     suspend fun fetchLivePrice(symbol: String, assetType: AssetType): Resource<Double> =
         netWorthRepository.fetchLivePrice(symbol, assetType)
 }

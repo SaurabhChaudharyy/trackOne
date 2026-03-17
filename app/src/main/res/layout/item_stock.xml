@@ -14,7 +14,6 @@
         android:paddingHorizontal="16dp"
         android:gravity="center_vertical">
 
-        <!-- Symbol & Name -->
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
@@ -43,7 +42,6 @@
                 android:ellipsize="end"
                 tools:text="Apple Inc."/>
 
-            <!-- hidden, keep for compat -->
             <TextView
                 android:id="@+id/tv_last_updated"
                 android:layout_width="wrap_content"
@@ -52,7 +50,6 @@
                 android:visibility="gone"/>
         </LinearLayout>
 
-        <!-- Price -->
         <TextView
             android:id="@+id/tv_price"
             android:layout_width="0dp"
@@ -64,7 +61,6 @@
             android:gravity="end"
             tools:text="$187.62"/>
 
-        <!-- Change abs -->
         <TextView
             android:id="@+id/tv_change"
             android:layout_width="0dp"
@@ -75,7 +71,6 @@
             android:gravity="end"
             tools:text="-7.94"/>
 
-        <!-- % change pill -->
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
@@ -111,7 +106,6 @@
             </LinearLayout>
         </LinearLayout>
 
-        <!-- Remove button (swipe reveals it via ItemTouchHelper; keep hidden) -->
         <ImageButton
             android:id="@+id/btn_remove"
             android:layout_width="32dp"
@@ -125,7 +119,6 @@
 
     </LinearLayout>
 
-    <!-- hairline border -->
     <View
         android:layout_width="match_parent"
         android:layout_height="1dp"

@@ -62,7 +62,12 @@ class StockRemoteViewsFactory(
 
         views.setTextViewText(R.id.widget_item_symbol, stock.symbol)
         views.setTextViewText(R.id.widget_item_name, stock.companyName.take(18))
-        views.setTextViewText(R.id.widget_item_price, FormatUtils.formatPrice(stock.currentPrice, stock.currency))
+        val priceText = if (stock.symbol.startsWith("^")) {
+            FormatUtils.formatIndexPrice(stock.currentPrice, stock.currency)
+        } else {
+            FormatUtils.formatPrice(stock.currentPrice, stock.currency)
+        }
+        views.setTextViewText(R.id.widget_item_price, priceText)
         views.setTextViewText(R.id.widget_item_change, FormatUtils.formatChange(stock.change))
         views.setTextViewText(R.id.widget_item_change_percent, FormatUtils.formatChangePercent(stock.changePercent))
 

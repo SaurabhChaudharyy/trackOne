@@ -2,7 +2,6 @@ package com.saurabh.financewidget.data.model
 
 import com.google.gson.annotations.SerializedName
 
-
 data class YahooChartResponse(
     @SerializedName("chart") val chart: YahooChart?
 )
@@ -40,8 +39,7 @@ data class YahooMeta(
     @SerializedName("fiftyTwoWeekLow")           val fiftyTwoWeekLow: Double = 0.0,
     @SerializedName("trailingPE")                val trailingPE: Double = 0.0
 ) {
-    // chartPreviousClose is always populated by Yahoo's chart endpoint;
-    // previousClose is only present on some responses — use the reliable one.
+
     val effectivePreviousClose: Double
         get() = if (previousClose != 0.0) previousClose else chartPreviousClose
 

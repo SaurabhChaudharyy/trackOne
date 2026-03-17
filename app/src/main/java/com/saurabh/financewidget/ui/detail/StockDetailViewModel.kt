@@ -9,10 +9,6 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-/**
- * Yahoo Finance interval/range pairs for each timeframe button.
- * Key = display label, Value = Pair(interval, range)
- */
 val TIMEFRAME_OPTIONS = linkedMapOf(
     "1D"  to Pair("5m",  "1d"),
     "1W"  to Pair("60m", "5d"),
@@ -62,9 +58,6 @@ class StockDetailViewModel @Inject constructor(
         }
     }
 
-    /**
-     * @param label One of "1D", "1W", "1M", "3M", "1Y", "5Y"
-     */
     fun loadPriceHistory(label: String) {
         val (interval, range) = TIMEFRAME_OPTIONS[label] ?: Pair("1wk", "1y")
         viewModelScope.launch {

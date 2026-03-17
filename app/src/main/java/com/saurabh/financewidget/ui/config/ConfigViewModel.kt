@@ -52,12 +52,10 @@ class ConfigViewModel @Inject constructor(
         }
     }
 
-    /** Called directly from Activity coroutine for bulk-add flow */
     suspend fun addToWatchlistSync(symbol: String, displayName: String) {
         repository.addToWatchlist(symbol, displayName)
     }
 
-    /** Returns true if the watchlist already has at least one stock */
     suspend fun hasAnyStocks(): Boolean = repository.getWatchlistSync().isNotEmpty()
 
     fun removeFromWatchlist(symbol: String) {

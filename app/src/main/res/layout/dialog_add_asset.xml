@@ -7,9 +7,6 @@
     android:orientation="vertical"
     android:padding="20dp">
 
-    <!-- ── FETCHABLE mode (stocks / gold / crypto) ── -->
-
-    <!-- Step 1: Symbol search field — user types to filter symbols -->
     <com.google.android.material.textfield.TextInputLayout
         android:id="@+id/til_symbol"
         style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
@@ -34,7 +31,6 @@
             android:dropDownHeight="200dp"/>
     </com.google.android.material.textfield.TextInputLayout>
 
-    <!-- Step 2: Price card — appears after a symbol is selected and price is fetched -->
     <LinearLayout
         android:id="@+id/ll_price_card"
         android:layout_width="match_parent"
@@ -55,7 +51,6 @@
             android:letterSpacing="0.05"
             android:fontFamily="@font/geist_mono"/>
 
-        <!-- Loading indicator shown while fetching -->
         <LinearLayout
             android:id="@+id/ll_price_loading"
             android:layout_width="match_parent"
@@ -81,7 +76,6 @@
                 android:fontFamily="@font/geist_mono"/>
         </LinearLayout>
 
-        <!-- Price shown on success -->
         <TextView
             android:id="@+id/tv_fetch_status"
             android:layout_width="wrap_content"
@@ -94,7 +88,6 @@
             android:textStyle="bold"
             android:visibility="gone"/>
 
-        <!-- Error message on failure -->
         <TextView
             android:id="@+id/tv_price_error"
             android:layout_width="match_parent"
@@ -107,7 +100,6 @@
             android:visibility="gone"/>
     </LinearLayout>
 
-    <!-- Step 3: Quantity (shown after price fetch success) -->
     <com.google.android.material.textfield.TextInputLayout
         android:id="@+id/til_quantity"
         style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
@@ -128,7 +120,6 @@
             android:fontFamily="@font/geist_mono"/>
     </com.google.android.material.textfield.TextInputLayout>
 
-    <!-- Step 3b: Buy price per unit (optional — for P&L tracking) -->
     <com.google.android.material.textfield.TextInputLayout
         android:id="@+id/til_buy_price"
         style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
@@ -149,7 +140,6 @@
             android:fontFamily="@font/geist_mono"/>
     </com.google.android.material.textfield.TextInputLayout>
 
-    <!-- Step 4: Computed total value (read-only once auto-calculated; editable as fallback) -->
     <com.google.android.material.textfield.TextInputLayout
         android:id="@+id/til_value"
         style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
@@ -168,8 +158,6 @@
             android:textColor="@color/text_primary"
             android:fontFamily="@font/geist_mono"/>
     </com.google.android.material.textfield.TextInputLayout>
-
-    <!-- ── MANUAL mode (MF, cash, bank) ── -->
 
     <com.google.android.material.textfield.TextInputLayout
         android:id="@+id/til_name"
@@ -190,7 +178,6 @@
             android:fontFamily="@font/geist_mono"/>
     </com.google.android.material.textfield.TextInputLayout>
 
-    <!-- Stub views to keep old binding references alive (always gone) -->
     <LinearLayout
         android:id="@+id/ll_fetch_row"
         android:layout_width="match_parent"

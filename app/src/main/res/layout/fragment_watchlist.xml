@@ -19,7 +19,6 @@
             android:paddingBottom="8dp"
             tools:listitem="@layout/item_stock"/>
 
-        <!-- Empty state -->
         <LinearLayout
             android:id="@+id/empty_state_layout"
             android:layout_width="match_parent"
@@ -58,7 +57,6 @@
                 app:cornerRadius="8dp"/>
         </LinearLayout>
 
-        <!-- Error banner -->
         <LinearLayout
             android:id="@+id/error_view"
             android:layout_width="match_parent"
@@ -80,7 +78,6 @@
                 android:textSize="12sp"/>
         </LinearLayout>
 
-        <!-- Dual market status bar — bottom -->
         <LinearLayout
             android:id="@+id/market_bar"
             android:layout_width="match_parent"
@@ -91,7 +88,6 @@
             android:paddingHorizontal="16dp"
             android:paddingVertical="12dp">
 
-            <!-- US Market chip -->
             <LinearLayout
                 android:id="@+id/chip_us_market"
                 android:layout_width="0dp"
@@ -123,7 +119,6 @@
                     android:textStyle="bold"/>
             </LinearLayout>
 
-            <!-- India Market chip -->
             <LinearLayout
                 android:id="@+id/chip_india_market"
                 android:layout_width="0dp"

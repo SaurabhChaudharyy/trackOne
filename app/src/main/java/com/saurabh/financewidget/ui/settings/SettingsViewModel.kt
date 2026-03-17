@@ -31,8 +31,6 @@ class SettingsViewModel @Inject constructor(
     private val _state = MutableStateFlow<BackupUiState>(BackupUiState.Idle)
     val state: StateFlow<BackupUiState> = _state.asStateFlow()
 
-    // ── Watchlist ─────────────────────────────────
-
     fun exportWatchlist(uri: Uri) {
         viewModelScope.launch {
             _state.value = BackupUiState.Loading
@@ -52,8 +50,6 @@ class SettingsViewModel @Inject constructor(
             }
         }
     }
-
-    // ── Stocks & Investments ──────────────────────
 
     fun exportAssets(uri: Uri) {
         viewModelScope.launch {
@@ -75,7 +71,6 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    /** Reset to idle after a dialog is dismissed. */
     fun resetState() {
         _state.value = BackupUiState.Idle
     }

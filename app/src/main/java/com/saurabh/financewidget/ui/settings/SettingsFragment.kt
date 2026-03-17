@@ -29,8 +29,6 @@ class SettingsFragment : Fragment() {
 
     private val viewModel: SettingsViewModel by viewModels()
 
-    // ── Watchlist launchers ─────────────────────────────────────────
-
     private val exportWatchlistLauncher = registerForActivityResult(
         ActivityResultContracts.CreateDocument("application/json")
     ) { uri: Uri? ->
@@ -42,8 +40,6 @@ class SettingsFragment : Fragment() {
     ) { uri: Uri? ->
         if (uri != null) showWatchlistImportConfirmationDialog(uri)
     }
-
-    // ── Stocks & Investments launchers ──────────────────────────────
 
     private val exportAssetsLauncher = registerForActivityResult(
         ActivityResultContracts.CreateDocument("application/json")
@@ -171,8 +167,6 @@ class SettingsFragment : Fragment() {
         }
     }
 
-    // ── Confirmation dialogs ────────────────────────────────────────
-
     private fun showWatchlistImportConfirmationDialog(uri: Uri) {
         if (!isAdded) return
         MaterialAlertDialogBuilder(requireContext())
@@ -208,8 +202,6 @@ class SettingsFragment : Fragment() {
             .setNegativeButton("Cancel") { dialog, _ -> dialog.dismiss() }
             .show()
     }
-
-    // ── Utility ────────────────────────────────────────────────────
 
     private fun showSuccessDialog(title: String, message: String) {
         if (!isAdded) return
