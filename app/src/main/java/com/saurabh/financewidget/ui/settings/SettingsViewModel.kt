@@ -16,8 +16,10 @@ import javax.inject.Inject
 sealed class BackupUiState {
     object Idle : BackupUiState()
     object Loading : BackupUiState()
-    data class ExportSuccess(val message: String) : BackupUiState()
-    data class ImportSuccess(val watchlistCount: Int, val assetCount: Int) : BackupUiState()
+    data class WatchlistExportSuccess(val message: String) : BackupUiState()
+    data class WatchlistImportSuccess(val count: Int) : BackupUiState()
+    data class AssetsExportSuccess(val message: String) : BackupUiState()
+    data class AssetsImportSuccess(val count: Int) : BackupUiState()
     data class Error(val message: String) : BackupUiState()
 }
 
@@ -29,26 +31,45 @@ class SettingsViewModel @Inject constructor(
     private val _state = MutableStateFlow<BackupUiState>(BackupUiState.Idle)
     val state: StateFlow<BackupUiState> = _state.asStateFlow()
 
-    /** Called after the user has picked/created a file URI from the SAF picker. */
-    fun exportData(uri: Uri) {
+    // ── Watchlist ─────────────────────────────────
+
+    fun exportWatchlist(uri: Uri) {
         viewModelScope.launch {
             _state.value = BackupUiState.Loading
-            _state.value = when (val result = backupRepository.exportToUri(uri)) {
-                is BackupResult.Success -> BackupUiState.ExportSuccess(result.message)
+            _state.value = when (val result = backupRepository.exportWatchlistToUri(uri)) {
+                is BackupResult.Success -> BackupUiState.WatchlistExportSuccess(result.message)
                 is BackupResult.Failure -> BackupUiState.Error(result.reason)
             }
         }
     }
 
-    /** Called after the user picks an existing backup file URI from the SAF picker. */
-    fun importData(uri: Uri) {
+    fun importWatchlist(uri: Uri) {
         viewModelScope.launch {
             _state.value = BackupUiState.Loading
-            _state.value = when (val result = backupRepository.importFromUri(uri)) {
-                is ImportResult.Success -> BackupUiState.ImportSuccess(
-                    watchlistCount = result.summary.watchlistRestored,
-                    assetCount = result.summary.assetsRestored
-                )
+            _state.value = when (val result = backupRepository.importWatchlistFromUri(uri)) {
+                is ImportResult.Success -> BackupUiState.WatchlistImportSuccess(result.summary.watchlistRestored)
+                is ImportResult.Failure -> BackupUiState.Error(result.reason)
+            }
+        }
+    }
+
+    // ── Stocks & Investments ──────────────────────
+
+    fun exportAssets(uri: Uri) {
+        viewModelScope.launch {
+            _state.value = BackupUiState.Loading
+            _state.value = when (val result = backupRepository.exportAssetsToUri(uri)) {
+                is BackupResult.Success -> BackupUiState.AssetsExportSuccess(result.message)
+                is BackupResult.Failure -> BackupUiState.Error(result.reason)
+            }
+        }
+    }
+
+    fun importAssets(uri: Uri) {
+        viewModelScope.launch {
+            _state.value = BackupUiState.Loading
+            _state.value = when (val result = backupRepository.importAssetsFromUri(uri)) {
+                is ImportResult.Success -> BackupUiState.AssetsImportSuccess(result.summary.assetsRestored)
                 is ImportResult.Failure -> BackupUiState.Error(result.reason)
             }
         }

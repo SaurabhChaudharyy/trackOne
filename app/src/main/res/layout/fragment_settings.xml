@@ -39,20 +39,20 @@
             android:fontFamily="@font/geist_mono"
             android:layout_marginBottom="28dp"/>
 
-        <!-- ── Section label: Data ────────────────────────────────── -->
+        <!-- ── Section label: Watchlist ──────────────────────────── -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="DATA"
+            android:text="WATCHLIST"
             android:textColor="@color/text_tertiary"
             android:textSize="10sp"
             android:fontFamily="@font/geist_mono_semi_bold"
             android:letterSpacing="0.12"
             android:layout_marginBottom="10dp"/>
 
-        <!-- ── Export card ────────────────────────────────────────── -->
+        <!-- ── Export Watchlist card ─────────────────────────────── -->
         <LinearLayout
-            android:id="@+id/card_export"
+            android:id="@+id/card_export_watchlist"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
@@ -68,7 +68,6 @@
                 android:orientation="horizontal"
                 android:gravity="center_vertical">
 
-                <!-- Icon container -->
                 <LinearLayout
                     android:layout_width="38dp"
                     android:layout_height="38dp"
@@ -93,7 +92,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Export Data"
+                        android:text="Export Watchlist"
                         android:textColor="@color/text_primary"
                         android:textSize="14sp"
                         android:fontFamily="@font/geist_mono_semi_bold"/>
@@ -101,7 +100,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Save watchlist &amp; net worth to a JSON file"
+                        android:text="Save your watchlist symbols to a JSON file"
                         android:textColor="@color/text_tertiary"
                         android:textSize="11sp"
                         android:fontFamily="@font/geist_mono"
@@ -118,9 +117,9 @@
 
         </LinearLayout>
 
-        <!-- ── Import card ────────────────────────────────────────── -->
+        <!-- ── Import Watchlist card ─────────────────────────────── -->
         <LinearLayout
-            android:id="@+id/card_import"
+            android:id="@+id/card_import_watchlist"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
@@ -136,7 +135,6 @@
                 android:orientation="horizontal"
                 android:gravity="center_vertical">
 
-                <!-- Icon container -->
                 <LinearLayout
                     android:layout_width="38dp"
                     android:layout_height="38dp"
@@ -161,7 +159,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Import Data"
+                        android:text="Import Watchlist"
                         android:textColor="@color/text_primary"
                         android:textSize="14sp"
                         android:fontFamily="@font/geist_mono_semi_bold"/>
@@ -169,7 +167,152 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Restore from a previous backup file"
+                        android:text="Restore watchlist from a backup file"
+                        android:textColor="@color/text_tertiary"
+                        android:textSize="11sp"
+                        android:fontFamily="@font/geist_mono"
+                        android:layout_marginTop="2dp"/>
+                </LinearLayout>
+
+                <ImageView
+                    android:layout_width="16dp"
+                    android:layout_height="16dp"
+                    android:src="@drawable/ic_chevron_right"
+                    android:tint="@color/text_tertiary"
+                    tools:ignore="ContentDescription"/>
+            </LinearLayout>
+
+        </LinearLayout>
+
+        <!-- ── Section label: Stocks & Investments ───────────────── -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="STOCKS &amp; INVESTMENTS"
+            android:textColor="@color/text_tertiary"
+            android:textSize="10sp"
+            android:fontFamily="@font/geist_mono_semi_bold"
+            android:letterSpacing="0.12"
+            android:layout_marginBottom="10dp"/>
+
+        <!-- ── Export Stocks & Investments card ──────────────────── -->
+        <LinearLayout
+            android:id="@+id/card_export_assets"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@drawable/bg_settings_card"
+            android:padding="16dp"
+            android:layout_marginBottom="10dp"
+            android:clickable="true"
+            android:focusable="true">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <LinearLayout
+                    android:layout_width="38dp"
+                    android:layout_height="38dp"
+                    android:background="@drawable/bg_settings_icon"
+                    android:gravity="center"
+                    android:layout_marginEnd="14dp">
+
+                    <ImageView
+                        android:layout_width="18dp"
+                        android:layout_height="18dp"
+                        android:src="@drawable/ic_export"
+                        android:tint="@color/text_primary"
+                        tools:ignore="ContentDescription"/>
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Export Stocks &amp; Investments"
+                        android:textColor="@color/text_primary"
+                        android:textSize="14sp"
+                        android:fontFamily="@font/geist_mono_semi_bold"/>
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Save your net worth assets to a JSON file"
+                        android:textColor="@color/text_tertiary"
+                        android:textSize="11sp"
+                        android:fontFamily="@font/geist_mono"
+                        android:layout_marginTop="2dp"/>
+                </LinearLayout>
+
+                <ImageView
+                    android:layout_width="16dp"
+                    android:layout_height="16dp"
+                    android:src="@drawable/ic_chevron_right"
+                    android:tint="@color/text_tertiary"
+                    tools:ignore="ContentDescription"/>
+            </LinearLayout>
+
+        </LinearLayout>
+
+        <!-- ── Import Stocks & Investments card ──────────────────── -->
+        <LinearLayout
+            android:id="@+id/card_import_assets"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@drawable/bg_settings_card"
+            android:padding="16dp"
+            android:layout_marginBottom="24dp"
+            android:clickable="true"
+            android:focusable="true">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <LinearLayout
+                    android:layout_width="38dp"
+                    android:layout_height="38dp"
+                    android:background="@drawable/bg_settings_icon"
+                    android:gravity="center"
+                    android:layout_marginEnd="14dp">
+
+                    <ImageView
+                        android:layout_width="18dp"
+                        android:layout_height="18dp"
+                        android:src="@drawable/ic_import"
+                        android:tint="@color/text_primary"
+                        tools:ignore="ContentDescription"/>
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Import Stocks &amp; Investments"
+                        android:textColor="@color/text_primary"
+                        android:textSize="14sp"
+                        android:fontFamily="@font/geist_mono_semi_bold"/>
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Restore net worth assets from a backup file"
                         android:textColor="@color/text_tertiary"
                         android:textSize="11sp"
                         android:fontFamily="@font/geist_mono"

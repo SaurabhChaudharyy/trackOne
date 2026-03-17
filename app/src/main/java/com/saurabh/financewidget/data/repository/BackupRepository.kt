@@ -15,7 +15,6 @@ import javax.inject.Singleton
 const val BACKUP_SCHEMA_VERSION = 1
 val BACKUP_IMPORT_MIME_TYPES = arrayOf("application/json", "text/plain", "*/*")
 
-
 /**
  * Root JSON object written/read for every backup.
  * [schemaVersion] lets us detect incompatible files in future migrations.
@@ -47,7 +46,6 @@ data class NetWorthAssetBackup(
     @SerializedName("updated_at_ms") val updatedAt: Long
 )
 
-
 sealed class BackupResult {
     data class Success(val message: String) : BackupResult()
     data class Failure(val reason: String, val cause: Throwable? = null) : BackupResult()
@@ -63,6 +61,12 @@ sealed class ImportResult {
     data class Failure(val reason: String, val cause: Throwable? = null) : ImportResult()
 }
 
+/** Internal sealed type used by [BackupRepository.readAndValidateEnvelope]. */
+private sealed class EnvelopeResult {
+    data class Ok(val envelope: BackupEnvelope) : EnvelopeResult()
+    data class Err(val failure: ImportResult.Failure) : EnvelopeResult()
+}
+
 @Singleton
 class BackupRepository @Inject constructor(
     @ApplicationContext private val context: Context,
@@ -75,21 +79,68 @@ class BackupRepository @Inject constructor(
 
     private val gson: Gson = GsonBuilder().setPrettyPrinting().create()
 
-    suspend fun exportToUri(uri: Uri): BackupResult = withContext(Dispatchers.IO) {
-        try {
-            val watchlistEntities = watchlistDao.getWatchlistSync()
-            val assetEntities = netWorthDao.getAllAssetsSync()
+    // ──────────────────────────────────────────────
+    // Watchlist-only export / import
+    // ──────────────────────────────────────────────
 
-            if (watchlistEntities.isEmpty() && assetEntities.isEmpty()) {
-                return@withContext BackupResult.Failure(
-                    "Nothing to export — your watchlist and net worth are both empty."
+    /** Exports only the watchlist symbols to [uri] as a trackOne JSON file. */
+    suspend fun exportWatchlistToUri(uri: Uri): BackupResult = withContext(Dispatchers.IO) {
+        try {
+            val entities = watchlistDao.getWatchlistSync()
+            if (entities.isEmpty()) {
+                return@withContext BackupResult.Failure("Nothing to export — your watchlist is empty.")
+            }
+            val backup = entities.map { WatchlistBackup(it.symbol, it.displayName, it.position, it.addedAt) }
+            val envelope = BackupEnvelope(watchlist = backup, networthAssets = emptyList())
+            writeEnvelope(uri, envelope)
+                ?: return@withContext BackupResult.Failure("Could not open file for writing.")
+            BackupResult.Success("Exported ${backup.size} watchlist symbol(s).")
+        } catch (e: Exception) {
+            BackupResult.Failure("Export failed: ${e.message}", e)
+        }
+    }
+
+    /**
+     * Imports watchlist from [uri]. Clears the watchlist table and restores
+     * only the watchlist section — net worth assets are untouched.
+     */
+    suspend fun importWatchlistFromUri(uri: Uri): ImportResult = withContext(Dispatchers.IO) {
+        try {
+            val envelope = when (val r = readAndValidateEnvelope(uri)) {
+                is EnvelopeResult.Err -> return@withContext r.failure
+                is EnvelopeResult.Ok  -> r.envelope
+            }
+
+            val entities = envelope.watchlist.map { b ->
+                WatchlistEntity(
+                    symbol = b.symbol.trim().uppercase(),
+                    displayName = b.displayName,
+                    position = b.position,
+                    addedAt = b.addedAt
                 )
             }
 
-            val watchlistBackup = watchlistEntities.map { e ->
-                WatchlistBackup(e.symbol, e.displayName, e.position, e.addedAt)
+            watchlistDao.clearWatchlist()
+            if (entities.isNotEmpty()) watchlistDao.insertWatchlistItems(entities)
+
+            ImportResult.Success(ImportSummary(watchlistRestored = entities.size, assetsRestored = 0))
+        } catch (e: Exception) {
+            ImportResult.Failure("Import failed unexpectedly: ${e.message}", e)
+        }
+    }
+
+    // ──────────────────────────────────────────────
+    // Stocks & Investments (net worth assets) export / import
+    // ──────────────────────────────────────────────
+
+    /** Exports only the net worth assets to [uri] as a trackOne JSON file. */
+    suspend fun exportAssetsToUri(uri: Uri): BackupResult = withContext(Dispatchers.IO) {
+        try {
+            val entities = netWorthDao.getAllAssetsSync()
+            if (entities.isEmpty()) {
+                return@withContext BackupResult.Failure("Nothing to export — your investments list is empty.")
             }
-            val assetBackup = assetEntities.map { e ->
+            val backup = entities.map { e ->
                 NetWorthAssetBackup(
                     name = e.name,
                     assetType = e.assetType.name,
@@ -102,69 +153,24 @@ class BackupRepository @Inject constructor(
                     updatedAt = e.updatedAt
                 )
             }
-
-            val envelope = BackupEnvelope(
-                watchlist = watchlistBackup,
-                networthAssets = assetBackup
-            )
-
-            context.contentResolver.openOutputStream(uri)?.use { stream ->
-                stream.bufferedWriter().use { writer ->
-                    writer.write(gson.toJson(envelope))
-                }
-            } ?: return@withContext BackupResult.Failure("Could not open file for writing.")
-
-            val total = watchlistBackup.size + assetBackup.size
-            BackupResult.Success(
-                "Exported $total item(s): ${watchlistBackup.size} watchlist, ${assetBackup.size} net worth."
-            )
+            val envelope = BackupEnvelope(watchlist = emptyList(), networthAssets = backup)
+            writeEnvelope(uri, envelope)
+                ?: return@withContext BackupResult.Failure("Could not open file for writing.")
+            BackupResult.Success("Exported ${backup.size} investment(s).")
         } catch (e: Exception) {
             BackupResult.Failure("Export failed: ${e.message}", e)
         }
     }
 
     /**
-     * Reads a backup JSON from [uri], validates it, then atomically replaces
-     * all local data (watchlist + net worth assets) with the restored rows.
-     * The stocks cache table is intentionally not restored — prices re-fetch live.
+     * Imports net worth assets from [uri]. Clears the networth_assets table and
+     * restores only the assets section — watchlist is untouched.
      */
-    suspend fun importFromUri(uri: Uri): ImportResult = withContext(Dispatchers.IO) {
+    suspend fun importAssetsFromUri(uri: Uri): ImportResult = withContext(Dispatchers.IO) {
         try {
-            val json = context.contentResolver.openInputStream(uri)
-                ?.bufferedReader()
-                ?.use { it.readText() }
-                ?: return@withContext ImportResult.Failure("Could not open the selected file.")
-
-            if (json.isBlank()) {
-                return@withContext ImportResult.Failure("The selected file is empty.")
-            }
-
-            val envelope = try {
-                gson.fromJson(json, BackupEnvelope::class.java)
-            } catch (e: Exception) {
-                return@withContext ImportResult.Failure(
-                    "Invalid backup file — the JSON could not be parsed. Make sure you selected a trackOne backup file.",
-                    e
-                )
-            }
-
-            if (envelope == null) {
-                return@withContext ImportResult.Failure("Backup file appears to be corrupt (null envelope).")
-            }
-
-            if (envelope.appPackage.isNotBlank() &&
-                envelope.appPackage != "com.saurabh.financewidget") {
-                return@withContext ImportResult.Failure(
-                    "This backup was created by a different app (${envelope.appPackage}). " +
-                    "Only trackOne backup files can be imported."
-                )
-            }
-
-            if (envelope.schemaVersion > BACKUP_SCHEMA_VERSION) {
-                return@withContext ImportResult.Failure(
-                    "This backup was created with a newer version of trackOne " +
-                    "(schema v${envelope.schemaVersion}). Please update the app and try again."
-                )
+            val envelope = when (val r = readAndValidateEnvelope(uri)) {
+                is EnvelopeResult.Err -> return@withContext r.failure
+                is EnvelopeResult.Ok  -> r.envelope
             }
 
             val invalidTypes = envelope.networthAssets
@@ -177,15 +183,7 @@ class BackupRepository @Inject constructor(
                 )
             }
 
-            val watchlistEntities = envelope.watchlist.map { b ->
-                WatchlistEntity(
-                    symbol = b.symbol.trim().uppercase(),
-                    displayName = b.displayName,
-                    position = b.position,
-                    addedAt = b.addedAt
-                )
-            }
-            val assetEntities = envelope.networthAssets.map { b ->
+            val entities = envelope.networthAssets.map { b ->
                 NetWorthAssetEntity(
                     id = 0,
                     name = b.name,
@@ -200,24 +198,71 @@ class BackupRepository @Inject constructor(
                 )
             }
 
-            watchlistDao.clearWatchlist()
             netWorthDao.deleteAllAssets()
+            if (entities.isNotEmpty()) netWorthDao.insertAssets(entities)
 
-            if (watchlistEntities.isNotEmpty()) {
-                watchlistDao.insertWatchlistItems(watchlistEntities)
-            }
-            if (assetEntities.isNotEmpty()) {
-                netWorthDao.insertAssets(assetEntities)
-            }
-
-            ImportResult.Success(
-                ImportSummary(
-                    watchlistRestored = watchlistEntities.size,
-                    assetsRestored = assetEntities.size
-                )
-            )
+            ImportResult.Success(ImportSummary(watchlistRestored = 0, assetsRestored = entities.size))
         } catch (e: Exception) {
             ImportResult.Failure("Import failed unexpectedly: ${e.message}", e)
         }
+    }
+
+    // ──────────────────────────────────────────────
+    // Private helpers
+    // ──────────────────────────────────────────────
+
+    /** Writes [envelope] as pretty-printed JSON to [uri]. Returns null if the stream couldn't be opened. */
+    private fun writeEnvelope(uri: Uri, envelope: BackupEnvelope): Unit? {
+        return context.contentResolver.openOutputStream(uri)?.use { stream ->
+            stream.bufferedWriter().use { it.write(gson.toJson(envelope)) }
+        }
+    }
+
+    /**
+     * Opens [uri], parses the JSON, and validates app package + schema version.
+     * Returns [EnvelopeResult.Ok] with the parsed envelope, or [EnvelopeResult.Err] on any failure.
+     */
+    private fun readAndValidateEnvelope(uri: Uri): EnvelopeResult {
+        val json = context.contentResolver.openInputStream(uri)
+            ?.bufferedReader()
+            ?.use { it.readText() }
+            ?: return EnvelopeResult.Err(ImportResult.Failure("Could not open the selected file."))
+
+        if (json.isBlank()) {
+            return EnvelopeResult.Err(ImportResult.Failure("The selected file is empty."))
+        }
+
+        val envelope = try {
+            gson.fromJson(json, BackupEnvelope::class.java)
+        } catch (e: Exception) {
+            return EnvelopeResult.Err(
+                ImportResult.Failure(
+                    "Invalid backup file — the JSON could not be parsed. Make sure you selected a trackOne backup file.",
+                    e
+                )
+            )
+        } ?: return EnvelopeResult.Err(
+            ImportResult.Failure("Backup file appears to be corrupt (null envelope).")
+        )
+
+        if (envelope.appPackage.isNotBlank() && envelope.appPackage != "com.saurabh.financewidget") {
+            return EnvelopeResult.Err(
+                ImportResult.Failure(
+                    "This backup was created by a different app (${envelope.appPackage}). " +
+                    "Only trackOne backup files can be imported."
+                )
+            )
+        }
+
+        if (envelope.schemaVersion > BACKUP_SCHEMA_VERSION) {
+            return EnvelopeResult.Err(
+                ImportResult.Failure(
+                    "This backup was created with a newer version of trackOne " +
+                    "(schema v${envelope.schemaVersion}). Please update the app and try again."
+                )
+            )
+        }
+
+        return EnvelopeResult.Ok(envelope)
     }
 }
