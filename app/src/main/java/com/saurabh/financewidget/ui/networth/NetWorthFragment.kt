@@ -103,7 +103,10 @@ class NetWorthFragment : Fragment() {
             AssetType.BANK     to binding.rvBank
         )
         for ((type, rv) in map) {
-            val adapter = NetWorthAssetAdapter { asset -> confirmDelete(asset) }
+            val adapter = NetWorthAssetAdapter(
+                onDeleteClick = { asset -> confirmDelete(asset) },
+                onEditClick   = { asset -> showEditDialog(asset) }
+            )
             adapters[type] = adapter
             rv.apply {
                 layoutManager = LinearLayoutManager(requireContext())
@@ -153,6 +156,21 @@ class NetWorthFragment : Fragment() {
             for ((type, adapter) in adapters) {
                 adapter.submitList(grouped[type] ?: emptyList())
             }
+
+            // Update section header labels with count appended inline
+            // e.g. "Indian Stocks" → "Indian Stocks  3"
+            fun updateLabel(labelView: android.widget.TextView, baseLabel: String, type: AssetType) {
+                val count = grouped[type]?.size ?: 0
+                labelView.text = if (count > 0) "$baseLabel\u2002$count" else baseLabel
+            }
+            updateLabel(binding.tvLabelStockIn, "Indian Stocks", AssetType.STOCK_IN)
+            updateLabel(binding.tvLabelStockUs, "US Stocks",     AssetType.STOCK_US)
+            updateLabel(binding.tvLabelMf,      "Mutual Funds",  AssetType.MF)
+            updateLabel(binding.tvLabelGold,    "Gold",          AssetType.GOLD)
+            updateLabel(binding.tvLabelSilver,  "Silver",        AssetType.SILVER)
+            updateLabel(binding.tvLabelCrypto,  "Crypto",        AssetType.CRYPTO)
+            updateLabel(binding.tvLabelCash,    "Cash on Hand",  AssetType.CASH)
+            updateLabel(binding.tvLabelBank,    "Bank Balance",  AssetType.BANK)
         }
 
         viewModel.assetSummary.observe(viewLifecycleOwner) { summary ->
@@ -203,6 +221,8 @@ class NetWorthFragment : Fragment() {
                     // Gold always uses GC=F — hide the symbol field and auto-fetch on dialog open
                     d.tilSymbol.isVisible  = false
                     d.tilQuantity.hint = "Quantity in grams"
+                    // Show notes field so user can label entries (e.g. Physical, Digital)
+                    d.tilNotes.isVisible = true
                     // Immediately fetch gold spot price (no user input needed)
                     triggerFetch(d, "GC=F", type) { price -> fetchedPricePerUnit = price }
                 }
@@ -210,6 +230,8 @@ class NetWorthFragment : Fragment() {
                     // Silver always uses SI=F — hide the symbol field and auto-fetch on dialog open
                     d.tilSymbol.isVisible  = false
                     d.tilQuantity.hint = "Quantity in grams"
+                    // Show notes field so user can label entries (e.g. Physical, SGB)
+                    d.tilNotes.isVisible = true
                     // Immediately fetch silver spot price (no user input needed)
                     triggerFetch(d, "SI=F", type) { price -> fetchedPricePerUnit = price }
                 }
@@ -293,7 +315,7 @@ class NetWorthFragment : Fragment() {
                         quantity = qty,
                         buyPrice = d.etBuyPrice.text?.toString()?.toDoubleOrNull() ?: 0.0,
                         currentValue = value,
-                        notes = ""
+                        notes = d.etNotes.text?.toString()?.trim() ?: ""
                     )
                 )
 
@@ -484,6 +506,100 @@ class NetWorthFragment : Fragment() {
             .setPositiveButton("Remove") { _, _ -> viewModel.deleteAsset(asset) }
             .setNegativeButton("Cancel", null)
             .show()
+    }
+
+    /**
+     * Opens a pre-filled version of the add dialog for editing an existing asset.
+     * Calls viewModel.updateAsset() on save (preserving the original ID and addedAt).
+     */
+    private fun showEditDialog(asset: NetWorthAssetEntity) {
+        val type = asset.assetType
+        val d = DialogAddAssetBinding.inflate(layoutInflater)
+        val fetchable = type in isFetchable
+
+        // Mirror the same visibility rules as showAddDialog
+        // Symbol field: hide for Gold/Silver (fixed ticker) — only show for stocks/crypto
+        val isMetalType = type == AssetType.GOLD || type == AssetType.SILVER
+        d.tilSymbol.isVisible   = fetchable && !isMetalType
+        d.llPriceCard.isVisible = false
+        d.tilQuantity.isVisible = fetchable
+        d.tilName.isVisible     = !fetchable
+        d.llFetchRow.isVisible  = false
+        d.tilValue.isVisible    = true
+        d.tilBuyPrice.isVisible = asset.buyPrice > 0 || fetchable
+        // Notes: shown for Gold/Silver so users can distinguish multiple entries
+        d.tilNotes.isVisible    = isMetalType
+
+        // Pre-fill existing values
+        if (fetchable) {
+            if (!isMetalType) {
+                (d.etSymbol as? AutoCompleteTextView)?.setText(asset.name)
+            }
+            d.etQuantity.setText(
+                if (asset.quantity % 1.0 == 0.0) asset.quantity.toInt().toString()
+                else "%.4f".format(asset.quantity)
+            )
+        } else {
+            d.etName.setText(asset.name)
+        }
+        d.etValue.setText("%.2f".format(asset.currentValue))
+        if (asset.buyPrice > 0) d.etBuyPrice.setText("%.2f".format(asset.buyPrice))
+        // Pre-fill notes for metal types
+        if (isMetalType && asset.notes.isNotBlank()) d.etNotes.setText(asset.notes)
+
+        // Set hints for buy-price field
+        val buyHint = when (type) {
+            AssetType.GOLD, AssetType.SILVER -> "Avg Buy Price (₹/gram) — optional"
+            AssetType.CRYPTO                 -> "Avg Buy Price (₹/coin) — optional"
+            else                             -> "Avg Buy Price (₹/share) — optional"
+        }
+        d.tilBuyPrice.hint = buyHint
+        d.tilBuyPrice.isVisible = true
+
+        val dialog = AlertDialog.Builder(requireContext(), R.style.ThemeOverlay_App_MaterialAlertDialog)
+            .setTitle("Edit ${asset.name}")
+            .setView(d.root)
+            .setPositiveButton("Save", null)
+            .setNegativeButton("Cancel", null)
+            .create()
+
+        dialog.setOnShowListener {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                val value = d.etValue.text?.toString()?.toDoubleOrNull()
+                if (value == null || value <= 0) {
+                    d.tilValue.error = "Enter a valid amount"
+                    return@setOnClickListener
+                }
+
+                val qty = if (fetchable)
+                    d.etQuantity.text?.toString()?.toDoubleOrNull() ?: asset.quantity
+                else
+                    asset.quantity
+
+                val name = when {
+                    type == AssetType.GOLD   -> "GOLD"
+                    type == AssetType.SILVER -> "SILVER"
+                    fetchable -> {
+                        (d.etSymbol as? AutoCompleteTextView)?.text?.toString()?.trim()?.uppercase()
+                            ?.ifBlank { asset.name } ?: asset.name
+                    }
+                    else -> d.etName.text?.toString()?.trim()?.ifBlank { asset.name } ?: asset.name
+                }
+
+                viewModel.updateAsset(
+                    asset.copy(
+                        name         = name,
+                        quantity     = qty,
+                        buyPrice     = d.etBuyPrice.text?.toString()?.toDoubleOrNull() ?: 0.0,
+                        currentValue = value,
+                        notes        = if (isMetalType) d.etNotes.text?.toString()?.trim() ?: asset.notes else asset.notes,
+                        updatedAt    = System.currentTimeMillis()
+                    )
+                )
+                dialog.dismiss()
+            }
+        }
+        dialog.show()
     }
 
     private fun rvForType(type: AssetType): RecyclerView? = when (type) {

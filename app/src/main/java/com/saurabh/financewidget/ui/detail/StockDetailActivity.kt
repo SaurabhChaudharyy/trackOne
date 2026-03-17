@@ -229,22 +229,34 @@ class StockDetailActivity : AppCompatActivity() {
     }
 
     private fun displayStockData(stock: StockEntity) {
+        val isIndex = stock.symbol.startsWith("^")
         binding.tvDetailSymbol.text = stock.symbol
         binding.tvDetailCompanyName.text = stock.companyName
-        binding.tvDetailPrice.text = FormatUtils.formatPrice(stock.currentPrice, stock.currency)
+        binding.tvDetailPrice.text = if (isIndex)
+            FormatUtils.formatIndexPrice(stock.currentPrice, stock.currency)
+        else
+            FormatUtils.formatPrice(stock.currentPrice, stock.currency)
         binding.tvDetailChange.text = "${FormatUtils.formatChange(stock.change)}  ${FormatUtils.formatChangePercent(stock.changePercent)}"
 
         val changeColor = if (stock.isPositive) getColor(R.color.gain_green) else getColor(R.color.loss_red)
         binding.tvDetailChange.setTextColor(changeColor)
 
         binding.tvStatOpen.text = if (stock.openPrice != 0.0)
-            FormatUtils.formatPrice(stock.openPrice, stock.currency) else "—"
+            (if (isIndex) FormatUtils.formatIndexPrice(stock.openPrice, stock.currency)
+             else FormatUtils.formatPrice(stock.openPrice, stock.currency)) else "—"
 
         val displayHigh = maxOf(stock.highPrice, stock.openPrice)
-        binding.tvStatHigh.text = FormatUtils.formatPrice(displayHigh, stock.currency)
-        binding.tvStatLow.text = FormatUtils.formatPrice(stock.lowPrice, stock.currency)
+        binding.tvStatHigh.text = if (isIndex)
+            FormatUtils.formatIndexPrice(displayHigh, stock.currency)
+        else
+            FormatUtils.formatPrice(displayHigh, stock.currency)
+        binding.tvStatLow.text = if (isIndex)
+            FormatUtils.formatIndexPrice(stock.lowPrice, stock.currency)
+        else
+            FormatUtils.formatPrice(stock.lowPrice, stock.currency)
         binding.tvStatPrevClose.text = if (stock.previousClose != 0.0)
-            FormatUtils.formatPrice(stock.previousClose, stock.currency) else "—"
+            (if (isIndex) FormatUtils.formatIndexPrice(stock.previousClose, stock.currency)
+             else FormatUtils.formatPrice(stock.previousClose, stock.currency)) else "—"
 
         if (stock.industry.isNotEmpty()) {
             binding.tvDetailIndustry.text = stock.industry

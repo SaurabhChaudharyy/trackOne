@@ -66,6 +66,7 @@
                 android:background="?attr/selectableItemBackground">
 
                 <TextView
+                    android:id="@+id/tv_label_stock_in"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
@@ -83,8 +84,6 @@
                     android:textSize="12sp"
                     android:layout_marginEnd="8dp"
                     tools:text="₹5,00,000"/>
-
-
 
                 <ImageButton
                     android:id="@+id/btn_add_stock_in"
@@ -127,6 +126,7 @@
                 android:background="?attr/selectableItemBackground">
 
                 <TextView
+                    android:id="@+id/tv_label_stock_us"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
@@ -143,8 +143,6 @@
                     android:textColor="@color/text_tertiary"
                     android:textSize="12sp"
                     android:layout_marginEnd="8dp"/>
-
-
 
                 <ImageButton
                     android:id="@+id/btn_add_stock_us"
@@ -186,6 +184,7 @@
                 android:background="?attr/selectableItemBackground">
 
                 <TextView
+                    android:id="@+id/tv_label_mf"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
@@ -202,8 +201,6 @@
                     android:textColor="@color/text_tertiary"
                     android:textSize="12sp"
                     android:layout_marginEnd="8dp"/>
-
-
 
                 <ImageButton
                     android:id="@+id/btn_add_mf"
@@ -245,6 +242,7 @@
                 android:background="?attr/selectableItemBackground">
 
                 <TextView
+                    android:id="@+id/tv_label_gold"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
@@ -261,8 +259,6 @@
                     android:textColor="@color/text_tertiary"
                     android:textSize="12sp"
                     android:layout_marginEnd="8dp"/>
-
-
 
                 <ImageButton
                     android:id="@+id/btn_add_gold"
@@ -304,6 +300,7 @@
                 android:background="?attr/selectableItemBackground">
 
                 <TextView
+                    android:id="@+id/tv_label_silver"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
@@ -362,6 +359,7 @@
                 android:background="?attr/selectableItemBackground">
 
                 <TextView
+                    android:id="@+id/tv_label_crypto"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
@@ -378,8 +376,6 @@
                     android:textColor="@color/text_tertiary"
                     android:textSize="12sp"
                     android:layout_marginEnd="8dp"/>
-
-
 
                 <ImageButton
                     android:id="@+id/btn_add_crypto"
@@ -421,6 +417,7 @@
                 android:background="?attr/selectableItemBackground">
 
                 <TextView
+                    android:id="@+id/tv_label_cash"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
@@ -437,8 +434,6 @@
                     android:textColor="@color/text_tertiary"
                     android:textSize="12sp"
                     android:layout_marginEnd="8dp"/>
-
-
 
                 <ImageButton
                     android:id="@+id/btn_add_cash"
@@ -480,6 +475,7 @@
                 android:background="?attr/selectableItemBackground">
 
                 <TextView
+                    android:id="@+id/tv_label_bank"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
@@ -496,8 +492,6 @@
                     android:textColor="@color/text_tertiary"
                     android:textSize="12sp"
                     android:layout_marginEnd="8dp"/>
-
-
 
                 <ImageButton
                     android:id="@+id/btn_add_bank"

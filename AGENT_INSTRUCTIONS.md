@@ -303,3 +303,120 @@ Groww/Zerodha-style gain/loss tracking. `buyPrice: Double` already exists on `Ne
 ---
 
 *When starting a new task, always refer back to these guidelines to maintain the established project structure and visual identity.*
+
+---
+
+## Session Changes Log — 2026-03-16
+
+The following improvements were implemented and merged into the codebase. All future agents should treat these as the current baseline.
+
+---
+
+### 1. Index Price Formatting (No Currency Symbol)
+
+**Problem:** Stock indices like `^NSEI` (NIFTY 50) displayed with a `₹` symbol (e.g. `₹23,408.80`) — indices should show plain numbers.
+
+**Solution:**
+- Added `FormatUtils.formatIndexPrice(price, currency)` — uses `NumberFormat.getNumberInstance()` (no currency symbol) with Indian locale grouping for INR, US locale for others.
+- Detection: any symbol starting with `^` is treated as an index.
+- Applied in **`WatchlistAdapter.bind()`** (Markets tab list row) and **`StockDetailActivity.displayStockData()`** (all stat fields: price, open, high, low, prev close).
+
+**Files changed:** `FormatUtils.kt`, `WatchlistAdapter.kt`, `StockDetailActivity.kt`
+
+---
+
+### 2. Item Count in Section Headers
+
+**Problem:** No visual indication of how many assets are in a section (e.g. "Indian Stocks" with 3 holdings showed no count).
+
+**Solution:**
+- Each section header's category name `TextView` now has a unique ID: `tv_label_stock_in`, `tv_label_stock_us`, `tv_label_mf`, `tv_label_gold`, `tv_label_silver`, `tv_label_crypto`, `tv_label_cash`, `tv_label_bank`.
+- In `NetWorthFragment.observeViewModel()`, whenever `allAssets` emits, the count is appended directly to the label text using an en-space separator:
+  - `"Indian Stocks"` → `"Indian Stocks  3"` (when 3 items exist)
+  - Resets to `"Indian Stocks"` when count is 0 (empty section).
+- **No separate badge `TextView`** — the count is embedded in the label itself for clean visual placement.
+
+**Files changed:** `fragment_networth.xml` (IDs on 8 label TextViews), `NetWorthFragment.kt`
+
+---
+
+### 3. Edit Asset Action
+
+**Problem:** Asset rows in the Net Worth tab only had a delete (`×`) button. No way to modify an existing asset.
+
+**Solution:**
+- Created `ic_edit.xml` — pencil vector drawable using `#B3B3B3` fill (matches `ic_close` style), 24dp, same alpha (`0.35`).
+- Added `btn_edit_asset` ImageButton to `item_networth_asset.xml`, placed immediately before `btn_delete_asset`, with `layout_marginEnd="2dp"`.
+- `NetWorthAssetAdapter` now takes an `onEditClick: (NetWorthAssetEntity) -> Unit` callback alongside the existing `onDeleteClick`. The edit button triggers `onEditClick(asset)` with haptic feedback.
+- Added `showEditDialog(asset: NetWorthAssetEntity)` in `NetWorthFragment`:
+  - Reuses `dialog_add_asset.xml` layout (same as the add dialog).
+  - Pre-fills all fields: name/symbol, quantity, buy price, current value, notes.
+  - Title shows `"Edit <name>"`.
+  - Symbol field is correctly **hidden** for `GOLD` and `SILVER` (fixed ticker — no user input needed).
+  - On Save: calls `viewModel.updateAsset(asset.copy(...))` — preserves the original `id` and `addedAt` timestamp.
+
+**Files changed:** `ic_edit.xml` (new), `item_networth_asset.xml`, `NetWorthAssetAdapter.kt`, `NetWorthFragment.kt`
+
+> **Note:** This completes the "Edit asset dialog" item from Phase 2 roadmap (previously item 3 in Phase 2).
+
+---
+
+### 4. Gold & Silver Notes / Label Field
+
+**Problem:** Gold and Silver entries all stored the fixed name `"GOLD"` / `"SILVER"`. If a user added the same metal twice (e.g. Physical gold vs Digital gold), the two rows were indistinguishable.
+
+**Solution:**
+- In `dialog_add_asset.xml`: the existing `til_notes` / `et_notes` fields now have a meaningful hint: *"Label / Note (e.g. Physical, Digital, Jewellery)"* and `layout_marginTop="12dp"`.
+- In `showAddDialog()`: for `GOLD` and `SILVER` types, `d.tilNotes.isVisible = true` is set immediately after the symbol field is hidden. The typed note is saved to `NetWorthAssetEntity.notes`.
+- In `showEditDialog()`: for metal types, `d.tilNotes.isVisible = isMetalType` and the existing note is pre-filled via `d.etNotes.setText(asset.notes)`. Notes are saved back on update.
+- The edit dialog for Gold/Silver correctly hides the "Search symbol" field (`til_symbol`) — guarded by `val isMetalType = type == AssetType.GOLD || type == AssetType.SILVER`.
+
+**Files changed:** `dialog_add_asset.xml`, `NetWorthFragment.kt`
+
+---
+
+### 5. Asset Label Display in Item Rows
+
+**Problem:** The notes label for Gold/Silver was initially appended inline to the subtitle (`"15g · ₹14,831/unit · Physical"`) causing truncation when both the quantity/price string and label text were long.
+
+**Solution:**
+- Added a dedicated `tv_asset_label` `TextView` to `item_networth_asset.xml`, placed in the left column **between** `tv_asset_notes` (subtitle) and `tv_asset_pl` (P&L):
+  - `textColor="@color/text_secondary"`, `textSize="11sp"`, `fontFamily="@font/geist_mono"`, `visibility="gone"` by default.
+- In `NetWorthAssetAdapter.bind()`: `tvAssetLabel` is shown whenever `asset.notes.isNotBlank()`, hidden otherwise. Works for all asset types.
+- `buildSubtitle()` reverted to show **only** the quantity/price info (no inline note append).
+
+**Result — GOLD row display order:**
+```
+GOLD                        ₹2,22,475.28
+15g · ₹14,831.69/unit       inv ₹2,10,000.00
+Physical                    ← dedicated label row, never truncated
+▲ ₹12,475.28 (+5.94%)
+```
+
+**Files changed:** `item_networth_asset.xml`, `NetWorthAssetAdapter.kt`
+
+---
+
+### Layout Structure Reference — `item_networth_asset.xml`
+
+Current left-column order (all inside the `weight=1` vertical `LinearLayout`):
+
+| View ID | Purpose | Visible when |
+|---|---|---|
+| `tv_asset_name` | Asset name (e.g. `HCLTECH.NS`, `GOLD`) | Always |
+| `tv_asset_notes` | Subtitle — quantity/price (e.g. `10 units · ₹1,328.60/unit`) or manual notes for non-fetchable types | Has content |
+| `tv_asset_label` | User label / note for Gold, Silver, etc. (e.g. `Physical`, `SGB`) | `notes.isNotBlank()` |
+| `tv_asset_pl` | P&L line (e.g. `▲ ₹1,286 (+10.72%)`) | `buyPrice > 0 && quantity > 0` |
+
+Right column: `tv_asset_value` (current value) + `tv_asset_invested` (invested amount, when `buyPrice` is set).
+
+---
+
+### Updated Phase 2 Status
+
+| Item | Status |
+|---|---|
+| Section-level P&L totals | 🔲 Planned |
+| Total Net Worth P&L card | 🔲 Planned |
+| ~~Edit asset dialog~~ | ✅ **Implemented** (see Section 3 above) |
+

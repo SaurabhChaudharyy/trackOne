@@ -49,6 +49,20 @@
             android:visibility="gone"
             tools:text="2 units · ₹1,200/unit"/>
 
+        <!-- Separate label/note line for Gold & Silver entries (e.g. Physical, SGB) -->
+        <TextView
+            android:id="@+id/tv_asset_label"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:textColor="@color/text_secondary"
+            android:textSize="11sp"
+            android:fontFamily="@font/geist_mono"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:visibility="gone"
+            tools:text="Physical"/>
+
         <!-- P&L line — shown only when buyPrice is set -->
         <TextView
             android:id="@+id/tv_asset_pl"
@@ -90,6 +104,17 @@
             android:visibility="gone"
             tools:text="inv ₹1,16,800"/>
     </LinearLayout>
+
+    <!-- Edit button -->
+    <ImageButton
+        android:id="@+id/btn_edit_asset"
+        android:layout_width="28dp"
+        android:layout_height="28dp"
+        android:src="@drawable/ic_edit"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:alpha="0.35"
+        android:layout_marginEnd="2dp"
+        android:contentDescription="Edit asset"/>
 
     <!-- Delete button -->
     <ImageButton
