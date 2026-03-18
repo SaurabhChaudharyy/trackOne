@@ -148,7 +148,7 @@ class HomeFragment : Fragment() {
         if (_binding == null) return
         when (res) {
             is Resource.Success -> {
-                val data = res.data ?: run { return }
+                val data = res.data
                 val isGain = data.changePercent >= 0
                 val pct = FormatUtils.formatChangePercent(data.changePercent)
 

@@ -69,17 +69,15 @@ class HomeViewModel @Inject constructor(
             when (result) {
                 is Resource.Success -> {
                     val stock = result.data
-                    if (stock != null) {
-                        liveData.postValue(
-                            Resource.Success(
-                                IndexData(
-                                    price = stock.currentPrice,
-                                    changePercent = stock.changePercent,
-                                    currency = stock.currency
-                                )
+                    liveData.postValue(
+                        Resource.Success(
+                            IndexData(
+                                price = stock.currentPrice,
+                                changePercent = stock.changePercent,
+                                currency = stock.currency
                             )
                         )
-                    }
+                    )
                 }
                 is Resource.Error -> liveData.postValue(Resource.Error(result.message.orEmpty()))
                 else -> {}

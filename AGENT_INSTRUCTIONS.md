@@ -80,11 +80,16 @@ Welcome, future AI Agent! If you are working on this project, please read this d
 *   **Iconography**:
     *   The app icon uses a **High-Contrast Neumorphism** style. It depicts a three-bar chart rising up, where the last bar resembles the number "1" (for trackOne).
     *   The current icon is implemented via distinct pixel-density `.png` files inside `mipmap-[density]` folders, with an adaptive background set to `#F1F1F1`.
-*   **Splash Screen**:
-    *   Android 12+ requires a mandatory splash screen on cold start.
-    *   To keep launches clean, we render an "invisible" splash screen icon using a valid but transparent vector (`transparent_splash.xml`) alongside the true dark background color, creating a seamless opening rather than a jarring default logo popup.
-*   **Splash Animation**:
-    *   The app implements an custom splash screen animation when it opens, featuring the main app icon (the neumorphism one) expanding outwards to reveal the main UI.
+*   **Splash Screen (OS layer)**:
+    *   Android 12+ mandates a system splash screen on cold start.
+    *   We suppress the OS icon with `transparent_splash.xml` (1 dp fully transparent vector) so only our custom `SplashActivity` is visible.
+*   **Custom Flash Screen (`SplashActivity`)**:
+    *   The real launcher entry point is `SplashActivity` (see § Session Log 2026-03-19). `MainActivity` is **not** the launcher — do not restore its `<intent-filter>` unless explicitly asked.
+    *   Design: **purely typographic** — app name (Inter SemiBold, 36sp) + tagline (Geist Mono, 13sp) centred on white. No icon is shown on the splash. The neon accent bar (`#D4E510`, 3dp × 40dp) fades in near the bottom.
+    *   Animation sequence: brand group scales from 78 % → 100 % with `OvershootInterpolator(1.2f)` (480 ms), accent bar fades in (320 ms), loading label fades in (280 ms).
+    *   Data pre-fetch: `SplashViewModel` concurrently fetches all 4 indexes (`^NSEI`, `^BSESN`, `^GSPC`, `^IXIC`) and calls `refreshWatchlistStocks()` so `HomeFragment` renders instantly with no spinner.
+    *   Timing: minimum 1 400 ms display time; navigates only after **both** the minimum time has elapsed AND `SplashViewModel.isReady` emits `true`.
+    *   Exit: 220 ms alpha fade-out → `MainActivity` with `overridePendingTransition(0, 0)` (no OS slide).
 
 ## Important Historical Context (Do Not Break)
 
@@ -317,11 +322,52 @@ Groww/Zerodha-style gain/loss tracking. `buyPrice: Double` already exists on `Ne
 
 ---
 
-## Session Changes Log — 2026-03-16
+## Session Changes Log — 2026-03-19 (Flash Screen & Code Quality)
 
-The following improvements were implemented and merged into the codebase. All future agents should treat these as the current baseline.
+### 1. Custom Flash / Splash Screen
+
+**What was added:** A fully animated `SplashActivity` is now the app's true launcher entry point, replacing the direct cold-start into `MainActivity`.
+
+#### New files
+
+| File | Role |
+|---|---|
+| `ui/splash/SplashActivity.kt` | Launcher `Activity` — plays entrance animations, collects `isReady` from ViewModel, navigates to `MainActivity` |
+| `ui/splash/SplashViewModel.kt` | `@HiltViewModel` — concurrent pre-fetch of 4 indexes + watchlist; exposes `StateFlow<Boolean> isReady` |
+| `res/layout/activity_splash.xml` | Splash UI — wordmark + tagline centred, neon accent bar at bottom, loading label |
+
+#### Modified files
+
+| File | Change |
+|---|---|
+| `res/values/themes.xml` | Added `Theme.FinanceWidget.Splash` — white bg, invisible OS splash icon, no action bar |
+| `AndroidManifest.xml` | `SplashActivity` is now `exported=true` with `LAUNCHER` intent-filter; `MainActivity` changed to `exported=false` with no intent-filter |
+
+#### Key design decisions
+
+- **No icon on the splash** — after iteration the icon was removed; only the wordmark (`trackOne`, Inter SemiBold 36sp) and tagline (Geist Mono 13sp) are shown. This is intentional and must not be reverted.
+- **Data pre-load**: `SplashViewModel.startPrefetch()` fetches indexes + watchlist concurrently via `StockRepository`. By the time `MainActivity` opens, Room is already populated → `HomeFragment` shows live data immediately with no loading spinners.
+- **Minimum display time**: 1 400 ms (editable constant in `SplashActivity`). Change only if explicitly requested.
+- **Exit transition**: 220 ms alpha fade + `overridePendingTransition(0, 0)` to suppress the OS slide. The `@Suppress("DEPRECATION")` annotation is intentional — the new API requires API 34 which is above our min SDK.
 
 ---
+
+### 2. Code Quality — HomeFragment & HomeViewModel Warning Fixes
+
+**Problem:** Two Kotlin compiler warnings existed in the Home screen code.
+
+| File | Line | Warning | Fix |
+|---|---|---|---|
+| `HomeFragment.kt` | 151 | `Elvis operator (?:) always returns left operand` — `res.data ?: run { return }` is dead code because `Resource.Success.data` is non-nullable (`T`, not `T?`) | Removed the elvis fall-through; now simply `val data = res.data` |
+| `HomeViewModel.kt` | 72 | `Condition 'stock != null' is always 'true'` — same root cause | Removed the `if (stock != null)` guard block, inlined the `liveData.postValue(...)` call directly |
+
+**Root cause:** `Resource.Success<T>(val data: T)` — `data` is `T`, not `T?`. Any null-safety guards inside an `is Resource.Success` branch are therefore always redundant.
+
+**Files changed:** `HomeFragment.kt`, `HomeViewModel.kt`
+
+---
+
+## Session Changes Log — 2026-03-18 (Home Screen & Navigation Overhaul)
 
 ### 1. Index Price Formatting (No Currency Symbol)
 
