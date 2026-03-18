@@ -77,7 +77,7 @@ class StockDetailActivity : AppCompatActivity() {
             legend.isEnabled = false
             setBackgroundColor(Color.TRANSPARENT)
             setNoDataText("Loading chart data...")
-            setNoDataTextColor(Color.WHITE)
+            setNoDataTextColor(getColor(R.color.text_tertiary))
 
             setTouchEnabled(true)
             isDragEnabled = true
@@ -94,6 +94,7 @@ class StockDetailActivity : AppCompatActivity() {
             setDrawGridBackground(false)
             setDrawBorders(false)
             extraBottomOffset = 8f
+            minOffset = 0f
 
             setOnChartValueSelectedListener(object : OnChartValueSelectedListener {
                 override fun onValueSelected(e: Entry, h: Highlight) {
@@ -101,8 +102,8 @@ class StockDetailActivity : AppCompatActivity() {
                     val label = FormatUtils.formatPrice(e.y.toDouble(), stock.currency)
                     description.isEnabled = true
                     description.text = label
-                    description.textColor = Color.WHITE
-                    description.textSize = 11f
+                    description.textColor = getColor(R.color.text_primary)
+                    description.textSize = 12f
                     invalidate()
                 }
                 override fun onNothingSelected() {
@@ -124,8 +125,9 @@ class StockDetailActivity : AppCompatActivity() {
 
         val points = history.map { it.close.toFloat() }
         chartTimestamps = history.map { it.timestamp }
-        val isPositive = viewModel.stock.value?.isPositive ?: (points.last() >= points.first())
-        val lineColor = if (isPositive) getColor(R.color.gain_green) else getColor(R.color.loss_red)
+
+        // Clean black line — like the Coinbase screenshot
+        val lineColor = Color.parseColor("#09090B")
 
         val entries = points.mapIndexed { i, y -> Entry(i.toFloat(), y) }
 
@@ -134,17 +136,17 @@ class StockDetailActivity : AppCompatActivity() {
             setDrawCircles(false)
             setDrawCircleHole(false)
             setDrawValues(false)
-            lineWidth = 2.5f
+            lineWidth = 2f
             mode = LineDataSet.Mode.CUBIC_BEZIER
-            cubicIntensity = 0.15f
+            cubicIntensity = 0.12f
 
-            setDrawFilled(true)
-            fillAlpha = 60
-            fillColor = lineColor
+            // No fill — clean line only
+            setDrawFilled(false)
 
-            highLightColor = Color.WHITE
-            highlightLineWidth = 1.2f
-            enableDashedHighlightLine(8f, 4f, 0f)
+            // Neon yellow highlight crosshair
+            highLightColor = getColor(R.color.neon_highlight)
+            highlightLineWidth = 1.5f
+            enableDashedHighlightLine(6f, 3f, 0f)
             setDrawHorizontalHighlightIndicator(false)
         }
 
@@ -156,6 +158,8 @@ class StockDetailActivity : AppCompatActivity() {
     }
 
     private fun setupTimeframeChips() {
+        val neonColor = getColor(R.color.neon_highlight)
+
         TIMEFRAME_OPTIONS.keys.forEach { label ->
             val chip = Chip(this).apply {
                 text = label
@@ -168,8 +172,8 @@ class StockDetailActivity : AppCompatActivity() {
                         intArrayOf()
                     ),
                     intArrayOf(
-                        getColor(R.color.surface_variant),
-                        android.graphics.Color.TRANSPARENT
+                        Color.TRANSPARENT,
+                        Color.TRANSPARENT
                     )
                 )
 
@@ -180,7 +184,7 @@ class StockDetailActivity : AppCompatActivity() {
                             intArrayOf()
                         ),
                         intArrayOf(
-                            getColor(R.color.text_primary),
+                            neonColor,
                             getColor(R.color.text_tertiary)
                         )
                     )
@@ -235,9 +239,13 @@ class StockDetailActivity : AppCompatActivity() {
             FormatUtils.formatIndexPrice(stock.currentPrice, stock.currency)
         else
             FormatUtils.formatPrice(stock.currentPrice, stock.currency)
-        binding.tvDetailChange.text = "${FormatUtils.formatChange(stock.change)}  ${FormatUtils.formatChangePercent(stock.changePercent)}"
 
-        val changeColor = if (stock.isPositive) getColor(R.color.gain_green) else getColor(R.color.loss_red)
+        // Format change with arrow indicator like Coinbase
+        val arrow = if (stock.isPositive) "↗" else "↘"
+        binding.tvDetailChange.text = "$arrow ${FormatUtils.formatChange(stock.change)} · ${FormatUtils.formatChangePercent(stock.changePercent)}"
+
+        // Neon for positive, red for negative
+        val changeColor = if (stock.isPositive) getColor(R.color.neon_highlight) else getColor(R.color.loss_red)
         binding.tvDetailChange.setTextColor(changeColor)
 
         binding.tvStatOpen.text = if (stock.openPrice != 0.0)
@@ -258,12 +266,12 @@ class StockDetailActivity : AppCompatActivity() {
              else FormatUtils.formatPrice(stock.previousClose, stock.currency)) else "—"
 
         if (stock.industry.isNotEmpty()) {
-            binding.tvDetailIndustry.text = stock.industry
+            binding.tvDetailIndustry.text = " · ${stock.industry}"
             binding.tvDetailIndustry.visibility = View.VISIBLE
         }
 
         if (stock.exchange.isNotEmpty()) {
-            binding.tvDetailExchange.text = "• ${stock.exchange}"
+            binding.tvDetailExchange.text = " · ${stock.exchange}"
             binding.tvDetailExchange.visibility = View.VISIBLE
         }
 

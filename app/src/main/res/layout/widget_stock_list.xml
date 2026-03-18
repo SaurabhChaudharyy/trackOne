@@ -22,10 +22,10 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:text="TrackOne"
-            android:textColor="#FAFAFA"
+            android:textColor="#09090B"
             android:textSize="12sp"
             android:textStyle="bold"
-            android:fontFamily="@font/geist_mono_bold"/>
+            android:fontFamily="@font/inter_bold"/>
 
         <ImageView
             android:id="@+id/widget_refresh_button"
@@ -39,7 +39,7 @@
     <ImageView
         android:layout_width="match_parent"
         android:layout_height="1dp"
-        android:background="#27272A"/>
+        android:background="#E4E4E7"/>
 
     <ListView
         android:id="@+id/widget_list_view"
@@ -66,17 +66,17 @@
             android:text="No stocks added"
             android:textColor="#71717A"
             android:textSize="12sp"
-            android:fontFamily="@font/geist_mono_regular"/>
+            android:fontFamily="@font/inter"/>
 
         <TextView
             android:id="@+id/widget_empty_subtitle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Tap to add stocks"
-            android:textColor="#52525B"
+            android:textColor="#A1A1AA"
             android:textSize="11sp"
             android:layout_marginTop="4dp"
-            android:fontFamily="@font/geist_mono_regular"/>
+            android:fontFamily="@font/inter"/>
     </LinearLayout>
 
 </LinearLayout>

@@ -5,13 +5,13 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="@color/background_dark">
+    android:background="@color/background">
 
     <com.google.android.material.appbar.MaterialToolbar
         android:id="@+id/config_toolbar"
         android:layout_width="match_parent"
         android:layout_height="?attr/actionBarSize"
-        android:background="@color/background_dark"
+        android:background="@color/background"
         app:navigationIconTint="@color/text_primary"/>
 
     <View
@@ -73,7 +73,7 @@
         android:gravity="center_vertical"
         android:paddingHorizontal="16dp"
         android:paddingVertical="12dp"
-        android:background="@color/background_dark">
+        android:background="@color/background">
 
         <View
             android:layout_width="0dp"

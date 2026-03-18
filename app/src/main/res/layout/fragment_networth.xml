@@ -5,7 +5,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/background_dark"
+    android:background="@color/background"
     android:fillViewport="true">
 
     <LinearLayout
@@ -76,7 +76,7 @@
                         android:text="Indian Stocks"
                         android:textColor="@color/text_secondary"
                         android:textSize="13sp"
-                        android:fontFamily="@font/geist_mono_semi_bold"/>
+                        android:fontFamily="@font/inter_semi_bold"/>
 
                     <TextView
                         android:id="@+id/tv_count_stock_in"
@@ -88,7 +88,7 @@
                         android:background="@drawable/bg_count_pill"
                         android:textColor="@color/text_primary"
                         android:textSize="10sp"
-                        android:fontFamily="@font/geist_mono_semi_bold"
+                        android:fontFamily="@font/inter_semi_bold"
                         android:visibility="gone"
                         tools:text="3"
                         tools:visibility="visible"/>
@@ -156,7 +156,7 @@
                         android:text="US Stocks"
                         android:textColor="@color/text_secondary"
                         android:textSize="13sp"
-                        android:fontFamily="@font/geist_mono_semi_bold"/>
+                        android:fontFamily="@font/inter_semi_bold"/>
 
                     <TextView
                         android:id="@+id/tv_count_stock_us"
@@ -168,7 +168,7 @@
                         android:background="@drawable/bg_count_pill"
                         android:textColor="@color/text_primary"
                         android:textSize="10sp"
-                        android:fontFamily="@font/geist_mono_semi_bold"
+                        android:fontFamily="@font/inter_semi_bold"
                         android:visibility="gone"
                         tools:text="3"
                         tools:visibility="visible"/>
@@ -235,7 +235,7 @@
                         android:text="Mutual Funds"
                         android:textColor="@color/text_secondary"
                         android:textSize="13sp"
-                        android:fontFamily="@font/geist_mono_semi_bold"/>
+                        android:fontFamily="@font/inter_semi_bold"/>
 
                     <TextView
                         android:id="@+id/tv_count_mf"
@@ -247,7 +247,7 @@
                         android:background="@drawable/bg_count_pill"
                         android:textColor="@color/text_primary"
                         android:textSize="10sp"
-                        android:fontFamily="@font/geist_mono_semi_bold"
+                        android:fontFamily="@font/inter_semi_bold"
                         android:visibility="gone"
                         tools:text="3"
                         tools:visibility="visible"/>
@@ -314,7 +314,7 @@
                         android:text="Gold"
                         android:textColor="@color/text_secondary"
                         android:textSize="13sp"
-                        android:fontFamily="@font/geist_mono_semi_bold"/>
+                        android:fontFamily="@font/inter_semi_bold"/>
 
                     <TextView
                         android:id="@+id/tv_count_gold"
@@ -326,7 +326,7 @@
                         android:background="@drawable/bg_count_pill"
                         android:textColor="@color/text_primary"
                         android:textSize="10sp"
-                        android:fontFamily="@font/geist_mono_semi_bold"
+                        android:fontFamily="@font/inter_semi_bold"
                         android:visibility="gone"
                         tools:text="3"
                         tools:visibility="visible"/>
@@ -393,7 +393,7 @@
                         android:text="Silver"
                         android:textColor="@color/text_secondary"
                         android:textSize="13sp"
-                        android:fontFamily="@font/geist_mono_semi_bold"/>
+                        android:fontFamily="@font/inter_semi_bold"/>
 
                     <TextView
                         android:id="@+id/tv_count_silver"
@@ -405,7 +405,7 @@
                         android:background="@drawable/bg_count_pill"
                         android:textColor="@color/text_primary"
                         android:textSize="10sp"
-                        android:fontFamily="@font/geist_mono_semi_bold"
+                        android:fontFamily="@font/inter_semi_bold"
                         android:visibility="gone"
                         tools:text="3"
                         tools:visibility="visible"/>
@@ -472,7 +472,7 @@
                         android:text="Crypto"
                         android:textColor="@color/text_secondary"
                         android:textSize="13sp"
-                        android:fontFamily="@font/geist_mono_semi_bold"/>
+                        android:fontFamily="@font/inter_semi_bold"/>
 
                     <TextView
                         android:id="@+id/tv_count_crypto"
@@ -484,7 +484,7 @@
                         android:background="@drawable/bg_count_pill"
                         android:textColor="@color/text_primary"
                         android:textSize="10sp"
-                        android:fontFamily="@font/geist_mono_semi_bold"
+                        android:fontFamily="@font/inter_semi_bold"
                         android:visibility="gone"
                         tools:text="3"
                         tools:visibility="visible"/>
@@ -551,7 +551,7 @@
                         android:text="Cash on Hand"
                         android:textColor="@color/text_secondary"
                         android:textSize="13sp"
-                        android:fontFamily="@font/geist_mono_semi_bold"/>
+                        android:fontFamily="@font/inter_semi_bold"/>
 
                     <TextView
                         android:id="@+id/tv_count_cash"
@@ -563,7 +563,7 @@
                         android:background="@drawable/bg_count_pill"
                         android:textColor="@color/text_primary"
                         android:textSize="10sp"
-                        android:fontFamily="@font/geist_mono_semi_bold"
+                        android:fontFamily="@font/inter_semi_bold"
                         android:visibility="gone"
                         tools:text="3"
                         tools:visibility="visible"/>
@@ -630,7 +630,7 @@
                         android:text="Bank Balance"
                         android:textColor="@color/text_secondary"
                         android:textSize="13sp"
-                        android:fontFamily="@font/geist_mono_semi_bold"/>
+                        android:fontFamily="@font/inter_semi_bold"/>
 
                     <TextView
                         android:id="@+id/tv_count_bank"
@@ -642,7 +642,7 @@
                         android:background="@drawable/bg_count_pill"
                         android:textColor="@color/text_primary"
                         android:textSize="10sp"
-                        android:fontFamily="@font/geist_mono_semi_bold"
+                        android:fontFamily="@font/inter_semi_bold"
                         android:visibility="gone"
                         tools:text="3"
                         tools:visibility="visible"/>

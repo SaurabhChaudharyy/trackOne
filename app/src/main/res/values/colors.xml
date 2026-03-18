@@ -1,28 +1,30 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <color name="background_dark">#09090b</color>   
-    <color name="surface_color">#09090b</color>     
-    <color name="surface_variant">#18181b</color>   
-    <color name="error_background">#1c0a0a</color>
+    <color name="background">#FFFFFF</color>
+    <color name="background_dark">#FFFFFF</color>
+    <color name="surface_color">#FFFFFF</color>
+    <color name="surface_variant">#F4F4F5</color>
+    <color name="error_background">#FEF2F2</color>
 
-    <color name="divider_color">#27272a</color>     
-    <color name="border_color">#27272a</color>
+    <color name="divider_color">#E4E4E7</color>
+    <color name="border_color">#E4E4E7</color>
 
-    <color name="text_primary">#fafafa</color>      
-    <color name="text_secondary">#a1a1aa</color>    
-    <color name="text_tertiary">#52525b</color>     
+    <color name="text_primary">#09090B</color>
+    <color name="text_secondary">#71717A</color>
+    <color name="text_tertiary">#A1A1AA</color>
 
-    <color name="gain_green">#22c55e</color>        
-    <color name="gain_green_bg">#052e16</color>     
-    <color name="loss_red">#ef4444</color>          
-    <color name="loss_red_bg">#1c0303</color>       
+    <color name="gain_green">#16A34A</color>
+    <color name="gain_green_bg">#F0FDF4</color>
+    <color name="loss_red">#DC2626</color>
+    <color name="loss_red_bg">#FEF2F2</color>
 
-    <color name="accent_blue">#fafafa</color>
-    <color name="primary">#fafafa</color>
-    <color name="primary_variant">#27272a</color>
-    <color name="on_primary">#09090b</color>
+    <color name="accent_blue">#D4E510</color>
+    <color name="neon_highlight">#D4E510</color>
+    <color name="primary">#09090B</color>
+    <color name="primary_variant">#F4F4F5</color>
+    <color name="on_primary">#FFFFFF</color>
 
-    <color name="widget_background">#E609090b</color>
-    <color name="widget_surface">#E618181b</color>
+    <color name="widget_background">#E6FFFFFF</color>
+    <color name="widget_surface">#E6F4F4F5</color>
 </resources>

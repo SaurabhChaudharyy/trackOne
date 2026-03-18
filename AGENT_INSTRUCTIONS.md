@@ -64,8 +64,11 @@ Welcome, future AI Agent! If you are working on this project, please read this d
 
 ## Design System & Aesthetics
 
-*   **Color Theme**: Dark mode focus. High contrast overall with specific pure blacks/whites in icons/splashes.
-*   **Typography**: *Geist Mono* is the global primary font for everything (headings, body, numbers, monospaced tech feel).
+*   **Color Theme**: Light theme focus (inspired by Minna Bank). Monochrome black & white core, utilizing pure white `#FFFFFF` backgrounds and black `#09090B` text.
+*   **Accent Color**: Vibrant neon yellow (`#D4E510`) is exclusively used as an accent for active states, positive changes, and count badges.
+*   **Typography**: 
+    *   **Inter**: Global primary font for all UI text elements (headers, labels, body text, buttons). Gives a clean, modern aesthetic.
+    *   **Geist Mono**: Reserved *strictly* for numeric data display (prices, percentages, amounts, dates) to retain a precise, financial tech feel.
 *   **Iconography**:
     *   The app icon uses a **High-Contrast Neumorphism** style. It depicts a three-bar chart rising up, where the last bar resembles the number "1" (for trackOne).
     *   The current icon is implemented via distinct pixel-density `.png` files inside `mipmap-[density]` folders, with an adaptive background set to `#F1F1F1`.
@@ -420,3 +423,29 @@ Right column: `tv_asset_value` (current value) + `tv_asset_invested` (invested a
 | Total Net Worth P&L card | 🔲 Planned |
 | ~~Edit asset dialog~~ | ✅ **Implemented** (see Section 3 above) |
 
+---
+
+## Session Changes Log — UI Redesign (Light Theme Migration)
+
+The app transitioned from a dark theme to a modern, Minna Bank-inspired light theme. Future development must strictly adhere to these aesthetic guidelines:
+
+### 1. Color Palette & Theme
+- The overall theme is `Theme.Material3.Light.NoActionBar`.
+- Backgrounds are white (`#FFFFFF`), cards/surfaces are `surface_variant` (`#F4F4F5`), and strokes/borders are `border_color` (`#E4E4E7`).
+- Primary text is almost black (`#09090B`), secondary text is dark gray (`#52525B`), tertiary text is light gray (`#A1A1AA`).
+- Active UI indicators and positive financial changes utilize the signature neon yellow accent (`#D4E510`). Negative changes remain red (`#EF4444`).
+
+### 2. Typography Dual-Font System
+- All non-numeric UI copy (Symbols, Names, Navigation, Settings labels) uses the **Inter** font family.
+- All numbers and financial metrics (Prices, P&L, Quantity, Chart labels) continue to use **Geist Mono**.
+
+### 3. Widget Aesthetics
+- The Widget follows the light theme: a white semi-transparent background with a subtle gray border.
+- Headers and text use Inter, matching the main app.
+- Loading shimmers use `shimmer_bg` (light gray `#E4E4E7`).
+
+### 4. Detail Graph Page
+- Redesigned for a cleaner "Coinbase" style minimal aesthetic.
+- The chart uses a thin, pure black line with no gradient fill underneath.
+- Selected timeframe options and highlight crosshairs appear in neon yellow.
+- Positive price changes have an explicit `↗` arrow and are tinted neon yellow. Negative changes have `↘` and are tinted red. High/Low statistics are accompanied by corresponding neon/red accent color bars.

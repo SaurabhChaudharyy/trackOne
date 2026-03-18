@@ -5,26 +5,21 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/background_dark"
+    android:background="@color/background"
     tools:context=".ui.detail.StockDetailActivity">
 
     <com.google.android.material.appbar.AppBarLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="@color/background_dark"
+        android:background="@color/background"
         app:elevation="0dp">
 
         <com.google.android.material.appbar.MaterialToolbar
             android:id="@+id/toolbar"
             android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"
-            android:background="@color/background_dark"
+            android:background="@color/background"
             app:navigationIconTint="@color/text_primary"/>
-
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:background="@color/divider_color"/>
     </com.google.android.material.appbar.AppBarLayout>
 
     <androidx.core.widget.NestedScrollView
@@ -37,34 +32,24 @@
             android:layout_height="wrap_content"
             android:orientation="vertical">
 
+            <!-- HEADER: Symbol + Company Name -->
             <LinearLayout
                 android:id="@+id/widget_header"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
                 android:paddingHorizontal="20dp"
-                android:paddingTop="20dp"
-                android:paddingBottom="16dp">
-
-                <TextView
-                    android:id="@+id/tv_detail_symbol"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:textColor="@color/text_tertiary"
-                    android:textSize="12sp"
-                    android:letterSpacing="0.04"
-                    tools:text="AAPL"/>
+                android:paddingTop="8dp"
+                android:paddingBottom="4dp">
 
                 <TextView
                     android:id="@+id/tv_detail_company_name"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp"
                     android:textColor="@color/text_primary"
-                    android:textSize="20sp"
-                    android:fontFamily="@font/geist_mono_semi_bold"
+                    android:textSize="18sp"
+                    android:fontFamily="@font/inter_bold"
                     android:textStyle="bold"
-                    android:letterSpacing="-0.02"
                     tools:text="Apple Inc."/>
 
                 <LinearLayout
@@ -72,14 +57,24 @@
                     android:layout_height="wrap_content"
                     android:orientation="horizontal"
                     android:gravity="center_vertical"
-                    android:layout_marginTop="4dp">
+                    android:layout_marginTop="2dp">
+
+                    <TextView
+                        android:id="@+id/tv_detail_symbol"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textColor="@color/text_tertiary"
+                        android:textSize="13sp"
+                        android:fontFamily="@font/inter"
+                        tools:text="AAPL"/>
 
                     <TextView
                         android:id="@+id/tv_detail_industry"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:textColor="@color/text_tertiary"
-                        android:textSize="12sp"
+                        android:textSize="13sp"
+                        android:fontFamily="@font/inter"
                         android:visibility="gone"/>
 
                     <TextView
@@ -87,84 +82,99 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:textColor="@color/text_tertiary"
-                        android:textSize="12sp"
+                        android:textSize="13sp"
+                        android:fontFamily="@font/inter"
                         android:visibility="gone"/>
                 </LinearLayout>
+            </LinearLayout>
+
+            <!-- PRICE SECTION -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingHorizontal="20dp"
+                android:paddingTop="16dp"
+                android:paddingBottom="4dp">
 
                 <TextView
                     android:id="@+id/tv_detail_price"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="20dp"
                     android:textColor="@color/text_primary"
-                    android:textSize="36sp"
+                    android:textSize="40sp"
                     android:fontFamily="@font/geist_mono_bold"
                     android:textStyle="bold"
-                    android:letterSpacing="-0.02"
+                    android:letterSpacing="-0.03"
+                    android:includeFontPadding="false"
                     tools:text="$187.62"/>
 
-                <TextView
-                    android:id="@+id/tv_detail_change"
+                <LinearLayout
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="4dp"
-                    android:textColor="@color/loss_red"
-                    android:textSize="14sp"
-                    tools:text="-7.94  -4.06%"/>
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginTop="6dp">
 
-                <TextView
-                    android:id="@+id/tv_last_updated_detail"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="6dp"
-                    android:textColor="@color/text_tertiary"
-                    android:textSize="11sp"
-                    tools:text="Updated just now"/>
-            </LinearLayout>
-
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:background="@color/divider_color"/>
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical">
-
-                <FrameLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="200dp">
-
-                    <com.github.mikephil.charting.charts.LineChart
-                        android:id="@+id/line_chart"
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent"
-                        android:paddingHorizontal="4dp"/>
-
-                    <ProgressBar
-                        android:id="@+id/chart_progress"
+                    <TextView
+                        android:id="@+id/tv_detail_change"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_gravity="center"
-                        android:visibility="gone"/>
-                </FrameLayout>
+                        android:textColor="@color/neon_highlight"
+                        android:textSize="14sp"
+                        android:fontFamily="@font/geist_mono"
+                        tools:text="↗ $13.14 · 6.00%"/>
 
-                <com.google.android.material.chip.ChipGroup
-                    android:id="@+id/timeframe_chip_group"
+                    <TextView
+                        android:id="@+id/tv_last_updated_detail"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="12dp"
+                        android:textColor="@color/text_tertiary"
+                        android:textSize="11sp"
+                        android:fontFamily="@font/inter"
+                        tools:text="Updated just now"/>
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- CHART SECTION -->
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="240dp"
+                android:layout_marginTop="16dp">
+
+                <com.github.mikephil.charting.charts.LineChart
+                    android:id="@+id/line_chart"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:paddingHorizontal="4dp"/>
+
+                <ProgressBar
+                    android:id="@+id/chart_progress"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:paddingHorizontal="16dp"
-                    android:paddingVertical="10dp"
-                    app:singleSelection="true"
-                    app:selectionRequired="true"/>
-            </LinearLayout>
+                    android:layout_gravity="center"
+                    android:visibility="gone"/>
+            </FrameLayout>
+
+            <!-- TIMEFRAME CHIPS -->
+            <com.google.android.material.chip.ChipGroup
+                android:id="@+id/timeframe_chip_group"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:paddingHorizontal="20dp"
+                android:paddingTop="8dp"
+                android:paddingBottom="16dp"
+                app:singleSelection="true"
+                app:selectionRequired="true"
+                app:chipSpacingHorizontal="8dp"/>
 
             <View
                 android:layout_width="match_parent"
                 android:layout_height="1dp"
                 android:background="@color/divider_color"/>
 
+            <!-- STATISTICS -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -177,64 +187,89 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Statistics"
-                    android:textColor="@color/text_secondary"
-                    android:textSize="11sp"
-                    android:letterSpacing="0.08"
-                    android:layout_marginBottom="16dp"/>
+                    android:textColor="@color/text_primary"
+                    android:textSize="15sp"
+                    android:fontFamily="@font/inter_bold"
+                    android:textStyle="bold"
+                    android:layout_marginBottom="20dp"/>
 
+                <!-- Row 1: Open + High -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="horizontal"
-                    android:layout_marginBottom="20dp">
+                    android:layout_marginBottom="16dp">
 
                     <LinearLayout
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:orientation="vertical">
-                        <TextView
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical">
+                        <View
+                            android:layout_width="3dp"
+                            android:layout_height="24dp"
+                            android:layout_marginEnd="10dp"
+                            android:background="@color/text_tertiary"/>
+                        <LinearLayout
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Open"
-                            android:textColor="@color/text_tertiary"
-                            android:textSize="11sp"
-                            android:letterSpacing="0.04"/>
-                        <TextView
-                            android:id="@+id/tv_stat_open"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="4dp"
-                            android:textColor="@color/text_primary"
-                            android:textSize="14sp"
-                            android:fontFamily="@font/geist_mono_regular"
-                            tools:text="$195.50"/>
+                            android:orientation="vertical">
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Open"
+                                android:textColor="@color/text_tertiary"
+                                android:textSize="11sp"
+                                android:fontFamily="@font/inter"/>
+                            <TextView
+                                android:id="@+id/tv_stat_open"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="2dp"
+                                android:textColor="@color/text_primary"
+                                android:textSize="14sp"
+                                android:fontFamily="@font/geist_mono_regular"
+                                tools:text="$195.50"/>
+                        </LinearLayout>
                     </LinearLayout>
 
                     <LinearLayout
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:orientation="vertical">
-                        <TextView
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical">
+                        <View
+                            android:layout_width="3dp"
+                            android:layout_height="24dp"
+                            android:layout_marginEnd="10dp"
+                            android:background="@color/neon_highlight"/>
+                        <LinearLayout
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="High"
-                            android:textColor="@color/text_tertiary"
-                            android:textSize="11sp"
-                            android:letterSpacing="0.04"/>
-                        <TextView
-                            android:id="@+id/tv_stat_high"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="4dp"
-                            android:textColor="@color/gain_green"
-                            android:textSize="14sp"
-                            android:fontFamily="@font/geist_mono_regular"
-                            tools:text="$196.30"/>
+                            android:orientation="vertical">
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="High"
+                                android:textColor="@color/text_tertiary"
+                                android:textSize="11sp"
+                                android:fontFamily="@font/inter"/>
+                            <TextView
+                                android:id="@+id/tv_stat_high"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="2dp"
+                                android:textColor="@color/text_primary"
+                                android:textSize="14sp"
+                                android:fontFamily="@font/geist_mono_regular"
+                                tools:text="$196.30"/>
+                        </LinearLayout>
                     </LinearLayout>
                 </LinearLayout>
 
+                <!-- Row 2: Low + Prev Close -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -244,46 +279,68 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:orientation="vertical">
-                        <TextView
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical">
+                        <View
+                            android:layout_width="3dp"
+                            android:layout_height="24dp"
+                            android:layout_marginEnd="10dp"
+                            android:background="@color/loss_red"/>
+                        <LinearLayout
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Low"
-                            android:textColor="@color/text_tertiary"
-                            android:textSize="11sp"
-                            android:letterSpacing="0.04"/>
-                        <TextView
-                            android:id="@+id/tv_stat_low"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="4dp"
-                            android:textColor="@color/loss_red"
-                            android:textSize="14sp"
-                            android:fontFamily="@font/geist_mono_regular"
-                            tools:text="$185.20"/>
+                            android:orientation="vertical">
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Low"
+                                android:textColor="@color/text_tertiary"
+                                android:textSize="11sp"
+                                android:fontFamily="@font/inter"/>
+                            <TextView
+                                android:id="@+id/tv_stat_low"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="2dp"
+                                android:textColor="@color/text_primary"
+                                android:textSize="14sp"
+                                android:fontFamily="@font/geist_mono_regular"
+                                tools:text="$185.20"/>
+                        </LinearLayout>
                     </LinearLayout>
 
                     <LinearLayout
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:orientation="vertical">
-                        <TextView
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical">
+                        <View
+                            android:layout_width="3dp"
+                            android:layout_height="24dp"
+                            android:layout_marginEnd="10dp"
+                            android:background="@color/text_tertiary"/>
+                        <LinearLayout
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Prev. Close"
-                            android:textColor="@color/text_tertiary"
-                            android:textSize="11sp"
-                            android:letterSpacing="0.04"/>
-                        <TextView
-                            android:id="@+id/tv_stat_prev_close"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="4dp"
-                            android:textColor="@color/text_primary"
-                            android:textSize="14sp"
-                            android:fontFamily="@font/geist_mono_regular"
-                            tools:text="$195.56"/>
+                            android:orientation="vertical">
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Prev. Close"
+                                android:textColor="@color/text_tertiary"
+                                android:textSize="11sp"
+                                android:fontFamily="@font/inter"/>
+                            <TextView
+                                android:id="@+id/tv_stat_prev_close"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="2dp"
+                                android:textColor="@color/text_primary"
+                                android:textSize="14sp"
+                                android:fontFamily="@font/geist_mono_regular"
+                                tools:text="$195.56"/>
+                        </LinearLayout>
                     </LinearLayout>
                 </LinearLayout>
             </LinearLayout>
@@ -299,7 +356,7 @@
         android:id="@+id/loading_overlay"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="#80000000"
+        android:background="#80FFFFFF"
         android:visibility="gone">
 
         <ProgressBar

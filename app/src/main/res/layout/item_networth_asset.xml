@@ -31,7 +31,7 @@
             android:layout_height="wrap_content"
             android:textColor="@color/text_primary"
             android:textSize="13sp"
-            android:fontFamily="@font/geist_mono_semi_bold"
+            android:fontFamily="@font/inter_semi_bold"
             android:textStyle="bold"
             tools:text="RELIANCE.NS"/>
 
@@ -54,7 +54,7 @@
             android:layout_marginTop="2dp"
             android:textColor="@color/text_secondary"
             android:textSize="11sp"
-            android:fontFamily="@font/geist_mono"
+            android:fontFamily="@font/inter"
             android:maxLines="1"
             android:ellipsize="end"
             android:visibility="gone"

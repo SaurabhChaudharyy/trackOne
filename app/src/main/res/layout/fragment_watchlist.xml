@@ -33,7 +33,7 @@
                 android:text="No stocks yet"
                 android:textColor="@color/text_primary"
                 android:textSize="16sp"
-                android:fontFamily="@font/geist_mono_semi_bold"
+                android:fontFamily="@font/inter_semi_bold"
                 android:textStyle="bold"/>
 
             <TextView
@@ -84,7 +84,7 @@
             android:layout_height="wrap_content"
             android:layout_gravity="bottom"
             android:orientation="horizontal"
-            android:background="@color/background_dark"
+            android:background="@color/background"
             android:paddingHorizontal="16dp"
             android:paddingVertical="12dp">
 
@@ -115,7 +115,7 @@
                     android:text="Closed"
                     android:textColor="@color/text_tertiary"
                     android:textSize="13sp"
-                    android:fontFamily="@font/geist_mono_semi_bold"
+                    android:fontFamily="@font/inter_semi_bold"
                     android:textStyle="bold"/>
             </LinearLayout>
 
@@ -146,7 +146,7 @@
                     android:text="Closed"
                     android:textColor="@color/text_tertiary"
                     android:textSize="13sp"
-                    android:fontFamily="@font/geist_mono_semi_bold"
+                    android:fontFamily="@font/inter_semi_bold"
                     android:textStyle="bold"/>
             </LinearLayout>
         </LinearLayout>
