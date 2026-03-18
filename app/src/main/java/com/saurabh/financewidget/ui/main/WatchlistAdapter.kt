@@ -61,6 +61,8 @@ class WatchlistAdapter(
                 FormatUtils.formatIndexPrice(stock.currentPrice, stock.currency)
             else
                 FormatUtils.formatPrice(stock.currentPrice, stock.currency)
+            binding.tvPrice.isSelected = true
+            binding.tvChange.isSelected = true
             binding.tvChange.text = FormatUtils.formatChange(stock.change)
             binding.tvChangePercent.text = FormatUtils.formatChangePercent(stock.changePercent)
 

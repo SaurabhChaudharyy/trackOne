@@ -6,6 +6,7 @@
         android:id="@+id/action_add_stock"
         android:title="@string/action_add_stock"
         android:icon="@drawable/ic_add"
+        app:iconTint="@color/neon_highlight"
         app:showAsAction="always"
         android:contentDescription="Add stock to watchlist"/>
 
@@ -13,6 +14,7 @@
         android:id="@+id/action_refresh"
         android:title="@string/action_refresh"
         android:icon="@drawable/ic_refresh"
+        app:iconTint="@color/neon_highlight"
         app:showAsAction="always"
         android:contentDescription="Refresh stock data"/>
 

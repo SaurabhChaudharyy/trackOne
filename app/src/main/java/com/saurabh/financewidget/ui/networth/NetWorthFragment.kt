@@ -556,7 +556,6 @@ class NetWorthFragment : Fragment() {
             else                             -> "Avg Buy Price (₹/share) — optional"
         }
         d.tilBuyPrice.hint = buyHint
-        d.tilBuyPrice.isVisible = true
 
         val dialog = AlertDialog.Builder(requireContext(), R.style.ThemeOverlay_App_MaterialAlertDialog)
             .setTitle("Edit ${asset.name}")
