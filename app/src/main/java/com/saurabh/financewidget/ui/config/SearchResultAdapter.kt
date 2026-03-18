@@ -51,7 +51,7 @@ class SearchResultAdapter(
 
         fun bind(result: YahooSearchResult) {
             val ctx = binding.root.context
-            binding.tvSearchSymbol.text = result.symbol
+            binding.tvSearchSymbol.text = result.symbol.removePrefix("^")
             binding.tvSearchName.text = result.displayName
             binding.tvSearchType.text = buildString {
                 if (result.exchange.isNotEmpty()) append(result.exchange)

@@ -64,6 +64,17 @@ class StockDetailActivity : AppCompatActivity() {
         viewModel.loadStock(symbol)
     }
 
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        val symbol = intent.getStringExtra(EXTRA_SYMBOL) ?: return
+        
+        (binding.timeframeChipGroup.getChildAt(0) as? Chip)?.isChecked = true
+        currentResolution = "1D"
+        
+        viewModel.loadStock(symbol)
+    }
+
     private fun setupToolbar() {
         setSupportActionBar(binding.toolbar)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
@@ -233,7 +244,7 @@ class StockDetailActivity : AppCompatActivity() {
 
     private fun displayStockData(stock: StockEntity) {
         val isIndex = stock.symbol.startsWith("^")
-        binding.tvDetailSymbol.text = stock.symbol
+        binding.tvDetailSymbol.text = stock.symbol.removePrefix("^")
         binding.tvDetailCompanyName.text = stock.companyName
         binding.tvDetailPrice.text = if (isIndex)
             FormatUtils.formatIndexPrice(stock.currentPrice, stock.currency)
@@ -276,6 +287,6 @@ class StockDetailActivity : AppCompatActivity() {
         }
 
         binding.tvLastUpdatedDetail.text = "Updated ${FormatUtils.formatLastUpdated(stock.lastUpdated)}"
-        supportActionBar?.title = stock.symbol
+        supportActionBar?.title = stock.symbol.removePrefix("^")
     }
 }

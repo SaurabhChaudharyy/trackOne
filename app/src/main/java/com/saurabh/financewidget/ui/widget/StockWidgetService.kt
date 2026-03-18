@@ -60,7 +60,7 @@ class StockRemoteViewsFactory(
         val stock = stocks[position]
         val views = RemoteViews(context.packageName, R.layout.widget_stock_item)
 
-        views.setTextViewText(R.id.widget_item_symbol, stock.symbol)
+        views.setTextViewText(R.id.widget_item_symbol, stock.symbol.removePrefix("^"))
         views.setTextViewText(R.id.widget_item_name, stock.companyName.take(18))
         val priceText = if (stock.symbol.startsWith("^")) {
             FormatUtils.formatIndexPrice(stock.currentPrice, stock.currency)
