@@ -55,12 +55,14 @@ class WatchlistAdapter(
             val ctx = binding.root.context
             val isIndex = stock.symbol.startsWith("^")
 
-            binding.tvSymbol.text = stock.symbol
+            binding.tvSymbol.text = stock.symbol.removePrefix("^")
             binding.tvCompanyName.text = stock.companyName
             binding.tvPrice.text = if (isIndex)
                 FormatUtils.formatIndexPrice(stock.currentPrice, stock.currency)
             else
                 FormatUtils.formatPrice(stock.currentPrice, stock.currency)
+            binding.tvSymbol.isSelected = true
+            binding.tvCompanyName.isSelected = true
             binding.tvPrice.isSelected = true
             binding.tvChange.isSelected = true
             binding.tvChange.text = FormatUtils.formatChange(stock.change)

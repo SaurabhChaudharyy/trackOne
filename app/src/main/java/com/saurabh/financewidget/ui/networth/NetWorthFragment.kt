@@ -185,6 +185,78 @@ class NetWorthFragment : Fragment() {
             binding.tvTotalCrypto.text  = inrFormat.format(summary[AssetType.CRYPTO]   ?: 0.0)
             binding.tvTotalCash.text    = inrFormat.format(summary[AssetType.CASH]     ?: 0.0)
             binding.tvTotalBank.text    = inrFormat.format(summary[AssetType.BANK]     ?: 0.0)
+
+            updateBreakdownUI(summary)
+        }
+    }
+
+    private fun updateBreakdownUI(summary: Map<AssetType, Double>) {
+        val total = summary.values.sum()
+        if (total <= 0) {
+            binding.llBreakdownContainer.isVisible = false
+            return
+        }
+
+        binding.llBreakdownContainer.isVisible = true
+        binding.llSegmentedBar.removeAllViews()
+        binding.llBreakdownList.removeAllViews()
+
+        val sorted = summary.entries.filter { it.value > 0 }.sortedByDescending { it.value }
+
+        sorted.forEachIndexed { index, entry ->
+            val type = entry.key
+            val value = entry.value
+            val color = getCategoryColor(type)
+
+            // Add segment to bar
+            val segment = View(requireContext()).apply {
+                layoutParams = android.widget.LinearLayout.LayoutParams(
+                    0, android.widget.LinearLayout.LayoutParams.MATCH_PARENT, value.toFloat()
+                ).apply {
+                    if (index < sorted.size - 1) {
+                        marginEnd = (1.5f * resources.displayMetrics.density).toInt()
+                    }
+                }
+                setBackgroundColor(color)
+            }
+            binding.llSegmentedBar.addView(segment)
+
+            // Add item to list
+            val itemBinding = com.saurabh.financewidget.databinding.ItemBreakdownCategoryBinding.inflate(
+                layoutInflater, binding.llBreakdownList, false
+            )
+            itemBinding.vColorIndicator.setCardBackgroundColor(color)
+            itemBinding.tvCategoryName.text = getCategoryName(type)
+            itemBinding.tvCategoryAmount.text = inrFormat.format(value)
+            
+            binding.llBreakdownList.addView(itemBinding.root)
+        }
+    }
+
+    private fun getCategoryColor(type: AssetType): Int {
+        val colorRes = when (type) {
+            AssetType.STOCK_IN -> R.color.cat_stock_in
+            AssetType.STOCK_US -> R.color.cat_stock_us
+            AssetType.MF       -> R.color.cat_mf
+            AssetType.GOLD     -> R.color.cat_gold
+            AssetType.SILVER   -> R.color.cat_silver
+            AssetType.CRYPTO   -> R.color.cat_crypto
+            AssetType.CASH     -> R.color.cat_cash
+            AssetType.BANK     -> R.color.cat_bank
+        }
+        return requireContext().getColor(colorRes)
+    }
+
+    private fun getCategoryName(type: AssetType): String {
+        return when (type) {
+            AssetType.STOCK_IN -> "Indian Stocks"
+            AssetType.STOCK_US -> "US Stocks"
+            AssetType.MF       -> "Mutual Funds"
+            AssetType.GOLD     -> "Gold"
+            AssetType.SILVER   -> "Silver"
+            AssetType.CRYPTO   -> "Crypto"
+            AssetType.CASH     -> "Cash on Hand"
+            AssetType.BANK     -> "Bank Balance"
         }
     }
 

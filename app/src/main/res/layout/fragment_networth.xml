@@ -19,33 +19,85 @@
             android:layout_height="wrap_content"
             android:orientation="vertical"
             android:paddingHorizontal="16dp"
-            android:paddingTop="20dp"
-            android:paddingBottom="20dp">
+            android:paddingTop="32dp"
+            android:paddingBottom="24dp">
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Total Net Worth"
-                android:textColor="@color/text_tertiary"
-                android:textSize="11sp"
-                android:letterSpacing="0.06"/>
+                android:textColor="@color/text_secondary"
+                android:textSize="14sp"
+                android:letterSpacing="0.04"/>
 
             <TextView
                 android:id="@+id/tv_total_networth"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
+                android:layout_marginTop="6dp"
                 android:text="₹0"
                 android:textColor="@color/text_primary"
-                android:textSize="30sp"
-                android:fontFamily="@font/geist_mono_bold"
+                android:textSize="40sp"
+                android:fontFamily="@font/inter_semi_bold"
                 android:textStyle="bold"
+                android:letterSpacing="-0.02"
                 tools:text="₹12,50,000"/>
         </LinearLayout>
 
         <View
             android:layout_width="match_parent"
             android:layout_height="1dp"
+            android:background="@color/divider_color"/>
+
+        <!-- Net Worth Breakdown Module (Minimalist) -->
+        <LinearLayout
+            android:id="@+id/ll_breakdown_container"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginHorizontal="16dp"
+            android:layout_marginTop="24dp"
+            android:layout_marginBottom="16dp"
+            android:visibility="gone"
+            tools:visibility="visible">
+
+            <!-- Title row visually simplified -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Asset Distribution"
+                android:textColor="@color/text_secondary"
+                android:textSize="13sp"
+                android:fontFamily="@font/inter_semi_bold"/>
+
+            <!-- Slim Graph -->
+            <androidx.cardview.widget.CardView
+                android:layout_width="match_parent"
+                android:layout_height="8dp"
+                android:layout_marginTop="12dp"
+                app:cardCornerRadius="4dp"
+                app:cardElevation="0dp"
+                app:cardBackgroundColor="@color/surface_variant">
+
+                <LinearLayout
+                    android:id="@+id/ll_segmented_bar"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:orientation="horizontal"/>
+            </androidx.cardview.widget.CardView>
+
+            <LinearLayout
+                android:id="@+id/ll_breakdown_list"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_marginTop="12dp"/>
+        </LinearLayout>
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginTop="8dp"
             android:background="@color/divider_color"/>
 
         <LinearLayout

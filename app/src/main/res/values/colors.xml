@@ -27,4 +27,13 @@
 
     <color name="widget_background">#E6FFFFFF</color>
     <color name="widget_surface">#E6F4F4F5</color>
+
+    <color name="cat_stock_in">#3B82F6</color>
+    <color name="cat_stock_us">#8B5CF6</color>
+    <color name="cat_mf">#F97316</color>
+    <color name="cat_gold">#EAB308</color>
+    <color name="cat_silver">#9CA3AF</color>
+    <color name="cat_crypto">#D4E510</color>
+    <color name="cat_cash">#10B981</color>
+    <color name="cat_bank">#06B6D4</color>
 </resources>

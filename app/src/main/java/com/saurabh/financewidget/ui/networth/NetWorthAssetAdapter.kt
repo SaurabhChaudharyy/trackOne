@@ -24,7 +24,7 @@ class NetWorthAssetAdapter(
         RecyclerView.ViewHolder(binding.root) {
 
         fun bind(asset: NetWorthAssetEntity) {
-            binding.tvAssetName.text = asset.name
+            binding.tvAssetName.text = asset.name.removePrefix("^")
             binding.tvAssetValue.text = inrFormat.format(asset.currentValue)
 
             val subtitle = buildSubtitle(asset)

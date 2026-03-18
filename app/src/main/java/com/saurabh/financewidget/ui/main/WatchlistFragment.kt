@@ -158,12 +158,12 @@ class WatchlistFragment : Fragment() {
 
         binding.tvUsMarketStatus.text = if (usOpen) "Open" else "Closed"
         binding.tvUsMarketStatus.setTextColor(
-            requireContext().getColor(if (usOpen) R.color.gain_green else R.color.text_tertiary)
+            requireContext().getColor(if (usOpen) R.color.neon_highlight else R.color.text_tertiary)
         )
 
         binding.tvIndiaMarketStatus.text = if (indiaOpen) "Open" else "Closed"
         binding.tvIndiaMarketStatus.setTextColor(
-            requireContext().getColor(if (indiaOpen) R.color.gain_green else R.color.text_tertiary)
+            requireContext().getColor(if (indiaOpen) R.color.neon_highlight else R.color.text_tertiary)
         )
     }
 
@@ -182,51 +182,57 @@ class WatchlistFragment : Fragment() {
             return sdf.format(cal.time)
         }
 
-        val (title, details) = when (market) {
+        val dialogView = layoutInflater.inflate(R.layout.dialog_market_hours, null)
+        val tvTitle = dialogView.findViewById<android.widget.TextView>(R.id.tv_market_title)
+        val tvStatus = dialogView.findViewById<android.widget.TextView>(R.id.tv_market_status)
+        val tvRegOpen = dialogView.findViewById<android.widget.TextView>(R.id.tv_regular_open)
+        val tvRegClose = dialogView.findViewById<android.widget.TextView>(R.id.tv_regular_close)
+        val tvExt1 = dialogView.findViewById<android.widget.TextView>(R.id.tv_extended_1)
+        val tvExt2 = dialogView.findViewById<android.widget.TextView>(R.id.tv_extended_2)
+        val llExt = dialogView.findViewById<android.widget.LinearLayout>(R.id.ll_extended_hours)
+        val tvTz = dialogView.findViewById<android.widget.TextView>(R.id.tv_timezone_info)
+
+        when (market) {
             Market.US -> {
                 val estTz = TimeZone.getTimeZone("America/New_York")
-                val open  = toDeviceTime(9, 30,  estTz)
-                val close = toDeviceTime(16, 0,  estTz)
-                val preOpen  = toDeviceTime(4, 0,  estTz)
-                val afterClose = toDeviceTime(20, 0, estTz)
                 val isOpen = MarketUtils.isUsMarketOpen()
-                "NYSE / NASDAQ" to buildString {
-                    appendLine("Status:  ${if (isOpen) "🟢 Open" else "⚫ Closed"}")
-                    appendLine()
-                    appendLine("Regular session")
-                    appendLine("  Open   $open")
-                    appendLine("  Close  $close")
-                    appendLine()
-                    appendLine("Pre-market:  from $preOpen")
-                    appendLine("After-hours: until $afterClose")
-                    appendLine()
-                    append("Times shown in your local timezone (${deviceTz.getDisplayName(false, TimeZone.SHORT)})")
-                }
+                
+                tvTitle.text = "NYSE / NASDAQ"
+                tvStatus.text = if (isOpen) "OPEN" else "CLOSED"
+                tvStatus.setTextColor(requireContext().getColor(if (isOpen) R.color.background else R.color.text_primary))
+                tvStatus.backgroundTintList = android.content.res.ColorStateList.valueOf(
+                    requireContext().getColor(if (isOpen) R.color.neon_highlight else R.color.surface_variant)
+                )
+
+                tvRegOpen.text = toDeviceTime(9, 30, estTz)
+                tvRegClose.text = toDeviceTime(16, 0, estTz)
+                
+                tvExt1.text = "Pre: from ${toDeviceTime(4, 0, estTz)}"
+                tvExt2.text = "After: until ${toDeviceTime(20, 0, estTz)}"
             }
             Market.INDIA -> {
                 val istTz = TimeZone.getTimeZone("Asia/Kolkata")
-                val open  = toDeviceTime(9, 15,  istTz)
-                val close = toDeviceTime(15, 30, istTz)
-                val preOpen  = toDeviceTime(9, 0,  istTz)
                 val isOpen = MarketUtils.isIndiaMarketOpen()
-                "NSE / BSE" to buildString {
-                    appendLine("Status:  ${if (isOpen) "🟢 Open" else "⚫ Closed"}")
-                    appendLine()
-                    appendLine("Regular session")
-                    appendLine("  Open   $open")
-                    appendLine("  Close  $close")
-                    appendLine()
-                    appendLine("Pre-open:  from $preOpen")
-                    appendLine()
-                    append("Times shown in your local timezone (${deviceTz.getDisplayName(false, TimeZone.SHORT)})")
-                }
+                
+                tvTitle.text = "NSE / BSE"
+                tvStatus.text = if (isOpen) "OPEN" else "CLOSED"
+                tvStatus.setTextColor(requireContext().getColor(if (isOpen) R.color.background else R.color.text_primary))
+                tvStatus.backgroundTintList = android.content.res.ColorStateList.valueOf(
+                    requireContext().getColor(if (isOpen) R.color.neon_highlight else R.color.surface_variant)
+                )
+
+                tvRegOpen.text = toDeviceTime(9, 15, istTz)
+                tvRegClose.text = toDeviceTime(15, 30, istTz)
+                
+                tvExt1.text = "Pre-open: from ${toDeviceTime(9, 0, istTz)}"
+                tvExt2.visibility = View.GONE
             }
         }
+        
+        tvTz.text = "Times shown in your local timezone (${deviceTz.getDisplayName(false, TimeZone.SHORT)})"
 
         AlertDialog.Builder(requireContext(), R.style.ThemeOverlay_App_MaterialAlertDialog)
-            .setTitle(title)
-            .setMessage(details)
-            .setPositiveButton("Got it", null)
+            .setView(dialogView)
             .show()
     }
 

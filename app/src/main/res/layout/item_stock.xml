@@ -28,6 +28,10 @@
                 android:textSize="14sp"
                 android:fontFamily="@font/inter_semi_bold"
                 android:textStyle="bold"
+                android:singleLine="true"
+                android:ellipsize="marquee"
+                android:marqueeRepeatLimit="marquee_forever"
+                android:scrollHorizontally="true"
                 android:letterSpacing="-0.01"
                 tools:text="AAPL"/>
 
@@ -38,8 +42,12 @@
                 android:layout_marginTop="2dp"
                 android:textColor="@color/text_tertiary"
                 android:textSize="12sp"
-                android:maxLines="1"
-                android:ellipsize="end"
+                android:singleLine="true"
+                android:ellipsize="marquee"
+                android:marqueeRepeatLimit="marquee_forever"
+                android:scrollHorizontally="true"
+                android:requiresFadingEdge="horizontal"
+                android:fadingEdgeLength="8dp"
                 tools:text="Apple Inc."/>
 
             <TextView
