@@ -23,9 +23,17 @@ Welcome, future AI Agent! If you are working on this project, please read this d
 
 ## App Structure & Features
 
-1.  **Watchlist (Markets Tab)**
+0.  **Home (Welcome Screen Tab)**
+    *   First tab; shown on cold launch.
+    *   Content: time-based greeting, date (uppercase), live clock (updates every minute), market Open/Closed status chips for NSE and NYSE, 4 market index cards (NIFTY 50 `^NSEI`, SENSEX `^BSESN`, S&P 500 `^GSPC`, NASDAQ `^IXIC`), and Top Mover (largest absolute % change in the watchlist).
+    *   Fragment: `HomeFragment` · ViewModel: `HomeViewModel` · Layout: `fragment_home.xml`.
+    *   Market status chips are clickable → opens `dialog_market_hours.xml` (same dialog previously used in WatchlistFragment).
+
+1.  **Watchlist Tab**
+    *   Nav label: **"Watchlist"** (previously called "Markets" — renamed in this session).
     *   Main list of tracked stocks/assets.
     *   Detailed view for individual stocks (`StockDetailActivity`), showing candlestick/line charts.
+    *   The market Open/Closed status bar that previously lived at the bottom of this screen has been **removed** — it now lives exclusively on the Home tab.
 2.  **Net Worth Tab**
     *   Tracks multiple asset categories with collapsible sections:
         *   Indian Stocks
@@ -449,3 +457,106 @@ The app transitioned from a dark theme to a modern, Minna Bank-inspired light th
 - The chart uses a thin, pure black line with no gradient fill underneath.
 - Selected timeframe options and highlight crosshairs appear in neon yellow.
 - Positive price changes have an explicit `↗` arrow and are tinted neon yellow. Negative changes have `↘` and are tinted red. High/Low statistics are accompanied by corresponding neon/red accent color bars.
+
+---
+
+## Session Changes Log — Recent Updates
+
+### 1. Net Worth Breakdown Visualization
+- A new segmented bar module (`ll_breakdown_container`) displays the precise categorical breakdown of Net Worth (Indian Stocks vs Mutual Funds vs Crypto, etc.).
+- Dynamically rendered in `NetWorthFragment.kt` using predefined category colors (`cat_stock_in`, `cat_crypto`, etc.).
+- The component is fully hidden if the user has no configured assets.
+
+### 2. Modern Market Hours Dialog
+- Replaced the textual `AlertDialog` builder string with a fully custom, sleek XML layout (`dialog_market_hours.xml`).
+- Features a neon-tinted "OPEN" / gray "CLOSED" pill depending on the underlying status.
+- Separates Regular Session and Extended Hours logically using strict typography alignments.
+
+### 3. Widget PendingIntent Navigation Fix
+- `StockDetailActivity` now overrides `onNewIntent(intent: Intent)` to correctly accept trailing clicks from the home screen widget.
+- This ensures that fast-switching between multiple widget stock items explicitly reloads the target viewmodel data instead of falling back to Android's recent task caching.
+
+### 4. Index Display Formatting
+- Market Indices that start with `^` (like `^NSEI`, `^NDXT`) have the `^` character stripped out purely at the view-binding layer (`.removePrefix("^")`).
+- This applies to `WatchlistAdapter`, `SearchResultAdapter`, `StockDetailActivity`, `StockWidgetService`, and `NetWorthAssetAdapter`.
+
+### 5. Marquee Text Animations
+- Overly large texts (specifically `tv_company_name` and `tv_symbol` inside `item_stock.xml`) now use Android's marquee auto-scroll feature.
+- `android:ellipsize="marquee"`, `android:singleLine="true"`, and `android:scrollHorizontally="true"` added.
+- Adapters forcefully apply `isSelected = true` globally on bind to trigger the marquee loops continuously.
+
+---
+
+## Session Changes Log — 2026-03-18 (Home Screen & Navigation Overhaul)
+
+### 1. New Home (Welcome) Screen
+
+**What was added:** A brand-new `Home` tab is now the **first and default tab** on launch, replacing the Watchlist as the landing screen.
+
+**Content displayed:**
+| Element | Detail |
+|---|---|
+| **Date** | Uppercase, e.g. `WEDNESDAY, 18 MARCH 2026` — Geist Mono, tertiary color |
+| **Greeting** | Time-based: `Good morning.` / `Good afternoon.` / `Good evening.` — Inter SemiBold, 32sp |
+| **Live Clock** | `h:mm a TZ` format (e.g. `10:17 PM IST`), refreshes every minute via `Timer` — Geist Mono |
+| **Market Status** | NSE chip + NYSE chip at top-right. Neon yellow = Open, gray = Closed. Tappable → opens `dialog_market_hours.xml`. |
+| **INDIA indexes** | NIFTY 50 (`^NSEI`) and SENSEX (`^BSESN`) — side-by-side cards with price + gain/loss pill |
+| **US indexes** | S&P 500 (`^GSPC`) and NASDAQ (`^IXIC`) — side-by-side cards with price + gain/loss pill |
+| **Top Mover** | Stock from the user's watchlist with the largest absolute `changePercent`. Shows symbol, name, price, pill. Falls back to an empty-state message if watchlist is empty. |
+
+**New files:**
+
+| File | Role |
+|---|---|
+| `res/layout/fragment_home.xml` | Full Welcome screen layout (ScrollView, date/greeting/clock, market chips, 4 index cards, top mover card) |
+| `ui/home/HomeFragment.kt` | Fragment — drives all UI: clock timer, market status, observes ViewModel LiveData, applies pill styles |
+| `ui/home/HomeViewModel.kt` | HiltViewModel — fetches 4 indexes via `StockRepository.fetchAndCacheStock()`, derives top mover from `getWatchlistSync()` |
+| `res/drawable/ic_home.xml` | Home icon (outline house) for bottom nav |
+| `res/drawable/bg_index_card.xml` | Transparent card with `border_color` stroke + 12dp corners, used for index and top mover cards |
+
+**Index symbols used:** `^NSEI`, `^BSESN`, `^GSPC`, `^IXIC` — fetched via the existing `StockRepository.fetchAndCacheStock()` (same Yahoo Finance chart API).
+
+---
+
+### 2. 4-Tab Bottom Navigation
+
+The app now has **4 tabs** instead of 3:
+
+| Order | ID | Label | Fragment |
+|---|---|---|---|
+| 1st (default) | `nav_home` | Home | `HomeFragment` |
+| 2nd | `nav_watchlist` | Watchlist | `WatchlistFragment` |
+| 3rd | `nav_networth` | Net Worth | `NetWorthFragment` |
+| 4th | `nav_settings` | Settings | `SettingsFragment` |
+
+**Files changed:** `res/menu/bottom_nav_menu.xml`, `ui/main/MainActivity.kt`, `res/values/strings.xml`
+
+- `MainActivity` now lazily initialises `HomeFragment` and sets it as both `activeFragment` and `selectedItemId` on startup.
+- `setupFragments()` adds all 4 fragments with `hide()` for the 3 background ones; `homeFragment` starts visible.
+- String key `tab_home` added; `tab_markets` kept (its value changed — see §3 below).
+
+---
+
+### 3. Watchlist Tab Renamed (Markets → Watchlist)
+
+- Bottom nav label: `"Markets"` → **`"Watchlist"`**
+- `tab_markets` string value updated to `"Watchlist"`.
+- Toolbar title updates automatically via the same string.
+
+**Files changed:** `res/menu/bottom_nav_menu.xml`, `res/values/strings.xml`
+
+---
+
+### 4. Market Status Chips Removed from Watchlist
+
+The Open/Closed market status bar that sat at the **bottom** of the Watchlist screen has been removed entirely from that screen and relocated to the **Home screen** (top-right of the Markets section header).
+
+**Removed from `WatchlistFragment`:**
+- `market_bar` LinearLayout (both `chip_us_market` and `chip_india_market` child layouts)
+- `updateMarketStatus()` method
+- `showMarketHoursDialog()` method and `Market` enum
+- Unused imports: `AlertDialog`, `MarketUtils`, `SimpleDateFormat`, `Calendar`, `Locale`, `TimeZone`
+
+**Files changed:** `res/layout/fragment_watchlist.xml` (removed ~75 lines), `ui/main/WatchlistFragment.kt` (removed ~100 lines)
+
+> ⚠️ **Do NOT re-add** market status chips to `fragment_watchlist.xml`. They now live exclusively in `fragment_home.xml` / `HomeFragment.kt`.
