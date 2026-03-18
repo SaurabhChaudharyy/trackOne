@@ -4,7 +4,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/background_dark"
+    android:background="@color/background"
     android:fillViewport="true"
     android:scrollbars="none">
 
@@ -24,7 +24,7 @@
             android:text="Settings"
             android:textColor="@color/text_primary"
             android:textSize="22sp"
-            android:fontFamily="@font/geist_mono_bold"
+            android:fontFamily="@font/inter_bold"
             android:letterSpacing="0.02"
             android:layout_marginBottom="4dp"/>
 
@@ -35,8 +35,7 @@
             android:text="Manage your data and preferences"
             android:textColor="@color/text_tertiary"
             android:textSize="12sp"
-            android:fontFamily="@font/geist_mono"
-            android:layout_marginBottom="28dp"/>
+            android:fontFamily="@font/inter"            android:layout_marginBottom="28dp"/>
 
         <TextView
             android:layout_width="wrap_content"
@@ -44,7 +43,7 @@
             android:text="WATCHLIST"
             android:textColor="@color/text_tertiary"
             android:textSize="10sp"
-            android:fontFamily="@font/geist_mono_semi_bold"
+            android:fontFamily="@font/inter_semi_bold"
             android:letterSpacing="0.12"
             android:layout_marginBottom="10dp"/>
 
@@ -92,7 +91,7 @@
                         android:text="Export Watchlist"
                         android:textColor="@color/text_primary"
                         android:textSize="14sp"
-                        android:fontFamily="@font/geist_mono_semi_bold"/>
+                        android:fontFamily="@font/inter_semi_bold"/>
 
                     <TextView
                         android:layout_width="wrap_content"
@@ -100,8 +99,7 @@
                         android:text="Save your watchlist symbols to a JSON file"
                         android:textColor="@color/text_tertiary"
                         android:textSize="11sp"
-                        android:fontFamily="@font/geist_mono"
-                        android:layout_marginTop="2dp"/>
+                        android:fontFamily="@font/inter"                        android:layout_marginTop="2dp"/>
                 </LinearLayout>
 
                 <ImageView
@@ -158,7 +156,7 @@
                         android:text="Import Watchlist"
                         android:textColor="@color/text_primary"
                         android:textSize="14sp"
-                        android:fontFamily="@font/geist_mono_semi_bold"/>
+                        android:fontFamily="@font/inter_semi_bold"/>
 
                     <TextView
                         android:layout_width="wrap_content"
@@ -166,8 +164,7 @@
                         android:text="Restore watchlist from a backup file"
                         android:textColor="@color/text_tertiary"
                         android:textSize="11sp"
-                        android:fontFamily="@font/geist_mono"
-                        android:layout_marginTop="2dp"/>
+                        android:fontFamily="@font/inter"                        android:layout_marginTop="2dp"/>
                 </LinearLayout>
 
                 <ImageView
@@ -186,7 +183,7 @@
             android:text="STOCKS &amp; INVESTMENTS"
             android:textColor="@color/text_tertiary"
             android:textSize="10sp"
-            android:fontFamily="@font/geist_mono_semi_bold"
+            android:fontFamily="@font/inter_semi_bold"
             android:letterSpacing="0.12"
             android:layout_marginBottom="10dp"/>
 
@@ -234,7 +231,7 @@
                         android:text="Export Stocks &amp; Investments"
                         android:textColor="@color/text_primary"
                         android:textSize="14sp"
-                        android:fontFamily="@font/geist_mono_semi_bold"/>
+                        android:fontFamily="@font/inter_semi_bold"/>
 
                     <TextView
                         android:layout_width="wrap_content"
@@ -242,8 +239,7 @@
                         android:text="Save your net worth assets to a JSON file"
                         android:textColor="@color/text_tertiary"
                         android:textSize="11sp"
-                        android:fontFamily="@font/geist_mono"
-                        android:layout_marginTop="2dp"/>
+                        android:fontFamily="@font/inter"                        android:layout_marginTop="2dp"/>
                 </LinearLayout>
 
                 <ImageView
@@ -300,7 +296,7 @@
                         android:text="Import Stocks &amp; Investments"
                         android:textColor="@color/text_primary"
                         android:textSize="14sp"
-                        android:fontFamily="@font/geist_mono_semi_bold"/>
+                        android:fontFamily="@font/inter_semi_bold"/>
 
                     <TextView
                         android:layout_width="wrap_content"
@@ -308,8 +304,7 @@
                         android:text="Restore net worth assets from a backup file"
                         android:textColor="@color/text_tertiary"
                         android:textSize="11sp"
-                        android:fontFamily="@font/geist_mono"
-                        android:layout_marginTop="2dp"/>
+                        android:fontFamily="@font/inter"                        android:layout_marginTop="2dp"/>
                 </LinearLayout>
 
                 <ImageView
@@ -328,7 +323,7 @@
             android:text="ABOUT"
             android:textColor="@color/text_tertiary"
             android:textSize="10sp"
-            android:fontFamily="@font/geist_mono_semi_bold"
+            android:fontFamily="@font/inter_semi_bold"
             android:letterSpacing="0.12"
             android:layout_marginBottom="10dp"/>
 
@@ -367,7 +362,7 @@
                     android:text="trackOne"
                     android:textColor="@color/text_primary"
                     android:textSize="14sp"
-                    android:fontFamily="@font/geist_mono_semi_bold"/>
+                    android:fontFamily="@font/inter_semi_bold"/>
 
                 <TextView
                     android:layout_width="wrap_content"
@@ -375,8 +370,7 @@
                     android:text="v1.0 · Data stored locally on device"
                     android:textColor="@color/text_tertiary"
                     android:textSize="11sp"
-                    android:fontFamily="@font/geist_mono"
-                    android:layout_marginTop="2dp"/>
+                    android:fontFamily="@font/inter"                    android:layout_marginTop="2dp"/>
             </LinearLayout>
         </LinearLayout>
 
@@ -403,7 +397,7 @@
                 android:text="Working…"
                 android:textColor="@color/text_secondary"
                 android:textSize="12sp"
-                android:fontFamily="@font/geist_mono"/>
+                android:fontFamily="@font/inter"/>
         </LinearLayout>
 
     </LinearLayout>

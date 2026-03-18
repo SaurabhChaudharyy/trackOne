@@ -26,8 +26,7 @@
             android:inputType="text"
             android:imeOptions="actionSearch"
             android:textColor="@color/text_primary"
-            android:fontFamily="@font/geist_mono"
-            android:completionThreshold="1"
+            android:fontFamily="@font/inter"            android:completionThreshold="1"
             android:dropDownHeight="200dp"/>
     </com.google.android.material.textfield.TextInputLayout>
 
@@ -49,7 +48,7 @@
             android:textColor="@color/text_tertiary"
             android:textSize="11sp"
             android:letterSpacing="0.05"
-            android:fontFamily="@font/geist_mono"/>
+            android:fontFamily="@font/inter"/>
 
         <LinearLayout
             android:id="@+id/ll_price_loading"
@@ -73,7 +72,7 @@
                 android:text="Fetching price…"
                 android:textColor="@color/text_secondary"
                 android:textSize="13sp"
-                android:fontFamily="@font/geist_mono"/>
+                android:fontFamily="@font/inter"/>
         </LinearLayout>
 
         <TextView
@@ -84,7 +83,7 @@
             android:text=""
             android:textColor="@color/text_primary"
             android:textSize="22sp"
-            android:fontFamily="@font/geist_mono_bold"
+            android:fontFamily="@font/inter_bold"
             android:textStyle="bold"
             android:visibility="gone"/>
 
@@ -96,8 +95,7 @@
             android:text=""
             android:textColor="@color/loss_red"
             android:textSize="12sp"
-            android:fontFamily="@font/geist_mono"
-            android:visibility="gone"/>
+            android:fontFamily="@font/inter"            android:visibility="gone"/>
     </LinearLayout>
 
     <com.google.android.material.textfield.TextInputLayout
@@ -117,7 +115,7 @@
             android:layout_height="wrap_content"
             android:inputType="numberDecimal"
             android:textColor="@color/text_primary"
-            android:fontFamily="@font/geist_mono"/>
+            android:fontFamily="@font/inter"/>
     </com.google.android.material.textfield.TextInputLayout>
 
     <com.google.android.material.textfield.TextInputLayout
@@ -137,7 +135,7 @@
             android:layout_height="wrap_content"
             android:inputType="numberDecimal"
             android:textColor="@color/text_primary"
-            android:fontFamily="@font/geist_mono"/>
+            android:fontFamily="@font/inter"/>
     </com.google.android.material.textfield.TextInputLayout>
 
     <com.google.android.material.textfield.TextInputLayout
@@ -156,7 +154,7 @@
             android:layout_height="wrap_content"
             android:inputType="numberDecimal"
             android:textColor="@color/text_primary"
-            android:fontFamily="@font/geist_mono"/>
+            android:fontFamily="@font/inter"/>
     </com.google.android.material.textfield.TextInputLayout>
 
     <com.google.android.material.textfield.TextInputLayout
@@ -175,7 +173,7 @@
             android:layout_height="wrap_content"
             android:inputType="text"
             android:textColor="@color/text_primary"
-            android:fontFamily="@font/geist_mono"/>
+            android:fontFamily="@font/inter"/>
     </com.google.android.material.textfield.TextInputLayout>
 
     <LinearLayout
@@ -211,7 +209,7 @@
             android:layout_height="wrap_content"
             android:inputType="text"
             android:textColor="@color/text_primary"
-            android:fontFamily="@font/geist_mono"/>
+            android:fontFamily="@font/inter"/>
     </com.google.android.material.textfield.TextInputLayout>
 
 </LinearLayout>

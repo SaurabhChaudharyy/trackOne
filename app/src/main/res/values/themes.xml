@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.FinanceWidget" parent="Theme.Material3.Dark.NoActionBar">
+    <style name="Theme.FinanceWidget" parent="Theme.Material3.Light.NoActionBar">
 
         <item name="colorPrimary">@color/primary</item>
         <item name="colorOnPrimary">@color/on_primary</item>
@@ -10,17 +10,17 @@
         <item name="colorOnSurfaceVariant">@color/text_secondary</item>
         <item name="colorOutline">@color/border_color</item>
 
-        <item name="android:windowBackground">@color/background_dark</item>
-        <item name="android:statusBarColor">@color/background_dark</item>
-        <item name="android:navigationBarColor">@color/background_dark</item>
-        <item name="android:windowLightStatusBar">false</item>
-        <item name="android:windowLightNavigationBar">false</item>
+        <item name="android:windowBackground">@color/background</item>
+        <item name="android:statusBarColor">@color/background</item>
+        <item name="android:navigationBarColor">@color/background</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowLightNavigationBar">true</item>
 
         <item name="android:windowSplashScreenAnimatedIcon">@drawable/transparent_splash</item>
-        <item name="android:windowSplashScreenBackground">@color/background_dark</item>
+        <item name="android:windowSplashScreenBackground">@color/background</item>
 
-        <item name="android:fontFamily">@font/geist_mono</item>
-        <item name="fontFamily">@font/geist_mono</item>
+        <item name="android:fontFamily">@font/inter</item>
+        <item name="fontFamily">@font/inter</item>
 
         <item name="textAppearanceDisplayLarge">@style/TextAppearance.App.Display</item>
         <item name="textAppearanceDisplayMedium">@style/TextAppearance.App.Display</item>
@@ -44,27 +44,27 @@
     </style>
 
     <style name="TextAppearance.App.Display" parent="TextAppearance.Material3.DisplayLarge">
-        <item name="android:fontFamily">@font/geist_mono</item>
+        <item name="android:fontFamily">@font/inter</item>
         <item name="android:textColor">@color/text_primary</item>
     </style>
 
     <style name="TextAppearance.App.Headline" parent="TextAppearance.Material3.HeadlineMedium">
-        <item name="android:fontFamily">@font/geist_mono</item>
+        <item name="android:fontFamily">@font/inter</item>
         <item name="android:textColor">@color/text_primary</item>
     </style>
 
     <style name="TextAppearance.App.Title" parent="TextAppearance.Material3.TitleMedium">
-        <item name="android:fontFamily">@font/geist_mono</item>
+        <item name="android:fontFamily">@font/inter</item>
         <item name="android:textColor">@color/text_primary</item>
     </style>
 
     <style name="TextAppearance.App.Body" parent="TextAppearance.Material3.BodyMedium">
-        <item name="android:fontFamily">@font/geist_mono</item>
+        <item name="android:fontFamily">@font/inter</item>
         <item name="android:textColor">@color/text_primary</item>
     </style>
 
     <style name="TextAppearance.App.Label" parent="TextAppearance.Material3.LabelSmall">
-        <item name="android:fontFamily">@font/geist_mono</item>
+        <item name="android:fontFamily">@font/inter</item>
         <item name="android:textColor">@color/text_secondary</item>
     </style>
 
@@ -75,7 +75,7 @@
     </style>
 
     <style name="TextAppearance.App.CompanyName" parent="TextAppearance.Material3.BodySmall">
-        <item name="android:fontFamily">@font/geist_mono</item>
+        <item name="android:fontFamily">@font/inter</item>
         <item name="android:textColor">@color/text_tertiary</item>
     </style>
 
@@ -95,22 +95,22 @@
     </style>
 
     <style name="Widget.App.Button" parent="Widget.Material3.Button">
-        <item name="android:fontFamily">@font/geist_mono_semi_bold</item>
+        <item name="android:fontFamily">@font/inter_semi_bold</item>
         <item name="cornerRadius">8dp</item>
     </style>
 
     <style name="Widget.App.Button.Tonal" parent="Widget.Material3.Button.TonalButton">
-        <item name="android:fontFamily">@font/geist_mono_semi_bold</item>
+        <item name="android:fontFamily">@font/inter_semi_bold</item>
         <item name="cornerRadius">8dp</item>
     </style>
 
     <style name="Widget.App.Chip" parent="Widget.Material3.Chip.Assist">
-        <item name="android:fontFamily">@font/geist_mono</item>
+        <item name="android:fontFamily">@font/inter</item>
     </style>
 
     <style name="ThemeOverlay.App.MaterialAlertDialog" parent="ThemeOverlay.Material3.MaterialAlertDialog">
         <item name="android:background">@color/surface_variant</item>
-        <item name="android:fontFamily">@font/geist_mono</item>
+        <item name="android:fontFamily">@font/inter</item>
     </style>
 
     <style name="Widget.App.BottomNav" parent="Widget.Material3.BottomNavigationView">
@@ -118,7 +118,7 @@
     </style>
 
     <style name="Widget.App.BottomNav.ActiveIndicator" parent="Widget.Material3.BottomNavigationView.ActiveIndicator">
-        <item name="android:color">@color/surface_variant</item>
+        <item name="android:color">@color/neon_highlight</item>
     </style>
 
 </resources>

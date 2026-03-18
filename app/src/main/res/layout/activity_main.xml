@@ -5,21 +5,21 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/background_dark"
+    android:background="@color/background"
     tools:context=".ui.main.MainActivity">
 
     <com.google.android.material.appbar.AppBarLayout
         android:id="@+id/app_bar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="@color/background_dark"
+        android:background="@color/background"
         app:elevation="0dp">
 
         <com.google.android.material.appbar.MaterialToolbar
             android:id="@+id/toolbar"
             android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"
-            android:background="@color/background_dark"
+            android:background="@color/background"
             android:paddingHorizontal="4dp">
 
             <TextView
@@ -29,7 +29,7 @@
                 android:text="Markets"
                 android:textSize="18sp"
                 android:textColor="@color/text_primary"
-                android:fontFamily="@font/geist_mono_semi_bold"
+                android:fontFamily="@font/inter_semi_bold"
                 android:textStyle="bold"
                 android:letterSpacing="-0.02"/>
         </com.google.android.material.appbar.MaterialToolbar>
@@ -60,7 +60,7 @@
         android:layout_width="match_parent"
         android:layout_height="56dp"
         android:layout_gravity="bottom"
-        android:background="@color/background_dark"
+        android:background="@color/background"
         app:menu="@menu/bottom_nav_menu"
         app:labelVisibilityMode="labeled"
         app:itemTextColor="@drawable/selector_nav_text"

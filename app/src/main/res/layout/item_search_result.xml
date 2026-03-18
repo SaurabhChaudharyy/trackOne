@@ -37,7 +37,7 @@
                 android:layout_height="wrap_content"
                 android:textColor="@color/text_primary"
                 android:textSize="14sp"
-                android:fontFamily="@font/geist_mono_semi_bold"
+                android:fontFamily="@font/inter_semi_bold"
                 android:textStyle="bold"/>
 
             <TextView
