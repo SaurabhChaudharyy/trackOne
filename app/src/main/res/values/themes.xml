@@ -121,4 +121,16 @@
         <item name="android:color">@color/neon_highlight</item>
     </style>
 
+    <!-- Splash Activity theme — no action bar, white background, invisible system splash icon -->
+    <style name="Theme.FinanceWidget.Splash" parent="Theme.Material3.Light.NoActionBar">
+        <item name="android:windowBackground">@color/background</item>
+        <item name="android:statusBarColor">@color/background</item>
+        <item name="android:navigationBarColor">@color/background</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowLightNavigationBar">true</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/transparent_splash</item>
+        <item name="android:windowSplashScreenBackground">@color/background</item>
+        <item name="android:fontFamily">@font/inter</item>
+    </style>
+
 </resources>

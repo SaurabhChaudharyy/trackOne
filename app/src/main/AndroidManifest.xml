@@ -19,16 +19,23 @@
         android:theme="@style/Theme.FinanceWidget"
         android:hardwareAccelerated="true">
 
+        <!-- Splash screen — the REAL launcher entry point -->
         <activity
-            android:name=".ui.main.MainActivity"
+            android:name=".ui.splash.SplashActivity"
             android:exported="true"
-            android:windowSoftInputMode="adjustResize"
-            android:theme="@style/Theme.FinanceWidget">
+            android:theme="@style/Theme.FinanceWidget.Splash"
+            android:windowSoftInputMode="adjustNothing">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <activity
+            android:name=".ui.main.MainActivity"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize"
+            android:theme="@style/Theme.FinanceWidget"/>
 
         <activity
             android:name=".ui.detail.StockDetailActivity"

@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/background">
+
+    <!-- Centered brand group: wordmark + tagline only -->
+    <LinearLayout
+        android:id="@+id/ll_brand"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:alpha="0">
+
+        <!-- App name -->
+        <TextView
+            android:id="@+id/tv_splash_name"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/trackone"
+            android:textSize="36sp"
+            android:fontFamily="@font/inter_semi_bold"
+            android:textColor="@color/text_primary"
+            android:letterSpacing="-0.03"/>
+
+        <!-- Tagline -->
+        <TextView
+            android:id="@+id/tv_splash_tagline"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:text="@string/your_portfolio_simplified"
+            android:textSize="13sp"
+            android:fontFamily="@font/geist_mono"
+            android:textColor="@color/text_tertiary"
+            android:letterSpacing="0"/>
+    </LinearLayout>
+
+    <!-- Neon accent bar at bottom -->
+    <View
+        android:id="@+id/v_accent_bar"
+        android:layout_width="40dp"
+        android:layout_height="3dp"
+        android:layout_gravity="bottom|center_horizontal"
+        android:layout_marginBottom="56dp"
+        android:background="@color/neon_highlight"
+        android:alpha="0"/>
+
+    <!-- Loading indicator (dots) below brand -->
+    <TextView
+        android:id="@+id/tv_loading"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|center_horizontal"
+        android:layout_marginBottom="80dp"
+        android:text="loading market data..."
+        android:textSize="11sp"
+        android:fontFamily="@font/geist_mono"
+        android:textColor="@color/text_tertiary"
+        android:alpha="0"/>
+
+</FrameLayout>
