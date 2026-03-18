@@ -26,7 +26,8 @@
     <string name="market_cap">Market Cap</string>
     <string name="volume">Volume</string>
     <string name="configure_widget">Configure Widget</string>
-    <string name="tab_markets">Markets</string>
+    <string name="tab_home">Home</string>
+    <string name="tab_markets">Watchlist</string>
     <string name="tab_networth">Net Worth</string>
     <string name="tab_settings">Settings</string>
 </resources>
