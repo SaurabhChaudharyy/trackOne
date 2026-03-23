@@ -6,9 +6,11 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="horizontal"
-    android:paddingVertical="6dp"
-    android:gravity="center_vertical">
+    android:paddingVertical="7dp"
+    android:gravity="center_vertical"
+    android:background="?attr/selectableItemBackground">
 
+    <!-- Color dot -->
     <androidx.cardview.widget.CardView
         android:id="@+id/v_color_indicator"
         android:layout_width="8dp"
@@ -17,6 +19,7 @@
         app:cardElevation="0dp"
         app:cardBackgroundColor="@color/cat_stock_in"/>
 
+    <!-- Category name — takes all remaining horizontal space -->
     <TextView
         android:id="@+id/tv_category_name"
         android:layout_width="0dp"
@@ -24,17 +27,32 @@
         android:layout_weight="1"
         android:layout_marginStart="12dp"
         android:textColor="@color/text_primary"
-        android:textSize="14sp"
+        android:textSize="13sp"
         android:fontFamily="@font/inter"
         tools:text="Indian Stocks"/>
 
+    <!-- Percentage — fixed width, right-aligned so all values end at the same x -->
+    <TextView
+        android:id="@+id/tv_category_percentage"
+        android:layout_width="52dp"
+        android:layout_height="wrap_content"
+        android:gravity="end"
+        android:textColor="@color/text_tertiary"
+        android:textSize="12sp"
+        android:fontFamily="@font/geist_mono_regular"
+        tools:text="42.0%"/>
+
+
+
+    <!-- Amount — fixed width, right-aligned. 124dp fits ₹13,26,951.73 comfortably -->
     <TextView
         android:id="@+id/tv_category_amount"
-        android:layout_width="wrap_content"
+        android:layout_width="124dp"
         android:layout_height="wrap_content"
+        android:gravity="end"
         android:textColor="@color/text_primary"
-        android:textSize="14sp"
+        android:textSize="13sp"
         android:fontFamily="@font/geist_mono_regular"
-        tools:text="$2,800.00"/>
+        tools:text="₹5,44,892.30"/>
 
 </LinearLayout>

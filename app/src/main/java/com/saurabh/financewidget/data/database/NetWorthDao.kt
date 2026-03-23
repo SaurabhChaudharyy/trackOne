@@ -41,4 +41,11 @@ interface NetWorthDao {
 
     @Query("SELECT * FROM networth_assets WHERE id = :id")
     suspend fun getAssetById(id: Long): NetWorthAssetEntity?
+
+    /**
+     * Returns the first existing asset of the same name+type that has NO buy price.
+     * Used to decide whether to merge a new addition into an existing entry.
+     */
+    @Query("SELECT * FROM networth_assets WHERE name = :name AND assetType = :type AND buyPrice = 0 LIMIT 1")
+    suspend fun findMergeCandidate(name: String, type: AssetType): NetWorthAssetEntity?
 }

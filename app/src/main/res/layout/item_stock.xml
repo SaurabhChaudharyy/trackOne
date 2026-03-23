@@ -46,8 +46,6 @@
                 android:ellipsize="marquee"
                 android:marqueeRepeatLimit="marquee_forever"
                 android:scrollHorizontally="true"
-                android:requiresFadingEdge="horizontal"
-                android:fadingEdgeLength="8dp"
                 tools:text="Apple Inc."/>
 
             <TextView
@@ -75,8 +73,6 @@
                 android:ellipsize="marquee"
                 android:marqueeRepeatLimit="marquee_forever"
                 android:scrollHorizontally="true"
-                android:requiresFadingEdge="horizontal"
-                android:fadingEdgeLength="8dp"
                 tools:text="$187.62"/>
         </LinearLayout>
 
@@ -96,8 +92,6 @@
                 android:ellipsize="marquee"
                 android:marqueeRepeatLimit="marquee_forever"
                 android:scrollHorizontally="true"
-                android:requiresFadingEdge="horizontal"
-                android:fadingEdgeLength="8dp"
                 tools:text="-7.94"/>
         </LinearLayout>
 
