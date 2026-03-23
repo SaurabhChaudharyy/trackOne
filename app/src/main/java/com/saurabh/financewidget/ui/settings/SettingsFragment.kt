@@ -1,5 +1,6 @@
 package com.saurabh.financewidget.ui.settings
 
+import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -90,6 +91,27 @@ class SettingsFragment : Fragment() {
         binding.cardImportAssets.setOnClickListener {
             it.performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY)
             importAssetsLauncher.launch(BackupRepository.IMPORT_MIME_TYPES)
+        }
+
+        binding.cardContactUs.setOnClickListener {
+            it.performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY)
+            val intent = Intent(Intent.ACTION_SENDTO).apply {
+                data = Uri.parse("mailto:")
+                putExtra(Intent.EXTRA_EMAIL, arrayOf("saurabh@trackone.app"))
+                putExtra(Intent.EXTRA_SUBJECT, "[trackOne] Feedback / Bug Report")
+                putExtra(
+                    Intent.EXTRA_TEXT,
+                    "Hi,\n\n" +
+                    "[Describe your issue or feedback here]\n\n" +
+                    "---\n" +
+                    "App: trackOne v1.0\n" +
+                    "Device: ${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}\n" +
+                    "Android: ${android.os.Build.VERSION.RELEASE}"
+                )
+            }
+            if (intent.resolveActivity(requireContext().packageManager) != null) {
+                startActivity(intent)
+            }
         }
     }
 

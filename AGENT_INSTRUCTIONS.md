@@ -606,3 +606,78 @@ The Open/Closed market status bar that sat at the **bottom** of the Watchlist sc
 **Files changed:** `res/layout/fragment_watchlist.xml` (removed ~75 lines), `ui/main/WatchlistFragment.kt` (removed ~100 lines)
 
 > ⚠️ **Do NOT re-add** market status chips to `fragment_watchlist.xml`. They now live exclusively in `fragment_home.xml` / `HomeFragment.kt`.
+
+---
+
+## Session Changes Log — 2026-03-23 (Net Worth P&L Display)
+
+### 1. Total Portfolio P&L Chip
+
+**What was added:** A visually distinct P&L chip (`tv_total_pnl`) is now displayed directly below the Total Net Worth figure in `fragment_networth.xml`. It shows the overall absolute gain/loss and percentage change across all tracked assets.
+
+#### Display logic
+
+| Asset has `buyPrice > 0` | Asset has `buyPrice == 0` |
+|---|---|
+| `invested = buyPrice × quantity`, `current = currentValue` | Treated as break-even: `invested = current = currentValue` (no artificial P&L inflated) |
+
+- **Chip hidden** when total P&L is exactly `0.0 / 0.0%` (e.g., no asset with a buy price set yet).
+- **Arrow icons**: `↗` (gain) / `↘` (loss), same convention as `StockDetailActivity`.
+- **Colors**: gains use `R.color.gain_green` text + `R.color.gain_green_bg` fill; losses use `R.color.loss_red` + `R.color.loss_red_bg`.
+- Background is `bg_pnl_chip` drawable (rounded pill), tinted programmatically via `GradientDrawable.mutate()`.
+
+#### New ViewModel LiveData
+
+Added to `NetWorthViewModel`:
+
+```kotlin
+/** Pair<absolutePnL, percentPnL>.
+ *  For assets where buyPrice > 0: pnl = currentValue - buyPrice * quantity
+ *  For assets where buyPrice == 0: invested = currentValue, pnl = 0
+ */
+val totalPnL: LiveData<Pair<Double, Double>> = allAssets.map { assets ->
+    var totalInvested = 0.0
+    var totalCurrent  = 0.0
+    for (asset in assets) {
+        if (asset.buyPrice > 0.0) {
+            totalInvested += asset.buyPrice * asset.quantity
+            totalCurrent  += asset.currentValue
+        } else {
+            totalInvested += asset.currentValue
+            totalCurrent  += asset.currentValue
+        }
+    }
+    val absChange = totalCurrent - totalInvested
+    val pct = if (totalInvested > 0.0) (absChange / totalInvested) * 100.0 else 0.0
+    Pair(absChange, pct)
+}
+```
+
+**Files changed:** `NetWorthViewModel.kt`, `NetWorthFragment.kt` (`observeViewModel()`), `fragment_networth.xml` (`tv_total_pnl` TextView added below `tv_total_networth`), `res/drawable/bg_pnl_chip.xml` (new rounded pill drawable)
+
+---
+
+### 2. Smart Insert — `addOrMergeAsset()`
+
+**Problem:** Adding a second Gold/Silver/Crypto entry (without a buy price) created a duplicate row rather than merging with the existing no-buy-price holding.
+
+**Solution:** Replaced direct `viewModel.addAsset()` calls with a new `addOrMergeAsset()` function in `NetWorthViewModel`:
+
+| Condition | Action |
+|---|---|
+| `asset.buyPrice > 0.0` | Always insert as a **distinct lot** (e.g. separate DCA purchase) |
+| `asset.buyPrice == 0.0` | Find existing record with same `name + assetType` **and** `buyPrice == 0`; if found, **merge** (`quantity +=`, `currentValue +=`); otherwise insert new |
+
+The merge find is backed by a new DAO query: `findMergeCandidate(name, assetType)`.
+
+**Files changed:** `NetWorthViewModel.kt` (new `addOrMergeAsset()`), `NetWorthDao.kt` (new `findMergeCandidate()` query), `NetWorthFragment.kt` (calls `addOrMergeAsset` instead of `addAsset`)
+
+---
+
+### Updated Phase 2 Status
+
+| Item | Status |
+|---|---|
+| Section-level P&L totals | 🔲 Planned |
+| ~~Total Net Worth P&L card~~ | ✅ **Implemented** (see §1 above — chip below total, not full card redesign) |
+| ~~Edit asset dialog~~ | ✅ **Implemented** (Session 2026-03-18) |

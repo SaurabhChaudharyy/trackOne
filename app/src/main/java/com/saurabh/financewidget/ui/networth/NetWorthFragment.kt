@@ -8,7 +8,9 @@ import android.view.inputmethod.EditorInfo
 import android.widget.ArrayAdapter
 import android.widget.AutoCompleteTextView
 import android.widget.Filter
+import android.widget.TextView
 import androidx.appcompat.app.AlertDialog
+import androidx.core.content.res.ResourcesCompat
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
@@ -37,6 +39,21 @@ class NetWorthFragment : Fragment() {
 
     private val adapters = mutableMapOf<AssetType, NetWorthAssetAdapter>()
 
+    // Tracks full data per section (before top-N trimming)
+    private val fullListCache = mutableMapOf<AssetType, List<NetWorthAssetEntity>>()
+
+    // Tracks whether each section is expanded (showing all) or collapsed (top 3)
+    private val sectionShowAll = mutableMapOf(
+        AssetType.STOCK_IN to false,
+        AssetType.STOCK_US to false,
+        AssetType.MF       to false,
+        AssetType.GOLD     to false,
+        AssetType.SILVER   to false,
+        AssetType.CRYPTO   to false,
+        AssetType.CASH     to false,
+        AssetType.BANK     to false
+    )
+
     private val sectionExpanded = mutableMapOf(
         AssetType.STOCK_IN to false,
         AssetType.STOCK_US to false,
@@ -51,6 +68,14 @@ class NetWorthFragment : Fragment() {
     private val isFetchable = setOf(
         AssetType.STOCK_IN, AssetType.STOCK_US, AssetType.CRYPTO, AssetType.GOLD, AssetType.SILVER
     )
+
+    // Active allocation tab filter — null means "All"
+    private var activeFilter: AssetType? = null
+
+    // The chip TextView for "All" tab, kept for selected-state toggling
+    private var allChipView: TextView? = null
+    // Map from AssetType → its chip TextView
+    private val typeChips = mutableMapOf<AssetType, TextView>()
 
     private val indianStockSymbols = listOf(
         "RELIANCE.NS", "TCS.NS", "HDFCBANK.NS", "INFY.NS", "ICICIBANK.NS",
@@ -75,6 +100,10 @@ class NetWorthFragment : Fragment() {
         "WMT", "QCOM", "DIS", "NEE", "HON", "PFE", "GE", "PM"
     )
 
+    companion object {
+        private const val TOP_N = 3 // items shown before "View all"
+    }
+
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
     ): View {
@@ -87,6 +116,7 @@ class NetWorthFragment : Fragment() {
         setupRecyclerViews()
         setupHeaders()
         setupAddButtons()
+        setupViewAllButtons()
         observeViewModel()
     }
 
@@ -122,6 +152,9 @@ class NetWorthFragment : Fragment() {
                 val nowExpanded = !(sectionExpanded[type] ?: true)
                 sectionExpanded[type] = nowExpanded
                 rv.isVisible = nowExpanded
+                // Show "View all" button only when expanded AND section has more than TOP_N items
+                val full = fullListCache[type] ?: emptyList()
+                viewAllButtonFor(type)?.isVisible = nowExpanded && full.size > TOP_N
             }
         }
 
@@ -146,15 +179,85 @@ class NetWorthFragment : Fragment() {
         binding.btnAddBank.setOnClickListener    { showAddDialog(AssetType.BANK,     "Add Bank Balance") }
     }
 
+    /** Wire up each "View all" / "View less" button */
+    private fun setupViewAllButtons() {
+        val viewAllMap = mapOf(
+            AssetType.STOCK_IN to binding.tvViewAllStockIn,
+            AssetType.STOCK_US to binding.tvViewAllStockUs,
+            AssetType.MF       to binding.tvViewAllMf,
+            AssetType.GOLD     to binding.tvViewAllGold,
+            AssetType.SILVER   to binding.tvViewAllSilver,
+            AssetType.CRYPTO   to binding.tvViewAllCrypto,
+            AssetType.CASH     to binding.tvViewAllCash,
+            AssetType.BANK     to binding.tvViewAllBank
+        )
+        for ((type, btn) in viewAllMap) {
+            btn.setOnClickListener {
+                val nowAll = !(sectionShowAll[type] ?: false)
+                sectionShowAll[type] = nowAll
+                btn.text = if (nowAll) "View less" else "View all"
+                // Re-submit the (possibly trimmed) list
+                val full = fullListCache[type] ?: emptyList()
+                val displayed = if (nowAll) full else full.take(TOP_N)
+                adapters[type]?.submitList(displayed)
+            }
+        }
+    }
+
     private fun observeViewModel() {
         viewModel.totalNetWorth.observe(viewLifecycleOwner) { total ->
             binding.tvTotalNetworth.text = inrFormat.format(total ?: 0.0)
         }
 
+        viewModel.totalPnL.observe(viewLifecycleOwner) { (absChange, pct) ->
+            val chip = binding.tvTotalPnl
+            if (absChange == 0.0 && pct == 0.0) {
+                chip.isVisible = false
+                return@observe
+            }
+            val isGain   = absChange >= 0
+            val arrow    = if (isGain) "↗" else "↘"
+            val sign     = if (isGain) "+" else "-"
+            val textColor = requireContext().getColor(
+                if (isGain) R.color.gain_green else R.color.loss_red
+            )
+            val bgColor  = requireContext().getColor(
+                if (isGain) R.color.gain_green_bg else R.color.loss_red_bg
+            )
+
+            chip.text = "$arrow $sign${inrFormat.format(kotlin.math.abs(absChange))} (${"%.2f".format(kotlin.math.abs(pct))}%)"
+            chip.setTextColor(textColor)
+
+            // Tint background programmatically using a GradientDrawable clone
+            val bg = androidx.core.content.ContextCompat.getDrawable(
+                requireContext(), R.drawable.bg_pnl_chip
+            )?.mutate() as? android.graphics.drawable.GradientDrawable
+            bg?.setColor(bgColor)
+            chip.background = bg
+
+            chip.isVisible = true
+        }
+
         viewModel.allAssets.observe(viewLifecycleOwner) { all ->
             val grouped = all.groupBy { it.assetType }
             for ((type, adapter) in adapters) {
-                adapter.submitList(grouped[type] ?: emptyList())
+                val list = grouped[type] ?: emptyList()
+                // Sort by currentValue descending so top holders appear first
+                val sorted = list.sortedByDescending { it.currentValue }
+                fullListCache[type] = sorted
+
+                val showAll = sectionShowAll[type] == true
+                val displayed = if (showAll) sorted else sorted.take(TOP_N)
+                adapter.submitList(displayed)
+
+                // Show/hide "View all" button
+                val viewAllBtn = viewAllButtonFor(type)
+                if (sorted.size > TOP_N) {
+                    viewAllBtn?.isVisible = sectionExpanded[type] == true
+                    viewAllBtn?.text = if (showAll) "View less" else "View all"
+                } else {
+                    viewAllBtn?.isVisible = false
+                }
             }
 
             fun updateCount(countView: android.widget.TextView, type: AssetType) {
@@ -190,6 +293,21 @@ class NetWorthFragment : Fragment() {
         }
     }
 
+    // ─── View All toggle helper ───────────────────────────────────────────────
+
+    private fun viewAllButtonFor(type: AssetType): TextView? = when (type) {
+        AssetType.STOCK_IN -> binding.tvViewAllStockIn
+        AssetType.STOCK_US -> binding.tvViewAllStockUs
+        AssetType.MF       -> binding.tvViewAllMf
+        AssetType.GOLD     -> binding.tvViewAllGold
+        AssetType.SILVER   -> binding.tvViewAllSilver
+        AssetType.CRYPTO   -> binding.tvViewAllCrypto
+        AssetType.CASH     -> binding.tvViewAllCash
+        AssetType.BANK     -> binding.tvViewAllBank
+    }
+
+    // ─── Breakdown + Allocation Tabs ─────────────────────────────────────────
+
     private fun updateBreakdownUI(summary: Map<AssetType, Double>) {
         val total = summary.values.sum()
         if (total <= 0) {
@@ -203,12 +321,36 @@ class NetWorthFragment : Fragment() {
 
         val sorted = summary.entries.filter { it.value > 0 }.sortedByDescending { it.value }
 
+        // ── Allocation chip tabs ──────────────────────────────────────────────
+        binding.llAllocationTabs.removeAllViews()
+        typeChips.clear()
+
+        // "All" chip
+        val allChip = buildChip("All · ${inrFormat.format(total)}", null, isAll = true)
+        allChipView = allChip
+        binding.llAllocationTabs.addView(allChip)
+
+        for (entry in sorted) {
+            val type  = entry.key
+            val value = entry.value
+            val chip  = buildChip(
+                "${getCategoryName(type)} · ${inrFormat.format(value)}",
+                type,
+                isAll = false
+            )
+            typeChips[type] = chip
+            binding.llAllocationTabs.addView(chip)
+        }
+
+        // Apply current filter selection state
+        refreshChipStates()
+
+        // ── Segmented bar ─────────────────────────────────────────────────────
         sorted.forEachIndexed { index, entry ->
-            val type = entry.key
+            val type  = entry.key
             val value = entry.value
             val color = getCategoryColor(type)
 
-            // Add segment to bar
             val segment = View(requireContext()).apply {
                 layoutParams = android.widget.LinearLayout.LayoutParams(
                     0, android.widget.LinearLayout.LayoutParams.MATCH_PARENT, value.toFloat()
@@ -220,18 +362,115 @@ class NetWorthFragment : Fragment() {
                 setBackgroundColor(color)
             }
             binding.llSegmentedBar.addView(segment)
+        }
 
-            // Add item to list
+        // ── Breakdown list ────────────────────────────────────────────────────
+        val displayList = if (activeFilter == null) sorted
+                          else sorted.filter { it.key == activeFilter }
+
+        displayList.forEach { (type, value) ->
+            val pct = (value / total) * 100.0
+            val color = getCategoryColor(type)
+
             val itemBinding = com.saurabh.financewidget.databinding.ItemBreakdownCategoryBinding.inflate(
                 layoutInflater, binding.llBreakdownList, false
             )
             itemBinding.vColorIndicator.setCardBackgroundColor(color)
             itemBinding.tvCategoryName.text = getCategoryName(type)
             itemBinding.tvCategoryAmount.text = inrFormat.format(value)
-            
+            itemBinding.tvCategoryPercentage.text = "%.1f%%".format(pct)
+
+            // Clicking the row acts as a filter tab
+            itemBinding.root.setOnClickListener {
+                activeFilter = if (activeFilter == type) null else type
+                updateBreakdownUI(summary)
+                refreshChipStates()
+                updateSectionVisibility()
+            }
+
             binding.llBreakdownList.addView(itemBinding.root)
         }
     }
+
+    /** Creates a single allocation chip TextView */
+    private fun buildChip(
+        label: String,
+        type: AssetType?,
+        isAll: Boolean
+    ): TextView {
+        val density  = resources.displayMetrics.density
+        val hPadPx   = (12 * density).toInt()
+        val vPadPx   = (6  * density).toInt()
+        val marginPx = (6  * density).toInt()
+
+        return TextView(requireContext()).apply {
+            text = label
+            textSize = 12f
+
+            // Inter font — explicitly NORMAL style to prevent system italic
+            try {
+                val typeface = ResourcesCompat.getFont(context, R.font.inter_semi_bold)
+                setTypeface(typeface, android.graphics.Typeface.NORMAL)
+            } catch (_: Exception) {}
+
+            setPadding(hPadPx, vPadPx, hPadPx, vPadPx)
+            background = requireContext().getDrawable(R.drawable.bg_allocation_chip)
+            layoutParams = android.widget.LinearLayout.LayoutParams(
+                android.widget.LinearLayout.LayoutParams.WRAP_CONTENT,
+                android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { marginEnd = marginPx }
+
+            isSelected = false
+            setTextColor(requireContext().getColor(R.color.text_secondary))
+
+            setOnClickListener {
+                activeFilter = if (isAll) null else type
+                viewModel.assetSummary.value?.let { summary ->
+                    updateBreakdownUI(summary)
+                }
+                refreshChipStates()
+                updateSectionVisibility()
+            }
+        }
+    }
+
+    /** Update selected/unselected visual state on all chips */
+    private fun refreshChipStates() {
+        val selectedColor   = requireContext().getColor(R.color.on_primary) // white
+        val unselectedColor = requireContext().getColor(R.color.text_secondary)
+
+        // "All" chip
+        allChipView?.apply {
+            isSelected = (activeFilter == null)
+            setTextColor(if (activeFilter == null) selectedColor else unselectedColor)
+        }
+
+        typeChips.forEach { (type, chip) ->
+            val sel = (activeFilter == type)
+            chip.isSelected = sel
+            chip.setTextColor(if (sel) selectedColor else unselectedColor)
+        }
+    }
+
+    /** Show only the section(s) that match the active filter; show all when filter is null */
+    private fun updateSectionVisibility() {
+        val sectionMap = mapOf(
+            AssetType.STOCK_IN to binding.sectionStockIn,
+            AssetType.STOCK_US to binding.sectionStockUs,
+            AssetType.MF       to binding.sectionMf,
+            AssetType.GOLD     to binding.sectionGold,
+            AssetType.SILVER   to binding.sectionSilver,
+            AssetType.CRYPTO   to binding.sectionCrypto,
+            AssetType.CASH     to binding.sectionCash,
+            AssetType.BANK     to binding.sectionBank
+        )
+        val filter = activeFilter
+        for ((type, container) in sectionMap) {
+            container.isVisible = (filter == null || filter == type)
+        }
+    }
+
+    // ─── Colour + Name helpers ────────────────────────────────────────────────
 
     private fun getCategoryColor(type: AssetType): Int {
         val colorRes = when (type) {
@@ -259,6 +498,8 @@ class NetWorthFragment : Fragment() {
             AssetType.BANK     -> "Bank Balance"
         }
     }
+
+    // ─── Add Dialog ──────────────────────────────────────────────────────────
 
     private fun showAddDialog(type: AssetType, title: String) {
         val d = DialogAddAssetBinding.inflate(layoutInflater)
@@ -410,7 +651,7 @@ class NetWorthFragment : Fragment() {
                     return@setOnClickListener
                 }
 
-                viewModel.addAsset(
+                viewModel.addOrMergeAsset(
                     NetWorthAssetEntity(
                         name = name.ifBlank { if (type == AssetType.GOLD) "GOLD" else name },
                         assetType = type,
@@ -629,6 +870,83 @@ class NetWorthFragment : Fragment() {
         }
         d.tilBuyPrice.hint = buyHint
 
+        // Derive price per unit from existing data initially
+        var pricePerUnit = if (asset.quantity > 0) asset.currentValue / asset.quantity else 0.0
+        var isAutoUpdating = false
+
+        if (fetchable) {
+            d.llPriceCard.isVisible = true
+            d.llPriceLoading.isVisible = true
+            d.tvFetchStatus.isVisible = false
+            val fetchSymbol = when (type) {
+                AssetType.GOLD -> "GC=F"
+                AssetType.SILVER -> "SI=F"
+                else -> asset.name
+            }
+            lifecycleScope.launch {
+                val result = viewModel.fetchLivePrice(fetchSymbol, type)
+                if (result is Resource.Success) {
+                    pricePerUnit = result.data
+                    d.llPriceLoading.isVisible = false
+                    val unitLabel = when (type) {
+                        AssetType.GOLD, AssetType.SILVER -> "/gram"
+                        AssetType.CRYPTO -> "/coin"
+                        else -> "/share"
+                    }
+                    d.tvFetchStatus.text = "Live price: ${inrFormat.format(pricePerUnit)}$unitLabel"
+                    d.tvFetchStatus.setTextColor(requireContext().getColor(R.color.text_secondary))
+                    d.tvFetchStatus.isVisible = true
+
+                    if (!isAutoUpdating && !d.etValue.hasFocus()) {
+                        isAutoUpdating = true
+                        val qty = d.etQuantity.text?.toString()?.toDoubleOrNull() ?: asset.quantity
+                        d.etValue.setText("%.2f".format(pricePerUnit * qty))
+                        isAutoUpdating = false
+                    }
+                } else {
+                    d.llPriceCard.isVisible = false
+                }
+            }
+        }
+
+        d.etQuantity.addTextChangedListener(object : android.text.TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+            override fun afterTextChanged(s: android.text.Editable?) {
+                if (isAutoUpdating || !d.etQuantity.hasFocus()) return
+                if (pricePerUnit > 0) {
+                    val qty = s?.toString()?.toDoubleOrNull()
+                    isAutoUpdating = true
+                    if (qty != null) {
+                        d.etValue.setText("%.2f".format(pricePerUnit * qty))
+                    } else if (s.isNullOrEmpty()) {
+                        d.etValue.text?.clear()
+                    }
+                    isAutoUpdating = false
+                }
+            }
+        })
+
+        d.etValue.addTextChangedListener(object : android.text.TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+            override fun afterTextChanged(s: android.text.Editable?) {
+                if (isAutoUpdating || !d.etValue.hasFocus()) return
+                if (pricePerUnit > 0) {
+                    val value = s?.toString()?.toDoubleOrNull()
+                    isAutoUpdating = true
+                    if (value != null) {
+                        val fmt = if (type == AssetType.CRYPTO) "%.8f" else "%.4f"
+                        val calcQty = value / pricePerUnit
+                        d.etQuantity.setText(fmt.format(calcQty))
+                    } else if (s.isNullOrEmpty()) {
+                        d.etQuantity.text?.clear()
+                    }
+                    isAutoUpdating = false
+                }
+            }
+        })
+
         val dialog = AlertDialog.Builder(requireContext(), R.style.ThemeOverlay_App_MaterialAlertDialog)
             .setTitle("Edit ${asset.name}")
             .setView(d.root)
@@ -691,3 +1009,4 @@ class NetWorthFragment : Fragment() {
         _binding = null
     }
 }
+
