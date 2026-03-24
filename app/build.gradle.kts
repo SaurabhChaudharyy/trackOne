@@ -20,9 +20,24 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
+        create("release") {
+            // These env vars are injected by GitHub Actions from repository secrets.
+            // When building locally they will be null and the block is skipped safely.
+            val storeFile = System.getenv("SIGNING_STORE_FILE")
+            if (storeFile != null) {
+                this.storeFile     = file(storeFile)
+                this.storePassword = System.getenv("SIGNING_STORE_PASSWORD")
+                this.keyAlias      = System.getenv("SIGNING_KEY_ALIAS")
+                this.keyPassword   = System.getenv("SIGNING_KEY_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
         release {
-            isMinifyEnabled = true
+            signingConfig    = signingConfigs.getByName("release")
+            isMinifyEnabled  = true
             isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),

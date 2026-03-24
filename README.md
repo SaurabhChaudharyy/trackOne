@@ -17,7 +17,25 @@
   <img src="https://img.shields.io/badge/Architecture-MVVM-orange?style=flat-square"/>
 </p>
 
+<p align="center">
+  <a href="https://github.com/SaurabhChaudharyy/trackOne/releases/latest">
+    <img src="https://img.shields.io/github/v/release/SaurabhChaudharyy/trackOne?style=for-the-badge&logo=android&logoColor=white&label=Download%20APK&color=D4E510&labelColor=09090B" alt="Download Latest APK"/>
+  </a>
+</p>
+
 ---
+
+## 📲 Download & Install
+
+1. Tap the **Download APK** badge above (or go to [Releases](https://github.com/SaurabhChaudharyy/trackOne/releases/latest))
+2. Download the `.apk` file onto your Android device
+3. Go to **Settings → Install unknown apps** and allow installs from your browser or file manager
+4. Open the `.apk` file and tap **Install**
+
+> Requires Android 8.0 (Oreo) or higher. No Play Store — direct sideload only.
+
+---
+
 
 ## Features
 
