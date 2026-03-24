@@ -1,0 +1,83 @@
+name: Build & Release Signed APK
+
+# Triggers only when you push a tag starting with 'v' (e.g. v1.0, v1.1)
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    name: Build Signed APK
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Download your repo code onto the cloud machine
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 2. Install Java 17 (required by the project)
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      # 3. Cache Gradle so subsequent builds are faster
+      - name: Cache Gradle packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      # 4. Decode the base64 keystore secret back into a real .jks file
+      - name: Decode keystore
+        run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > app/keystore.jks
+
+      # 5. Ensure gradlew script is executable on Linux
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
+
+      # 6. Build the signed release APK — signing credentials injected via env vars
+      - name: Build signed release APK
+        run: ./gradlew assembleRelease
+        env:
+          SIGNING_STORE_FILE: keystore.jks
+          SIGNING_STORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          SIGNING_KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          SIGNING_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+
+      # 7. Rename the APK to include the version tag (e.g. trackOne-v1.0.apk)
+      - name: Rename APK
+        run: mv app/build/outputs/apk/release/app-release.apk app/build/outputs/apk/release/trackOne-${{ github.ref_name }}.apk
+
+      # 8. Create a GitHub Release and attach the signed APK
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "trackOne ${{ github.ref_name }}"
+          body: |
+            🎉 **Initial Release of trackOne**
+
+            A minimal finance app and home-screen widget to track your watchlist, net worth, stocks, crypto, and more — all stored locally on your device.
+
+            ### ✨ Features
+            - **Watchlist** — Live stock & crypto prices via Yahoo Finance
+            - **Net Worth** — Track Indian Stocks, US Stocks, Mutual Funds, Gold, Silver, Crypto, Cash & Bank Balance
+            - **Home Screen Widget** — Scrollable stock widget, updates in the background
+            - **Backup & Restore** — Export/import your data as a JSON file
+            - **Portfolio P&L** — Track your gain/loss per asset and overall
+
+            ### 📲 Installation
+            1. Download `trackOne-${{ github.ref_name }}.apk` below
+            2. On your Android device go to **Settings → Install unknown apps** and allow installs from your browser or file manager
+            3. Open the downloaded APK file and tap **Install**
+
+            > ⚠️ Requires Android 8.0 (Oreo / API 26) or higher
+          files: app/build/outputs/apk/release/trackOne-${{ github.ref_name }}.apk
+          prerelease: false
+          make_latest: true
