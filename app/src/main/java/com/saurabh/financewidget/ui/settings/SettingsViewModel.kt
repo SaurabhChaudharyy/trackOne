@@ -8,6 +8,7 @@ import com.saurabh.financewidget.data.repository.BackupResult
 import com.saurabh.financewidget.data.repository.BrokerCsvRepository
 import com.saurabh.financewidget.data.repository.CsvImportResult
 import com.saurabh.financewidget.data.repository.ImportResult
+import com.saurabh.financewidget.data.repository.NetWorthRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -18,6 +19,8 @@ import javax.inject.Inject
 sealed class BackupUiState {
     object Idle : BackupUiState()
     object Loading : BackupUiState()
+    /** Shown after CSV rows are parsed — while live prices are being fetched */
+    object FetchingPrices : BackupUiState()
     data class WatchlistExportSuccess(val message: String) : BackupUiState()
     data class WatchlistImportSuccess(val count: Int) : BackupUiState()
     data class AssetsExportSuccess(val message: String) : BackupUiState()
@@ -29,7 +32,8 @@ sealed class BackupUiState {
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     private val backupRepository: BackupRepository,
-    private val brokerCsvRepository: BrokerCsvRepository
+    private val brokerCsvRepository: BrokerCsvRepository,
+    private val netWorthRepository: NetWorthRepository
 ) : ViewModel() {
 
     private val _state = MutableStateFlow<BackupUiState>(BackupUiState.Idle)
@@ -78,9 +82,16 @@ class SettingsViewModel @Inject constructor(
     fun importBrokerCsv(uri: Uri) {
         viewModelScope.launch {
             _state.value = BackupUiState.Loading
-            _state.value = when (val result = brokerCsvRepository.importFromUri(uri)) {
-                is CsvImportResult.Success -> BackupUiState.CsvImportSuccess(result.imported, result.skipped)
-                is CsvImportResult.Failure -> BackupUiState.Error(result.reason)
+            when (val result = brokerCsvRepository.importFromUri(uri)) {
+                is CsvImportResult.Failure -> {
+                    _state.value = BackupUiState.Error(result.reason)
+                }
+                is CsvImportResult.Success -> {
+                    // CSV parsed — now fetch live prices and convert USD→INR
+                    _state.value = BackupUiState.FetchingPrices
+                    netWorthRepository.refreshNetWorthAssets()   // errors are silent; prices update best-effort
+                    _state.value = BackupUiState.CsvImportSuccess(result.imported, result.skipped)
+                }
             }
         }
     }

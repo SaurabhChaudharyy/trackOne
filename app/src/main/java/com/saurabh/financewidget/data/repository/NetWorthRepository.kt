@@ -19,8 +19,8 @@ class NetWorthRepository @Inject constructor(
             try {
 
                 val fetchSymbol = when (assetType) {
-                    AssetType.GOLD   -> "GC=F"  
-                    AssetType.SILVER -> "SI=F"  
+                    AssetType.GOLD   -> "GC=F"
+                    AssetType.SILVER -> "SI=F"
                     else             -> symbol.trim().uppercase()
                 }
 
@@ -47,7 +47,7 @@ class NetWorthRepository @Inject constructor(
                 }
 
                 val finalPrice = when (assetType) {
-                    AssetType.GOLD, AssetType.SILVER -> priceInr / 31.1035 
+                    AssetType.GOLD, AssetType.SILVER -> priceInr / 31.1035
                     else                             -> priceInr
                 }
 
@@ -57,31 +57,61 @@ class NetWorthRepository @Inject constructor(
             }
         }
 
+    /**
+     * Fetches the current USD→INR exchange rate.
+     * Falls back to 85.0 if the network call fails.
+     */
+    suspend fun fetchUsdInrRate(): Double = try {
+        val fxResp = apiService.getQuote("USDINR=X")
+        fxResp.body()?.chart?.result?.firstOrNull()?.meta?.regularMarketPrice ?: 85.0
+    } catch (e: Exception) { 85.0 }
+
     suspend fun refreshNetWorthAssets(): Resource<Unit> = withContext(Dispatchers.IO) {
         try {
             val assets = netWorthDao.getAllAssetsSync()
-            val fetchableTypes = setOf(AssetType.STOCK_IN, AssetType.STOCK_US, AssetType.CRYPTO, AssetType.GOLD, AssetType.SILVER)
+            val fetchableTypes = setOf(
+                AssetType.STOCK_IN, AssetType.STOCK_US, AssetType.CRYPTO,
+                AssetType.GOLD, AssetType.SILVER
+            )
+
+            // Fetch USDINR once for the whole batch — used to also convert buyPrice for USD assets.
+            val usdInrRate = fetchUsdInrRate()
 
             var hasErrors = false
             for (asset in assets) {
-                if (asset.assetType in fetchableTypes && asset.name.isNotBlank()) {
-                    val symbol = if (asset.assetType == AssetType.GOLD) "GC=F" else asset.name
-                    val result = fetchLivePrice(symbol, asset.assetType)
-                    if (result is Resource.Success) {
-                        val currentPrice = result.data
-                        val updatedValue = currentPrice * asset.quantity
-                        netWorthDao.updateAsset(asset.copy(currentValue = updatedValue))
+                if (asset.assetType !in fetchableTypes || asset.name.isBlank()) continue
+
+                val symbol = if (asset.assetType == AssetType.GOLD) "GC=F" else asset.name
+                val result = fetchLivePrice(symbol, asset.assetType)
+
+                if (result is Resource.Success) {
+                    val currentPriceInr = result.data   // already in INR
+                    val updatedValue    = currentPriceInr * asset.quantity
+
+                    // If the asset's buyPrice is still in USD (first refresh after import),
+                    // convert it to INR and flip currency to "INR" so P&L is apples-to-apples.
+                    val (updatedBuyPrice, updatedCurrency) = if (asset.currency == "USD") {
+                        val buyPriceInr = if (asset.buyPrice > 0) asset.buyPrice * usdInrRate else 0.0
+                        Pair(buyPriceInr, "INR")
                     } else {
-                        hasErrors = true
+                        Pair(asset.buyPrice, asset.currency)
                     }
+
+                    netWorthDao.updateAsset(
+                        asset.copy(
+                            currentValue = updatedValue,
+                            buyPrice     = updatedBuyPrice,
+                            currency     = updatedCurrency,
+                            updatedAt    = System.currentTimeMillis()
+                        )
+                    )
+                } else {
+                    hasErrors = true
                 }
             }
 
-            if (hasErrors) {
-                Resource.Error("Failed to update some assets")
-            } else {
-                Resource.Success(Unit)
-            }
+            if (hasErrors) Resource.Error("Failed to update some assets")
+            else           Resource.Success(Unit)
         } catch (e: Exception) {
             Resource.Error(e.message ?: "Unknown error during net worth refresh")
         }

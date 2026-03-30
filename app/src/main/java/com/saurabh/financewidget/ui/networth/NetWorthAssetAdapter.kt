@@ -19,15 +19,21 @@ class NetWorthAssetAdapter(
 ) : ListAdapter<NetWorthAssetEntity, NetWorthAssetAdapter.ViewHolder>(DIFF) {
 
     private val inrFormat = NumberFormat.getCurrencyInstance(Locale("en", "IN"))
+    private val usdFormat = NumberFormat.getCurrencyInstance(Locale.US)
+
+    /** Returns the right formatter for the asset's native currency. */
+    private fun fmt(currency: String) = if (currency == "USD") usdFormat else inrFormat
 
     inner class ViewHolder(private val binding: ItemNetworthAssetBinding) :
         RecyclerView.ViewHolder(binding.root) {
 
         fun bind(asset: NetWorthAssetEntity) {
-            binding.tvAssetName.text = asset.name.removePrefix("^")
-            binding.tvAssetValue.text = inrFormat.format(asset.currentValue)
+            val fmt = fmt(asset.currency)
 
-            val subtitle = buildSubtitle(asset)
+            binding.tvAssetName.text = asset.name.removePrefix("^")
+            binding.tvAssetValue.text = fmt.format(asset.currentValue)
+
+            val subtitle = buildSubtitle(asset, fmt)
             if (subtitle.isNotBlank()) {
                 binding.tvAssetNotes.text = subtitle
                 binding.tvAssetNotes.visibility = View.VISIBLE
@@ -36,24 +42,24 @@ class NetWorthAssetAdapter(
             }
 
             if (asset.buyPrice > 0 && asset.quantity > 0) {
-                val invested    = asset.buyPrice * asset.quantity
-                val gain        = asset.currentValue - invested
-                val gainPct     = (gain / invested) * 100.0
-                val isGain      = gain >= 0
-                val arrow       = if (isGain) "▲" else "▼"
-                val colour      = if (isGain) R.color.gain_green else R.color.loss_red
-                val ctx         = binding.root.context
+                val invested = asset.buyPrice * asset.quantity
+                val gain     = asset.currentValue - invested
+                val gainPct  = (gain / invested) * 100.0
+                val isGain   = gain >= 0
+                val arrow    = if (isGain) "▲" else "▼"
+                val colour   = if (isGain) R.color.gain_green else R.color.loss_red
+                val ctx      = binding.root.context
 
                 binding.tvAssetPl.text = "%s %s (%+.2f%%)".format(
-                    arrow, inrFormat.format(gain), gainPct
+                    arrow, fmt.format(gain), gainPct
                 )
                 binding.tvAssetPl.setTextColor(ctx.getColor(colour))
                 binding.tvAssetPl.visibility = View.VISIBLE
 
-                binding.tvAssetInvested.text = "inv ${inrFormat.format(invested)}"
+                binding.tvAssetInvested.text = "inv ${fmt.format(invested)}"
                 binding.tvAssetInvested.visibility = View.VISIBLE
             } else {
-                binding.tvAssetPl.visibility      = View.GONE
+                binding.tvAssetPl.visibility       = View.GONE
                 binding.tvAssetInvested.visibility = View.GONE
             }
 
@@ -75,7 +81,7 @@ class NetWorthAssetAdapter(
             }
         }
 
-        private fun buildSubtitle(asset: NetWorthAssetEntity): String {
+        private fun buildSubtitle(asset: NetWorthAssetEntity, fmt: NumberFormat): String {
             val isFetchable = asset.assetType in listOf(
                 AssetType.STOCK_IN, AssetType.STOCK_US, AssetType.CRYPTO, AssetType.GOLD, AssetType.SILVER
             )
@@ -88,15 +94,12 @@ class NetWorthAssetAdapter(
                         AssetType.GOLD, AssetType.SILVER -> "g"
                         else -> " units"
                     }
-
-                    "$qtyStr$unitLabel \u00b7 ${inrFormat.format(pricePerUnit)}/unit"
+                    "$qtyStr$unitLabel \u00b7 ${fmt.format(pricePerUnit)}/unit"
                 }
-
                 asset.notes.isNotBlank() -> asset.notes
                 else -> ""
             }
         }
-
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {

@@ -3,15 +3,18 @@ package com.saurabh.financewidget.ui.main
 import androidx.lifecycle.*
 import com.saurabh.financewidget.data.database.StockEntity
 import com.saurabh.financewidget.data.database.WatchlistEntity
+import com.saurabh.financewidget.data.repository.NetWorthRepository
 import com.saurabh.financewidget.data.repository.StockRepository
 import com.saurabh.financewidget.utils.Resource
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
 class MainViewModel @Inject constructor(
-    private val repository: StockRepository
+    private val repository: StockRepository,
+    private val netWorthRepository: NetWorthRepository
 ) : ViewModel() {
 
     val watchlistStocks: LiveData<List<StockEntity>> = repository.getWatchlistStocks()
@@ -31,7 +34,14 @@ class MainViewModel @Inject constructor(
         viewModelScope.launch {
             _isRefreshing.value = true
             _refreshState.value = Resource.Loading()
-            val result = repository.refreshWatchlistStocks()
+
+            // Refresh watchlist stocks and net worth assets in parallel
+            val watchlistJob = async { repository.refreshWatchlistStocks() }
+            val netWorthJob  = async { netWorthRepository.refreshNetWorthAssets() }
+
+            val result = watchlistJob.await()
+            netWorthJob.await() // wait for net worth too; errors are silent (non-blocking for UI)
+
             _refreshState.value = result
             _isRefreshing.value = false
         }
