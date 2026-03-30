@@ -55,12 +55,6 @@ class SettingsFragment : Fragment() {
         if (uri != null) viewModel.exportAssets(uri)
     }
 
-    private val importAssetsLauncher = registerForActivityResult(
-        ActivityResultContracts.OpenDocument()
-    ) { uri: Uri? ->
-        if (uri != null) showAssetsImportConfirmationDialog(uri)
-    }
-
     private val importBrokerCsvLauncher = registerForActivityResult(
         ActivityResultContracts.OpenDocument()
     ) { uri: Uri? ->
@@ -99,11 +93,6 @@ class SettingsFragment : Fragment() {
         binding.cardExportAssets.setOnClickListener {
             it.performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY)
             exportAssetsLauncher.launch("trackone_investments_${timestamp()}.json")
-        }
-
-        binding.cardImportAssets.setOnClickListener {
-            it.performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY)
-            importAssetsLauncher.launch(BackupRepository.IMPORT_MIME_TYPES)
         }
 
         binding.cardImportBrokerCsv.setOnClickListener {
@@ -183,17 +172,6 @@ class SettingsFragment : Fragment() {
                     title   = "Investments exported",
                     message = state.message +
                         "\n\nKeep the file safe — you can restore it anytime via Import Stocks & Investments."
-                )
-            }
-
-            is BackupUiState.AssetsImportSuccess -> {
-                dismissBlockingProgress()
-                viewModel.resetState()
-                showSuccessDialog(
-                    title   = "Investments imported",
-                    message = "Restored ${state.count} investment(s).\n\n" +
-                        "Stock prices will refresh automatically.\n" +
-                        "Your watchlist was not affected."
                 )
             }
 
@@ -300,21 +278,6 @@ class SettingsFragment : Fragment() {
                 "Your existing investments and watchlist will NOT be deleted. Continue?"
             )
             .setPositiveButton("Import") { dlg, _ -> dlg.dismiss(); viewModel.importBrokerCsv(uri) }
-            .setNegativeButton("Cancel") { dlg, _ -> dlg.dismiss() }
-            .show()
-    }
-
-    private fun showAssetsImportConfirmationDialog(uri: Uri) {
-        if (!isAdded) return
-        MaterialAlertDialogBuilder(requireContext())
-            .setTitle("Replace your investments?")
-            .setMessage(
-                "Importing will permanently delete all your current stocks & investments " +
-                "and replace them with the data from the backup file.\n\n" +
-                "Your watchlist will NOT be affected.\n\n" +
-                "This cannot be undone. Continue?"
-            )
-            .setPositiveButton("Import") { dlg, _ -> dlg.dismiss(); viewModel.importAssets(uri) }
             .setNegativeButton("Cancel") { dlg, _ -> dlg.dismiss() }
             .show()
     }

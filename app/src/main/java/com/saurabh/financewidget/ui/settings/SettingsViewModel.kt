@@ -24,7 +24,6 @@ sealed class BackupUiState {
     data class WatchlistExportSuccess(val message: String) : BackupUiState()
     data class WatchlistImportSuccess(val count: Int) : BackupUiState()
     data class AssetsExportSuccess(val message: String) : BackupUiState()
-    data class AssetsImportSuccess(val count: Int) : BackupUiState()
     data class CsvImportSuccess(val imported: Int, val skipped: Int) : BackupUiState()
     data class Error(val message: String) : BackupUiState()
 }
@@ -65,16 +64,6 @@ class SettingsViewModel @Inject constructor(
             _state.value = when (val result = backupRepository.exportAssetsToUri(uri)) {
                 is BackupResult.Success -> BackupUiState.AssetsExportSuccess(result.message)
                 is BackupResult.Failure -> BackupUiState.Error(result.reason)
-            }
-        }
-    }
-
-    fun importAssets(uri: Uri) {
-        viewModelScope.launch {
-            _state.value = BackupUiState.Loading
-            _state.value = when (val result = backupRepository.importAssetsFromUri(uri)) {
-                is ImportResult.Success -> BackupUiState.AssetsImportSuccess(result.summary.assetsRestored)
-                is ImportResult.Failure -> BackupUiState.Error(result.reason)
             }
         }
     }

@@ -681,3 +681,117 @@ The merge find is backed by a new DAO query: `findMergeCandidate(name, assetType
 | Section-level P&L totals | 🔲 Planned |
 | ~~Total Net Worth P&L card~~ | ✅ **Implemented** (see §1 above — chip below total, not full card redesign) |
 | ~~Edit asset dialog~~ | ✅ **Implemented** (Session 2026-03-18) |
+
+---
+
+## Session Changes Log — 2026-03-30 (Broker Portfolio Import)
+
+### 1. Broker CSV / XLSX Import Feature
+
+**Commits:** `f7f3d47` (initial import), `284cdd9` (USD→INR conversion + US Stocks)
+
+**Purpose:** Allow users to import their brokerage portfolio directly from a CSV/XLSX export file, appending holdings to the Net Worth tab without deleting existing data.
+
+#### New File
+
+| File | Role |
+|---|---|
+| `data/repository/BrokerCsvRepository.kt` | Core import engine — detects broker format, parses CSV or XLSX, maps rows to `NetWorthAssetEntity` records, inserts via `NetWorthDao` |
+
+#### Modified Files
+
+| File | Change |
+|---|---|
+| `ui/settings/SettingsFragment.kt` | Added `importBrokerCsvLauncher` (SAF `OpenDocument` contract), `showBrokerCsvImportConfirmationDialog()`, `FetchingPrices` state handler |
+| `ui/settings/SettingsViewModel.kt` | Added `importBrokerCsv(uri)` coroutine — calls `BrokerCsvRepository`, then `NetWorthRepository.refreshNetWorthAssets()` for live prices |
+| `res/layout/fragment_settings.xml` | Added `card_import_broker_csv` card in the STOCKS & INVESTMENTS section |
+| `app/build.gradle.kts` | Added Apache POI dependency for XLSX support (later **removed** — see §2) |
+| `gradle/libs.versions.toml` | Added/removed library version entries accordingly |
+
+#### Supported Broker Formats
+
+| Format ID | Broker(s) | Column layout | Asset Type |
+|---|---|---|---|
+| `FORMAT_A` | HDFC Securities, Angel One | `Stock Name \| ISIN \| Qty \| Avg Buy Price \| Buy Value \| Closing Price \| Closing Value \| P&L` | `STOCK_IN` |
+| `FORMAT_B` | Zerodha, Groww | `Instrument \| Qty. \| Avg. cost \| LTP \| Invested \| Cur. val \| P&L \| Net chg.` | `STOCK_IN` |
+| `FORMAT_C` | Vested, Interactive Brokers (US stocks) | `name \| quantity \| buyPrice \| currentValue` | `STOCK_US` |
+
+**Auto-detection logic** (`detectFormat()`): inspects the lowercased header row joined by `|` for landmark column names (e.g. `"stock name"`, `"isin"` → FORMAT_A; `"instrument"`, `"avg. cost"` → FORMAT_B; exact 4-column match `name|quantity|buyprice|currentvalue` → FORMAT_C).
+
+#### XLSX Parsing — No Apache POI
+
+Instead of Apache POI (which caused large APK size and Proguard complexity), XLSX files are parsed using **a hand-rolled ZIP + XmlPullParser approach**:
+1. Read the file as a ZIP stream (`ZipInputStream`).
+2. Parse `xl/sharedStrings.xml` first to build the shared-string table.
+3. Parse `xl/worksheets/sheet1.xml`, mapping `<c r="B3" t="s"><v>5</v>` to resolved string values via the shared-string table.
+4. Output is `List<List<String>>` — same structure as CSV rows, so the same `FORMAT_A/B/C` parsers handle both.
+
+> ⚠️ **Do NOT re-add Apache POI / `fastexcel` / any XLSX library** — the hand-rolled parser is intentional and avoids the Proguard/R8 complexities those libraries introduce.
+
+#### Vested Name → Ticker Mapping
+
+Vested exports use full company names (e.g. `"APPLE INC"`) instead of tickers. A static lookup map `VESTED_NAME_TO_TICKER` in the companion object maps these to Yahoo Finance symbols (e.g. `"AAPL"`). The map covers ~30 common US stocks/ETFs. If a name is not found, the raw uppercased value is used as-is (works for Interactive Brokers which already exports tickers).
+
+**To add more Vested mappings:** Add entries to `VESTED_NAME_TO_TICKER` in `BrokerCsvRepository.kt`. No other file needs to change.
+
+#### Import Behaviour
+
+- **Append-only**, never deletes existing data.
+- A confirmation dialog is shown before importing.
+- `imported` = number of rows successfully inserted; `skipped` = rows that failed to parse (logged as warnings).
+- After parsing, `NetWorthRepository.refreshNetWorthAssets()` is called to fetch live prices — see §2 for full details.
+
+---
+
+### 2. USD → INR Auto-Conversion for US Stock Imports
+
+**Commit:** `284cdd9`
+
+When a `FORMAT_C` (US stocks) file is imported, holdings are stored with `currency = "USD"` and a placeholder `currentValue` (from the export file). After import, `NetWorthRepository.refreshNetWorthAssets()` is called immediately to fetch live INR prices.
+
+#### Live Price Refresh Pipeline
+
+`NetWorthRepository.refreshNetWorthAssets()` was extended to handle USD assets:
+
+| Step | Detail |
+|---|---|
+| 1. Fetch `USDINR=X` exchange rate | One-shot call to Yahoo Finance; cached in-memory for the duration of the refresh |
+| 2. Fetch USD stock price | Yahoo Finance ticker (e.g. `AAPL`) → price in USD |
+| 3. Convert | `currentValue = usdPrice × quantity × usdToInr` |
+| 4. Set currency | `currency = "INR"` (stored as INR from this point onward) |
+| 5. Persist | Single `DAO.updateAsset()` call per asset |
+
+**Key invariant:** After a successful refresh, all `STOCK_US` assets in Room have `currency = "INR"` and `currentValue` in rupees. The `currency` field is never shown in the UI — it only controls the conversion pipeline.
+
+#### `UiState` — FetchingPrices State
+
+`BackupUiState.FetchingPrices` was added to the sealed class. The Settings fragment shows a blocking non-cancellable progress dialog with label "Fetching live prices…" while this state is active. The label then changes to "Importing…" when `Loading` is active.
+
+#### MainViewModel — Real-time P&L Fix
+
+`MainViewModel` was updated to re-trigger the net worth asset refresh after the broker import completes, so that the Net Worth tab reflects the newly imported + live-priced holdings immediately without requiring the user to manually navigate away and back.
+
+---
+
+### 3. Removal of JSON-based Assets Import
+
+**Date:** 2026-03-30 (today, in-session — not committed yet)
+
+The "Import Stocks & Investments" card in Settings (which restored a JSON backup of all assets) has been **removed**. The broker CSV/XLSX import is now the sole mechanism for importing investment data. JSON backup **export** is still available and unchanged.
+
+#### What was removed
+
+| Location | Removed |
+|---|---|
+| `fragment_settings.xml` | `card_import_assets` LinearLayout card |
+| `SettingsFragment.kt` | `importAssetsLauncher` registration, `binding.cardImportAssets.setOnClickListener`, `is BackupUiState.AssetsImportSuccess` state handler, `showAssetsImportConfirmationDialog()` method |
+| `SettingsViewModel.kt` | `AssetsImportSuccess` sealed class entry, `importAssets(uri)` function |
+
+> ⚠️ **Do NOT re-add a JSON assets import card** to the Settings screen. The broker CSV/XLSX importer replaces it entirely. The `BackupRepository.importAssetsFromUri()` method still exists in the data layer (for potential future use or watchlist restore) — only the UI entry point was removed.
+
+#### What remains (Settings screen, STOCKS & INVESTMENTS section)
+
+| Card | Purpose |
+|---|---|
+| `card_export_assets` | Export all investments to a JSON backup file (unchanged) |
+| `card_import_broker_csv` | Import holdings from broker CSV/XLSX (Zerodha, Groww, HDFC, Vested, IB) |
