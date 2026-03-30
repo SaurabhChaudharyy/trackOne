@@ -1,4 +1,4 @@
-# trackOne — Finance Widget for Android
+# trackOne — A privacy focused portfolio tracker for Android
 
 <p align="center">
   <img src="app/src/main/res/mipmap-xxxhdpi/ic_launcher_foreground.png" width="96" alt="trackOne icon"/>
