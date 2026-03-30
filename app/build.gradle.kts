@@ -112,8 +112,6 @@ dependencies {
     // Charts
     implementation(libs.mpandroidchart)
 
-    // Excel (XLSX) reading
-    implementation(libs.fastexcel)
 
     // Testing
     testImplementation(libs.junit)

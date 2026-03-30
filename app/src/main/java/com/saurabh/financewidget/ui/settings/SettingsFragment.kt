@@ -6,8 +6,11 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.LinearLayout
+import android.widget.ProgressBar
+import android.widget.TextView
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.core.view.isVisible
+import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
@@ -30,6 +33,9 @@ class SettingsFragment : Fragment() {
     private val binding get() = _binding!!
 
     private val viewModel: SettingsViewModel by viewModels()
+
+    /** Non-cancelable Activity-level dialog — blocks the entire window (including bottom nav). */
+    private var blockingDialog: AlertDialog? = null
 
     private val exportWatchlistLauncher = registerForActivityResult(
         ActivityResultContracts.CreateDocument("application/json")
@@ -138,80 +144,136 @@ class SettingsFragment : Fragment() {
     private fun handleState(state: BackupUiState) {
         when (state) {
             is BackupUiState.Idle -> {
-                setLoadingVisible(false)
-                setCardsEnabled(true)
+                dismissBlockingProgress()
             }
 
             is BackupUiState.Loading -> {
-                setLoadingVisible(true)
-                setCardsEnabled(false)
+                showBlockingProgress("Importing…")
+            }
+
+            is BackupUiState.FetchingPrices -> {
+                // Update the spinner label without recreating the dialog
+                showBlockingProgress("Fetching live prices…")
             }
 
             is BackupUiState.WatchlistExportSuccess -> {
-                setLoadingVisible(false)
-                setCardsEnabled(true)
+                dismissBlockingProgress()
+                viewModel.resetState()   // Reset BEFORE dialog — prevents re-show on tab switch
                 showSuccessDialog(
-                    title = "Watchlist exported",
+                    title   = "Watchlist exported",
                     message = state.message +
                         "\n\nKeep the file safe — you can restore it anytime via Import Watchlist."
                 )
-                viewModel.resetState()
             }
 
             is BackupUiState.WatchlistImportSuccess -> {
-                setLoadingVisible(false)
-                setCardsEnabled(true)
+                dismissBlockingProgress()
+                viewModel.resetState()
                 showSuccessDialog(
-                    title = "Watchlist imported",
+                    title   = "Watchlist imported",
                     message = "Restored ${state.count} watchlist symbol(s).\n\n" +
                         "Your stocks & investments were not affected."
                 )
-                viewModel.resetState()
             }
 
             is BackupUiState.AssetsExportSuccess -> {
-                setLoadingVisible(false)
-                setCardsEnabled(true)
+                dismissBlockingProgress()
+                viewModel.resetState()
                 showSuccessDialog(
-                    title = "Investments exported",
+                    title   = "Investments exported",
                     message = state.message +
                         "\n\nKeep the file safe — you can restore it anytime via Import Stocks & Investments."
                 )
-                viewModel.resetState()
             }
 
             is BackupUiState.AssetsImportSuccess -> {
-                setLoadingVisible(false)
-                setCardsEnabled(true)
+                dismissBlockingProgress()
+                viewModel.resetState()
                 showSuccessDialog(
-                    title = "Investments imported",
+                    title   = "Investments imported",
                     message = "Restored ${state.count} investment(s).\n\n" +
                         "Stock prices will refresh automatically.\n" +
                         "Your watchlist was not affected."
                 )
-                viewModel.resetState()
             }
 
             is BackupUiState.CsvImportSuccess -> {
-                setLoadingVisible(false)
-                setCardsEnabled(true)
-                val skippedNote = if (state.skipped > 0) "\n${state.skipped} row(s) were skipped (unreadable data)." else ""
-                showSuccessDialog(
-                    title = "Broker import complete",
-                    message = "Added ${state.imported} stock holding(s) to your net worth.$skippedNote\n\n" +
-                        "Prices will refresh automatically."
-                )
+                dismissBlockingProgress()
+                // Reset BEFORE showing dialog — StateFlow re-emits on re-subscription (tab switch).
+                // Resetting here ensures the next emission is Idle, not CsvImportSuccess.
                 viewModel.resetState()
+                val skippedNote = if (state.skipped > 0) "\n${state.skipped} row(s) were skipped." else ""
+                showSuccessDialog(
+                    title   = "Broker import complete",
+                    message = "Added ${state.imported} holding(s) to your portfolio with live INR prices.$skippedNote"
+                )
             }
 
             is BackupUiState.Error -> {
-                setLoadingVisible(false)
-                setCardsEnabled(true)
-                showErrorDialog(state.message)
+                dismissBlockingProgress()
                 viewModel.resetState()
+                showErrorDialog(state.message)
             }
         }
     }
+
+    // ── Blocking progress dialog ──────────────────────────────────────────────
+
+    /**
+     * Shows a non-cancelable dialog at the Activity Window level.
+     * This covers the bottom navigation bar and all other fragments,
+     * preventing any tab switching or back-press while the operation runs.
+     *
+     * Calling this again while the dialog is showing just updates the label.
+     */
+    private fun showBlockingProgress(message: String) {
+        if (!isAdded) return
+
+        // If already showing, just update the message text
+        val existing = blockingDialog
+        if (existing?.isShowing == true) {
+            existing.findViewById<TextView>(android.R.id.message)?.text = message
+            return
+        }
+
+        val dp = resources.displayMetrics.density
+
+        val row = LinearLayout(requireContext()).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity     = android.view.Gravity.CENTER_VERTICAL
+            setPadding((24 * dp).toInt(), (24 * dp).toInt(), (24 * dp).toInt(), (24 * dp).toInt())
+        }
+        row.addView(ProgressBar(requireContext()).apply {
+            isIndeterminate = true
+            layoutParams    = LinearLayout.LayoutParams((36 * dp).toInt(), (36 * dp).toInt())
+        })
+        row.addView(TextView(requireContext()).apply {
+            id       = android.R.id.message
+            text     = message
+            textSize = 15f
+            setTextColor(requireContext().getColor(android.R.color.darker_gray))
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).also { it.marginStart = (16 * dp).toInt() }
+        })
+
+        blockingDialog = MaterialAlertDialogBuilder(requireActivity())
+            .setView(row)
+            .setCancelable(false)               // blocks back-press
+            .create()
+            .also { dlg ->
+                dlg.setCanceledOnTouchOutside(false)
+                dlg.show()
+            }
+    }
+
+    private fun dismissBlockingProgress() {
+        blockingDialog?.dismiss()
+        blockingDialog = null
+    }
+
+    // ── Confirmation dialogs ──────────────────────────────────────────────────
 
     private fun showWatchlistImportConfirmationDialog(uri: Uri) {
         if (!isAdded) return
@@ -223,11 +285,8 @@ class SettingsFragment : Fragment() {
                 "Your stocks & investments will NOT be affected.\n\n" +
                 "This cannot be undone. Continue?"
             )
-            .setPositiveButton("Import") { dialog, _ ->
-                dialog.dismiss()
-                viewModel.importWatchlist(uri)
-            }
-            .setNegativeButton("Cancel") { dialog, _ -> dialog.dismiss() }
+            .setPositiveButton("Import") { dlg, _ -> dlg.dismiss(); viewModel.importWatchlist(uri) }
+            .setNegativeButton("Cancel") { dlg, _ -> dlg.dismiss() }
             .show()
     }
 
@@ -236,16 +295,12 @@ class SettingsFragment : Fragment() {
         MaterialAlertDialogBuilder(requireContext())
             .setTitle("Import broker holdings?")
             .setMessage(
-                "This will add the stocks from the CSV file to your net worth as Indian Stock holdings.\n\n" +
-                "Your existing investments and watchlist will NOT be deleted — " +
-                "holdings will be appended.\n\n" +
-                "Continue?"
+                "This will append the stocks from the CSV/XLSX to your net worth.\n\n" +
+                "Live prices will be fetched and converted to INR automatically.\n\n" +
+                "Your existing investments and watchlist will NOT be deleted. Continue?"
             )
-            .setPositiveButton("Import") { dialog, _ ->
-                dialog.dismiss()
-                viewModel.importBrokerCsv(uri)
-            }
-            .setNegativeButton("Cancel") { dialog, _ -> dialog.dismiss() }
+            .setPositiveButton("Import") { dlg, _ -> dlg.dismiss(); viewModel.importBrokerCsv(uri) }
+            .setNegativeButton("Cancel") { dlg, _ -> dlg.dismiss() }
             .show()
     }
 
@@ -259,20 +314,19 @@ class SettingsFragment : Fragment() {
                 "Your watchlist will NOT be affected.\n\n" +
                 "This cannot be undone. Continue?"
             )
-            .setPositiveButton("Import") { dialog, _ ->
-                dialog.dismiss()
-                viewModel.importAssets(uri)
-            }
-            .setNegativeButton("Cancel") { dialog, _ -> dialog.dismiss() }
+            .setPositiveButton("Import") { dlg, _ -> dlg.dismiss(); viewModel.importAssets(uri) }
+            .setNegativeButton("Cancel") { dlg, _ -> dlg.dismiss() }
             .show()
     }
+
+    // ── Result dialogs ────────────────────────────────────────────────────────
 
     private fun showSuccessDialog(title: String, message: String) {
         if (!isAdded) return
         MaterialAlertDialogBuilder(requireContext())
             .setTitle(title)
             .setMessage(message)
-            .setPositiveButton("Done") { dialog, _ -> dialog.dismiss() }
+            .setPositiveButton("Done") { dlg, _ -> dlg.dismiss() }
             .show()
     }
 
@@ -281,31 +335,14 @@ class SettingsFragment : Fragment() {
         MaterialAlertDialogBuilder(requireContext())
             .setTitle("Something went wrong")
             .setMessage(message)
-            .setPositiveButton("OK") { dialog, _ -> dialog.dismiss() }
+            .setPositiveButton("OK") { dlg, _ -> dlg.dismiss() }
             .show()
-    }
-
-    private fun setLoadingVisible(visible: Boolean) {
-        binding.layoutLoading.isVisible = visible
-        if (visible) binding.tvLoadingLabel.text = "Working…"
-    }
-
-    private fun setCardsEnabled(enabled: Boolean) {
-        val alpha = if (enabled) 1f else 0.5f
-        binding.cardExportWatchlist.isEnabled = enabled
-        binding.cardExportWatchlist.alpha = alpha
-        binding.cardImportWatchlist.isEnabled = enabled
-        binding.cardImportWatchlist.alpha = alpha
-        binding.cardExportAssets.isEnabled = enabled
-        binding.cardExportAssets.alpha = alpha
-        binding.cardImportAssets.isEnabled = enabled
-        binding.cardImportAssets.alpha = alpha
-        binding.cardImportBrokerCsv.isEnabled = enabled
-        binding.cardImportBrokerCsv.alpha = alpha
     }
 
     override fun onDestroyView() {
         super.onDestroyView()
+        blockingDialog?.dismiss()
+        blockingDialog = null
         _binding = null
     }
 }
