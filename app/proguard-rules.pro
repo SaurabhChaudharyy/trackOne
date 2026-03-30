@@ -46,3 +46,7 @@
 -keep class * extends androidx.work.Worker
 -keep class * extends androidx.work.CoroutineWorker
 -keep class * extends androidx.hilt.work.HiltWorker
+
+# fastexcel-reader (XLSX parsing)
+-keep class org.dhatim.fastexcel.** { *; }
+-dontwarn org.dhatim.fastexcel.**
