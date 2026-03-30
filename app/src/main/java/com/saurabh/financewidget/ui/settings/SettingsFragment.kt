@@ -15,6 +15,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.saurabh.financewidget.data.repository.BackupRepository
+import com.saurabh.financewidget.data.repository.BrokerCsvRepository
 import com.saurabh.financewidget.databinding.FragmentSettingsBinding
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
@@ -54,6 +55,12 @@ class SettingsFragment : Fragment() {
         if (uri != null) showAssetsImportConfirmationDialog(uri)
     }
 
+    private val importBrokerCsvLauncher = registerForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri: Uri? ->
+        if (uri != null) showBrokerCsvImportConfirmationDialog(uri)
+    }
+
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
@@ -91,6 +98,11 @@ class SettingsFragment : Fragment() {
         binding.cardImportAssets.setOnClickListener {
             it.performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY)
             importAssetsLauncher.launch(BackupRepository.IMPORT_MIME_TYPES)
+        }
+
+        binding.cardImportBrokerCsv.setOnClickListener {
+            it.performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY)
+            importBrokerCsvLauncher.launch(BrokerCsvRepository.IMPORT_MIME_TYPES)
         }
 
         binding.cardContactUs.setOnClickListener {
@@ -180,6 +192,18 @@ class SettingsFragment : Fragment() {
                 viewModel.resetState()
             }
 
+            is BackupUiState.CsvImportSuccess -> {
+                setLoadingVisible(false)
+                setCardsEnabled(true)
+                val skippedNote = if (state.skipped > 0) "\n${state.skipped} row(s) were skipped (unreadable data)." else ""
+                showSuccessDialog(
+                    title = "Broker import complete",
+                    message = "Added ${state.imported} stock holding(s) to your net worth.$skippedNote\n\n" +
+                        "Prices will refresh automatically."
+                )
+                viewModel.resetState()
+            }
+
             is BackupUiState.Error -> {
                 setLoadingVisible(false)
                 setCardsEnabled(true)
@@ -202,6 +226,24 @@ class SettingsFragment : Fragment() {
             .setPositiveButton("Import") { dialog, _ ->
                 dialog.dismiss()
                 viewModel.importWatchlist(uri)
+            }
+            .setNegativeButton("Cancel") { dialog, _ -> dialog.dismiss() }
+            .show()
+    }
+
+    private fun showBrokerCsvImportConfirmationDialog(uri: Uri) {
+        if (!isAdded) return
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle("Import broker holdings?")
+            .setMessage(
+                "This will add the stocks from the CSV file to your net worth as Indian Stock holdings.\n\n" +
+                "Your existing investments and watchlist will NOT be deleted — " +
+                "holdings will be appended.\n\n" +
+                "Continue?"
+            )
+            .setPositiveButton("Import") { dialog, _ ->
+                dialog.dismiss()
+                viewModel.importBrokerCsv(uri)
             }
             .setNegativeButton("Cancel") { dialog, _ -> dialog.dismiss() }
             .show()
@@ -258,6 +300,8 @@ class SettingsFragment : Fragment() {
         binding.cardExportAssets.alpha = alpha
         binding.cardImportAssets.isEnabled = enabled
         binding.cardImportAssets.alpha = alpha
+        binding.cardImportBrokerCsv.isEnabled = enabled
+        binding.cardImportBrokerCsv.alpha = alpha
     }
 
     override fun onDestroyView() {

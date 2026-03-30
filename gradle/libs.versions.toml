@@ -22,6 +22,7 @@ mpandroidchart = "v3.1.0"
 junit = "4.13.2"
 junitAndroid = "1.2.1"
 espresso = "3.6.1"
+fastexcel = "0.15.7"
 
 [libraries]
 # AndroidX Core
@@ -76,6 +77,7 @@ mpandroidchart = { group = "com.github.PhilJay", name = "MPAndroidChart", versio
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitAndroid" }
 androidx-espresso = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espresso" }
+fastexcel = { group = "org.dhatim", name = "fastexcel-reader", version.ref = "fastexcel" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

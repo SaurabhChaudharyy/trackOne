@@ -9,37 +9,37 @@ import com.saurabh.financewidget.data.database.*
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.time.Instant
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
 import javax.inject.Inject
 import javax.inject.Singleton
 
-const val BACKUP_SCHEMA_VERSION = 1
 val BACKUP_IMPORT_MIME_TYPES = arrayOf("application/json", "text/plain", "*/*")
 
+private val ISO_FORMATTER: DateTimeFormatter =
+    DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss'Z'").withZone(ZoneOffset.UTC)
+
 data class BackupEnvelope(
-    @SerializedName("schema_version") val schemaVersion: Int = BACKUP_SCHEMA_VERSION,
-    @SerializedName("exported_at_ms") val exportedAtMs: Long = System.currentTimeMillis(),
-    @SerializedName("app_package") val appPackage: String = "com.saurabh.financewidget",
+    @SerializedName("exported_at") val exportedAt: String = ISO_FORMATTER.format(Instant.now()),
     @SerializedName("watchlist") val watchlist: List<WatchlistBackup> = emptyList(),
-    @SerializedName("networth_assets") val networthAssets: List<NetWorthAssetBackup> = emptyList()
+    @SerializedName("assets") val assets: List<NetWorthAssetBackup> = emptyList()
 )
 
 data class WatchlistBackup(
     @SerializedName("symbol") val symbol: String,
-    @SerializedName("display_name") val displayName: String,
-    @SerializedName("position") val position: Int,
-    @SerializedName("added_at_ms") val addedAt: Long
+    @SerializedName("name") val displayName: String,
+    @SerializedName("position") val position: Int
 )
 
 data class NetWorthAssetBackup(
     @SerializedName("name") val name: String,
-    @SerializedName("asset_type") val assetType: String,
+    @SerializedName("type") val assetType: String,
     @SerializedName("quantity") val quantity: Double,
     @SerializedName("buy_price") val buyPrice: Double,
     @SerializedName("current_value") val currentValue: Double,
     @SerializedName("currency") val currency: String,
-    @SerializedName("notes") val notes: String,
-    @SerializedName("added_at_ms") val addedAt: Long,
-    @SerializedName("updated_at_ms") val updatedAt: Long
+    @SerializedName("notes") val notes: String
 )
 
 sealed class BackupResult {
@@ -80,8 +80,8 @@ class BackupRepository @Inject constructor(
             if (entities.isEmpty()) {
                 return@withContext BackupResult.Failure("Nothing to export — your watchlist is empty.")
             }
-            val backup = entities.map { WatchlistBackup(it.symbol, it.displayName, it.position, it.addedAt) }
-            val envelope = BackupEnvelope(watchlist = backup, networthAssets = emptyList())
+            val backup = entities.map { WatchlistBackup(it.symbol, it.displayName, it.position) }
+            val envelope = BackupEnvelope(watchlist = backup, assets = emptyList())
             writeEnvelope(uri, envelope)
                 ?: return@withContext BackupResult.Failure("Could not open file for writing.")
             BackupResult.Success("Exported ${backup.size} watchlist symbol(s).")
@@ -97,12 +97,13 @@ class BackupRepository @Inject constructor(
                 is EnvelopeResult.Ok  -> r.envelope
             }
 
-            val entities = envelope.watchlist.map { b ->
+            val now = System.currentTimeMillis()
+            val entities = envelope.watchlist.mapIndexed { idx, b ->
                 WatchlistEntity(
                     symbol = b.symbol.trim().uppercase(),
                     displayName = b.displayName,
                     position = b.position,
-                    addedAt = b.addedAt
+                    addedAt = now + idx
                 )
             }
 
@@ -129,12 +130,10 @@ class BackupRepository @Inject constructor(
                     buyPrice = e.buyPrice,
                     currentValue = e.currentValue,
                     currency = e.currency,
-                    notes = e.notes,
-                    addedAt = e.addedAt,
-                    updatedAt = e.updatedAt
+                    notes = e.notes
                 )
             }
-            val envelope = BackupEnvelope(watchlist = emptyList(), networthAssets = backup)
+            val envelope = BackupEnvelope(watchlist = emptyList(), assets = backup)
             writeEnvelope(uri, envelope)
                 ?: return@withContext BackupResult.Failure("Could not open file for writing.")
             BackupResult.Success("Exported ${backup.size} investment(s).")
@@ -150,7 +149,7 @@ class BackupRepository @Inject constructor(
                 is EnvelopeResult.Ok  -> r.envelope
             }
 
-            val invalidTypes = envelope.networthAssets
+            val invalidTypes = envelope.assets
                 .filter { runCatching { AssetType.valueOf(it.assetType) }.isFailure }
                 .map { it.assetType }
             if (invalidTypes.isNotEmpty()) {
@@ -160,7 +159,8 @@ class BackupRepository @Inject constructor(
                 )
             }
 
-            val entities = envelope.networthAssets.map { b ->
+            val now = System.currentTimeMillis()
+            val entities = envelope.assets.map { b ->
                 NetWorthAssetEntity(
                     id = 0,
                     name = b.name,
@@ -170,8 +170,8 @@ class BackupRepository @Inject constructor(
                     currentValue = b.currentValue,
                     currency = b.currency,
                     notes = b.notes,
-                    addedAt = b.addedAt,
-                    updatedAt = b.updatedAt
+                    addedAt = now,
+                    updatedAt = now
                 )
             }
 
@@ -212,24 +212,6 @@ class BackupRepository @Inject constructor(
         } ?: return EnvelopeResult.Err(
             ImportResult.Failure("Backup file appears to be corrupt (null envelope).")
         )
-
-        if (envelope.appPackage.isNotBlank() && envelope.appPackage != "com.saurabh.financewidget") {
-            return EnvelopeResult.Err(
-                ImportResult.Failure(
-                    "This backup was created by a different app (${envelope.appPackage}). " +
-                    "Only trackOne backup files can be imported."
-                )
-            )
-        }
-
-        if (envelope.schemaVersion > BACKUP_SCHEMA_VERSION) {
-            return EnvelopeResult.Err(
-                ImportResult.Failure(
-                    "This backup was created with a newer version of trackOne " +
-                    "(schema v${envelope.schemaVersion}). Please update the app and try again."
-                )
-            )
-        }
 
         return EnvelopeResult.Ok(envelope)
     }

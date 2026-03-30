@@ -259,7 +259,7 @@
             android:orientation="vertical"
             android:background="@drawable/bg_settings_card"
             android:padding="16dp"
-            android:layout_marginBottom="24dp"
+            android:layout_marginBottom="10dp"
             android:clickable="true"
             android:focusable="true">
 
@@ -305,6 +305,72 @@
                         android:textColor="@color/text_tertiary"
                         android:textSize="11sp"
                         android:fontFamily="@font/inter"                        android:layout_marginTop="2dp"/>
+                </LinearLayout>
+
+                <ImageView
+                    android:layout_width="16dp"
+                    android:layout_height="16dp"
+                    android:src="@drawable/ic_chevron_right"
+                    android:tint="@color/text_tertiary"
+                    tools:ignore="ContentDescription"/>
+            </LinearLayout>
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/card_import_broker_csv"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@drawable/bg_settings_card"
+            android:padding="16dp"
+            android:layout_marginBottom="24dp"
+            android:clickable="true"
+            android:focusable="true">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <LinearLayout
+                    android:layout_width="38dp"
+                    android:layout_height="38dp"
+                    android:background="@drawable/bg_settings_icon"
+                    android:gravity="center"
+                    android:layout_marginEnd="14dp">
+
+                    <ImageView
+                        android:layout_width="18dp"
+                        android:layout_height="18dp"
+                        android:src="@drawable/ic_import"
+                        android:tint="@color/text_primary"
+                        tools:ignore="ContentDescription"/>
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Import from Broker CSV"
+                        android:textColor="@color/text_primary"
+                        android:textSize="14sp"
+                        android:fontFamily="@font/inter_semi_bold"/>
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="HDFC Securities · Zerodha · Groww"
+                        android:textColor="@color/text_tertiary"
+                        android:textSize="11sp"
+                        android:fontFamily="@font/inter"
+                        android:layout_marginTop="2dp"/>
                 </LinearLayout>
 
                 <ImageView
