@@ -1,9 +1,14 @@
 package com.saurabh.financewidget.ui.main
 
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.Typeface
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.recyclerview.widget.ItemTouchHelper
@@ -104,6 +109,46 @@ class WatchlistFragment : Fragment() {
                 Snackbar.make(binding.root, "${stock.symbol} removed", Snackbar.LENGTH_LONG)
                     .setAction("UNDO") { viewModel.addToWatchlist(stock.symbol, stock.companyName) }
                     .show()
+            }
+
+            override fun onChildDraw(
+                c: Canvas, recyclerView: RecyclerView, viewHolder: RecyclerView.ViewHolder,
+                dX: Float, dY: Float, actionState: Int, isCurrentlyActive: Boolean
+            ) {
+                if (actionState == ItemTouchHelper.ACTION_STATE_SWIPE && dX < 0) {
+                    val itemView  = viewHolder.itemView
+                    val ctx       = recyclerView.context
+                    val density   = ctx.resources.displayMetrics.density
+                    val revealed  = -dX   // always positive
+
+                    // ── Red background strip ──────────────────────────────────
+                    val bgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                        color = ContextCompat.getColor(ctx, R.color.loss_red)
+                    }
+                    c.drawRect(
+                        itemView.right + dX,
+                        itemView.top.toFloat(),
+                        itemView.right.toFloat(),
+                        itemView.bottom.toFloat(),
+                        bgPaint
+                    )
+
+                    // ── "Remove" label (appears once ≥60dp is revealed) ──────
+                    if (revealed >= 60 * density) {
+                        val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                            color     = Color.WHITE
+                            textSize  = 13f * density
+                            typeface  = Typeface.DEFAULT_BOLD
+                            textAlign = Paint.Align.CENTER
+                        }
+                        // Centre of the revealed strip
+                        val cx = itemView.right - revealed / 2f
+                        val cy = (itemView.top + itemView.bottom) / 2f -
+                            (textPaint.descent() + textPaint.ascent()) / 2f
+                        c.drawText("Remove", cx, cy, textPaint)
+                    }
+                }
+                super.onChildDraw(c, recyclerView, viewHolder, dX, dY, actionState, isCurrentlyActive)
             }
         }
         ItemTouchHelper(swipeCallback).attachToRecyclerView(binding.recyclerViewWatchlist)

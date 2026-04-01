@@ -10,6 +10,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.xmlpull.v1.XmlPullParser
 import java.io.InputStream
+import java.security.MessageDigest
 import java.util.zip.ZipInputStream
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -67,6 +68,9 @@ class BrokerCsvRepository @Inject constructor(
             "*/*"
         )
 
+        private const val PREFS_NAME = "broker_import_hashes"
+        private const val KEY_HASHES  = "imported_file_hashes"
+
         /**
          * Maps Vested's full company-name strings (as exported in the `name` column)
          * to the Yahoo Finance ticker symbol used by NetWorthRepository for live price lookups.
@@ -111,8 +115,12 @@ class BrokerCsvRepository @Inject constructor(
     }
 
     /**
-     * Parses a broker portfolio CSV/TSV/XLSX and appends the parsed holdings
-     * to the existing net-worth assets as STOCK_IN entries. Existing data is NOT deleted.
+     * Parses a broker portfolio CSV/TSV/XLSX and upserts the parsed holdings
+     * into the net-worth assets table. Existing assets with the same name+type
+     * are updated in-place (quantity, buyPrice, currentValue) — never duplicated.
+     *
+     * A SHA-256 hash of the raw file bytes is stored in SharedPreferences after
+     * a successful import. Re-uploading the exact same file is rejected instantly.
      */
     suspend fun importFromUri(uri: Uri): CsvImportResult = withContext(Dispatchers.IO) {
         try {
@@ -123,10 +131,20 @@ class BrokerCsvRepository @Inject constructor(
                 fileName.endsWith(".xlsx") ||
                 fileName.endsWith(".xls")
 
-            val inputStream = context.contentResolver.openInputStream(uri)
+            // Read all bytes upfront — needed for both hashing and parsing.
+            val fileBytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
                 ?: return@withContext CsvImportResult.Failure("Could not open the selected file.")
 
-            val parsed = (if (isXlsx) parseXlsx(inputStream) else parseCsv(inputStream))
+            // ── Hash check ────────────────────────────────────────────────────
+            val fileHash = computeSha256(fileBytes)
+            if (isAlreadyImported(fileHash)) {
+                return@withContext CsvImportResult.Failure(
+                    "This file has already been imported.\n\n" +
+                    "If your portfolio has changed, please export a fresh file from your broker."
+                )
+            }
+
+            val parsed = (if (isXlsx) parseXlsx(fileBytes) else parseCsv(fileBytes.inputStream()))
                 ?: return@withContext CsvImportResult.Failure(
                     "The file has no data rows. Make sure you exported the portfolio holdings from your broker."
                 )
@@ -166,12 +184,53 @@ class BrokerCsvRepository @Inject constructor(
                 )
             }
 
-            netWorthDao.insertAssets(entities)
+            // ── Upsert loop ───────────────────────────────────────────────────
+            // For each parsed row: update the existing holding if name+type matches,
+            // otherwise insert as a new holding. This prevents duplicate rows on
+            // re-import of an updated broker export.
+            for (entity in entities) {
+                val existing = netWorthDao.findAssetByNameAndType(entity.name, entity.assetType)
+                if (existing != null) {
+                    netWorthDao.updateAsset(
+                        existing.copy(
+                            quantity     = entity.quantity,
+                            buyPrice     = entity.buyPrice,
+                            currentValue = entity.currentValue,
+                            updatedAt    = entity.updatedAt
+                        )
+                    )
+                } else {
+                    netWorthDao.insertAsset(entity)
+                }
+            }
+
+            // Record hash only after a fully successful import.
+            recordImportHash(fileHash)
             CsvImportResult.Success(imported = imported, skipped = skipped)
 
         } catch (e: Exception) {
             CsvImportResult.Failure("Import failed: ${e.message}", e)
         }
+    }
+
+    // ── File hash helpers ─────────────────────────────────────────────────────
+
+    /** Computes the SHA-256 hex digest of the given bytes. */
+    private fun computeSha256(bytes: ByteArray): String {
+        val digest = MessageDigest.getInstance("SHA-256")
+        return digest.digest(bytes).joinToString("") { "%02x".format(it) }
+    }
+
+    private fun isAlreadyImported(hash: String): Boolean {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        return prefs.getStringSet(KEY_HASHES, emptySet())?.contains(hash) == true
+    }
+
+    private fun recordImportHash(hash: String) {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val existing = prefs.getStringSet(KEY_HASHES, emptySet())?.toMutableSet() ?: mutableSetOf()
+        existing.add(hash)
+        prefs.edit().putStringSet(KEY_HASHES, existing).apply()
     }
 
     // ── XLSX parser ───────────────────────────────────────────────────────────
@@ -182,9 +241,8 @@ class BrokerCsvRepository @Inject constructor(
     //  xl/sharedStrings.xml  ->  string table; cells of type "s" point here by index
     //  xl/worksheets/sheet1.xml  ->  the actual grid rows/cells
 
-    private fun parseXlsx(stream: InputStream): Pair<List<String>, List<RawRow>>? {
-        // Buffer once; we need two ZIP passes (sharedStrings then the sheet).
-        val bytes = stream.use { it.readBytes() }
+    /** Accepts already-buffered bytes so the caller can hash the file before parsing. */
+    private fun parseXlsx(bytes: ByteArray): Pair<List<String>, List<RawRow>>? {
 
         val sharedStrings = readSharedStrings(bytes)
         val rows = readSheetRows(bytes, sharedStrings)

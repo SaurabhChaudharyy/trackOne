@@ -30,6 +30,9 @@ interface NetWorthDao {
     @Query("DELETE FROM networth_assets")
     suspend fun deleteAllAssets()
 
+    @Query("DELETE FROM networth_assets WHERE id IN (:ids)")
+    suspend fun deleteAssetsByIds(ids: List<Long>)
+
     @Update
     suspend fun updateAsset(asset: NetWorthAssetEntity)
 
@@ -48,4 +51,11 @@ interface NetWorthDao {
      */
     @Query("SELECT * FROM networth_assets WHERE name = :name AND assetType = :type AND buyPrice = 0 LIMIT 1")
     suspend fun findMergeCandidate(name: String, type: AssetType): NetWorthAssetEntity?
+
+    /**
+     * Returns the first existing asset of the same name+type, regardless of buy price.
+     * Used by the broker CSV upsert path to update an existing holding instead of inserting a duplicate.
+     */
+    @Query("SELECT * FROM networth_assets WHERE name = :name AND assetType = :type LIMIT 1")
+    suspend fun findAssetByNameAndType(name: String, type: AssetType): NetWorthAssetEntity?
 }

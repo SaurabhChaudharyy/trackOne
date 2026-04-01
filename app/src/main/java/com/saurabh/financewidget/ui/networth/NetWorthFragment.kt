@@ -9,6 +9,7 @@ import android.widget.ArrayAdapter
 import android.widget.AutoCompleteTextView
 import android.widget.Filter
 import android.widget.TextView
+import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AlertDialog
 import androidx.core.content.res.ResourcesCompat
 import androidx.core.view.isVisible
@@ -38,6 +39,9 @@ class NetWorthFragment : Fragment() {
     private val inrFormat = NumberFormat.getCurrencyInstance(Locale("en", "IN"))
 
     private val adapters = mutableMapOf<AssetType, NetWorthAssetAdapter>()
+
+    /** Which section is currently in bulk-selection mode; null = normal mode. */
+    private var selectionModeType: AssetType? = null
 
     // Tracks full data per section (before top-N trimming)
     private val fullListCache = mutableMapOf<AssetType, List<NetWorthAssetEntity>>()
@@ -117,7 +121,23 @@ class NetWorthFragment : Fragment() {
         setupHeaders()
         setupAddButtons()
         setupViewAllButtons()
+        setupSelectionBar()
         observeViewModel()
+
+        // Exit selection mode on back press instead of leaving the fragment
+        requireActivity().onBackPressedDispatcher.addCallback(
+            viewLifecycleOwner,
+            object : OnBackPressedCallback(true) {
+                override fun handleOnBackPressed() {
+                    if (selectionModeType != null) {
+                        exitSelectionMode()
+                    } else {
+                        isEnabled = false
+                        requireActivity().onBackPressedDispatcher.onBackPressed()
+                    }
+                }
+            }
+        )
     }
 
     private fun setupRecyclerViews() {
@@ -133,8 +153,10 @@ class NetWorthFragment : Fragment() {
         )
         for ((type, rv) in map) {
             val adapter = NetWorthAssetAdapter(
-                onDeleteClick = { asset -> confirmDelete(asset) },
-                onEditClick   = { asset -> showEditDialog(asset) }
+                onDeleteClick      = { asset -> confirmDelete(asset) },
+                onEditClick        = { asset -> showEditDialog(asset) },
+                onLongPress        = { asset -> enterSelectionMode(asset) },
+                onSelectionChanged = { count -> updateSelectionBar(type, count) }
             )
             adapters[type] = adapter
             rv.apply {
@@ -1002,6 +1024,116 @@ class NetWorthFragment : Fragment() {
         AssetType.CRYPTO   -> binding.rvCrypto
         AssetType.CASH     -> binding.rvCash
         AssetType.BANK     -> binding.rvBank
+    }
+
+    // ─── Bulk Selection Mode ──────────────────────────────────────────────────
+
+    /**
+     * Enter bulk-selection mode for the section containing [asset].
+     * - Exits any currently-active selection in another section.
+     * - Auto-expands the section and shows all its items (so the user can select any).
+     * - Pre-selects the item that was long-pressed.
+     */
+    private fun enterSelectionMode(asset: NetWorthAssetEntity) {
+        val type = asset.assetType
+
+        // Exit any other active selection mode first
+        if (selectionModeType != null && selectionModeType != type) exitSelectionMode()
+
+        selectionModeType = type
+
+        // Expand the section and show ALL items
+        if (sectionExpanded[type] == false) {
+            sectionExpanded[type] = true
+            rvForType(type)?.isVisible = true
+        }
+        sectionShowAll[type] = true
+        val full = fullListCache[type] ?: emptyList()
+        adapters[type]?.submitList(full)
+        viewAllButtonFor(type)?.isVisible = false   // hide during selection mode
+
+        adapters[type]?.enterSelectionMode(asset.id)
+    }
+
+    /** Exit bulk-selection mode, restore normal state and hide the action bar. */
+    private fun exitSelectionMode() {
+        val type = selectionModeType ?: return
+        adapters[type]?.exitSelectionMode()
+        selectionModeType = null
+        binding.llSelectionBar.isVisible = false
+
+        // Restore view-all button if section has more items than TOP_N
+        val full = fullListCache[type] ?: emptyList()
+        if (full.size > TOP_N) {
+            viewAllButtonFor(type)?.isVisible = sectionExpanded[type] == true
+        }
+
+        // Trim back to TOP_N if the user hadn't already expanded
+        if (sectionShowAll[type] == false) {
+            adapters[type]?.submitList(full.take(TOP_N))
+        }
+    }
+
+    /**
+     * Called by each adapter's [onSelectionChanged] lambda whenever its selection set changes.
+     * Ignored for adapters that are not the currently-active selection section.
+     */
+    private fun updateSelectionBar(type: AssetType, count: Int) {
+        if (type != selectionModeType) return
+
+        val bar = binding.llSelectionBar
+        bar.isVisible = true
+
+        val sectionName = getCategoryName(type)
+        binding.tvSelectionCount.text = when (count) {
+            0    -> "$sectionName — none selected"
+            1    -> "1 selected · $sectionName"
+            else -> "$count selected · $sectionName"
+        }
+
+        val adapter   = adapters[type]
+        val allSelected = adapter?.areAllSelected() == true
+        binding.tvSelectAll.text = if (allSelected) "Deselect All" else "Select All"
+
+        binding.btnDeleteSelected.alpha     = if (count > 0) 1.0f else 0.38f
+        binding.btnDeleteSelected.isEnabled = count > 0
+    }
+
+    /** Wire up the selection bar's Cancel / Select All / Delete buttons. */
+    private fun setupSelectionBar() {
+        binding.tvSelectionCancel.setOnClickListener {
+            it.performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY)
+            exitSelectionMode()
+        }
+
+        binding.tvSelectAll.setOnClickListener {
+            val type    = selectionModeType ?: return@setOnClickListener
+            val adapter = adapters[type] ?: return@setOnClickListener
+            if (adapter.areAllSelected()) adapter.deselectAll() else adapter.selectAll()
+        }
+
+        binding.btnDeleteSelected.setOnClickListener {
+            it.performHapticFeedback(android.view.HapticFeedbackConstants.CONFIRM)
+            confirmDeleteSelected()
+        }
+    }
+
+    private fun confirmDeleteSelected() {
+        val type    = selectionModeType ?: return
+        val adapter = adapters[type] ?: return
+        val ids     = adapter.getSelectedIds()
+        if (ids.isEmpty()) return
+
+        val sectionName = getCategoryName(type)
+        AlertDialog.Builder(requireContext(), R.style.ThemeOverlay_App_MaterialAlertDialog)
+            .setTitle("Remove ${ids.size} ${sectionName.lowercase()}?")
+            .setMessage("${ids.size} holding(s) will be permanently removed from your net worth.")
+            .setPositiveButton("Remove") { _, _ ->
+                viewModel.deleteAssets(ids)
+                exitSelectionMode()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     override fun onDestroyView() {

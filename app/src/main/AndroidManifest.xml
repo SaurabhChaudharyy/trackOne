@@ -84,4 +84,12 @@
 
     </application>
 
+    <!-- Required on API 30+ for resolveActivity() to see email apps -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.SENDTO" />
+            <data android:scheme="mailto" />
+        </intent>
+    </queries>
+
 </manifest>
