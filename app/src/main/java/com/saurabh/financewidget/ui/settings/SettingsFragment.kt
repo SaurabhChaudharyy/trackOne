@@ -17,14 +17,10 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import com.saurabh.financewidget.data.repository.BackupRepository
 import com.saurabh.financewidget.data.repository.BrokerCsvRepository
 import com.saurabh.financewidget.databinding.FragmentSettingsBinding
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 @AndroidEntryPoint
 class SettingsFragment : Fragment() {
@@ -36,24 +32,6 @@ class SettingsFragment : Fragment() {
 
     /** Non-cancelable Activity-level dialog — blocks the entire window (including bottom nav). */
     private var blockingDialog: AlertDialog? = null
-
-    private val exportWatchlistLauncher = registerForActivityResult(
-        ActivityResultContracts.CreateDocument("application/json")
-    ) { uri: Uri? ->
-        if (uri != null) viewModel.exportWatchlist(uri)
-    }
-
-    private val importWatchlistLauncher = registerForActivityResult(
-        ActivityResultContracts.OpenDocument()
-    ) { uri: Uri? ->
-        if (uri != null) showWatchlistImportConfirmationDialog(uri)
-    }
-
-    private val exportAssetsLauncher = registerForActivityResult(
-        ActivityResultContracts.CreateDocument("application/json")
-    ) { uri: Uri? ->
-        if (uri != null) viewModel.exportAssets(uri)
-    }
 
     private val importBrokerCsvLauncher = registerForActivityResult(
         ActivityResultContracts.OpenDocument()
@@ -76,25 +54,6 @@ class SettingsFragment : Fragment() {
     }
 
     private fun setupClickListeners() {
-        val timestamp: () -> String = {
-            SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
-        }
-
-        binding.cardExportWatchlist.setOnClickListener {
-            it.performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY)
-            exportWatchlistLauncher.launch("trackone_watchlist_${timestamp()}.json")
-        }
-
-        binding.cardImportWatchlist.setOnClickListener {
-            it.performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY)
-            importWatchlistLauncher.launch(BackupRepository.IMPORT_MIME_TYPES)
-        }
-
-        binding.cardExportAssets.setOnClickListener {
-            it.performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY)
-            exportAssetsLauncher.launch("trackone_investments_${timestamp()}.json")
-        }
-
         binding.cardImportBrokerCsv.setOnClickListener {
             it.performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY)
             importBrokerCsvLauncher.launch(BrokerCsvRepository.IMPORT_MIME_TYPES)
@@ -116,8 +75,14 @@ class SettingsFragment : Fragment() {
                     "Android: ${android.os.Build.VERSION.RELEASE}"
                 )
             }
-            if (intent.resolveActivity(requireContext().packageManager) != null) {
+            try {
                 startActivity(intent)
+            } catch (e: android.content.ActivityNotFoundException) {
+                android.widget.Toast.makeText(
+                    requireContext(),
+                    "No email app found. Please email saurabh@trackone.app directly.",
+                    android.widget.Toast.LENGTH_LONG
+                ).show()
             }
         }
     }
@@ -143,36 +108,6 @@ class SettingsFragment : Fragment() {
             is BackupUiState.FetchingPrices -> {
                 // Update the spinner label without recreating the dialog
                 showBlockingProgress("Fetching live prices…")
-            }
-
-            is BackupUiState.WatchlistExportSuccess -> {
-                dismissBlockingProgress()
-                viewModel.resetState()   // Reset BEFORE dialog — prevents re-show on tab switch
-                showSuccessDialog(
-                    title   = "Watchlist exported",
-                    message = state.message +
-                        "\n\nKeep the file safe — you can restore it anytime via Import Watchlist."
-                )
-            }
-
-            is BackupUiState.WatchlistImportSuccess -> {
-                dismissBlockingProgress()
-                viewModel.resetState()
-                showSuccessDialog(
-                    title   = "Watchlist imported",
-                    message = "Restored ${state.count} watchlist symbol(s).\n\n" +
-                        "Your stocks & investments were not affected."
-                )
-            }
-
-            is BackupUiState.AssetsExportSuccess -> {
-                dismissBlockingProgress()
-                viewModel.resetState()
-                showSuccessDialog(
-                    title   = "Investments exported",
-                    message = state.message +
-                        "\n\nKeep the file safe — you can restore it anytime via Import Stocks & Investments."
-                )
             }
 
             is BackupUiState.CsvImportSuccess -> {
@@ -252,21 +187,6 @@ class SettingsFragment : Fragment() {
     }
 
     // ── Confirmation dialogs ──────────────────────────────────────────────────
-
-    private fun showWatchlistImportConfirmationDialog(uri: Uri) {
-        if (!isAdded) return
-        MaterialAlertDialogBuilder(requireContext())
-            .setTitle("Replace your watchlist?")
-            .setMessage(
-                "Importing will permanently delete your current watchlist and replace it with " +
-                "the symbols from the backup file.\n\n" +
-                "Your stocks & investments will NOT be affected.\n\n" +
-                "This cannot be undone. Continue?"
-            )
-            .setPositiveButton("Import") { dlg, _ -> dlg.dismiss(); viewModel.importWatchlist(uri) }
-            .setNegativeButton("Cancel") { dlg, _ -> dlg.dismiss() }
-            .show()
-    }
 
     private fun showBrokerCsvImportConfirmationDialog(uri: Uri) {
         if (!isAdded) return

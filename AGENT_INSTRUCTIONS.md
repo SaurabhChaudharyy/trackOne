@@ -140,103 +140,30 @@ Because the Room database resides in the app's **internal private storage** (`/d
 *   The watchlist is gone.
 *   All Net Worth assets and their values are gone.
 *   All cached stock prices and chart history are gone.
-*   **Recovery is only possible if the user previously exported a backup** via the Settings → Export Data feature (see section below).
-
 Android Auto Backup (`android:allowBackup`) is currently **disabled** in the manifest. If it is enabled in the future, add explicit `android:backupRules` to exclude the Room database file (to avoid restoring a stale schema that triggers `fallbackToDestructiveMigration`).
 
 ---
 
-## Backup & Restore Feature
+## Settings Tab — Data Management
 
-Implemented in **Settings tab**. Uses Android's **Storage Access Framework (SAF)** — no storage permissions are required on API 26+.
+The Settings tab exposes **one** data-ingestion action and **no** JSON backup/restore. All JSON import/export (watchlist, assets) was removed in the 2026-04-01 session (see Session Changes Log below).
+
+### What remains (Settings screen)
+
+| Card | Purpose |
+|---|---|
+| `card_import_broker_csv` | Import holdings from broker CSV/XLSX (Zerodha, Groww, HDFC, Vested, IB) |
+
+> ⚠️ **Do NOT re-add any JSON export or import cards** to the Settings screen. The broker CSV/XLSX importer is the sole data-ingestion mechanism.
 
 ### Relevant Files
 
 | File | Role |
 |---|---|
-| `data/repository/BackupRepository.kt` | Core engine — serialises/deserialises Room ↔ JSON, all file I/O via SAF URIs |
-| `ui/settings/SettingsViewModel.kt` | HiltViewModel — exposes `StateFlow<BackupUiState>` to the fragment |
-| `ui/settings/SettingsFragment.kt` | Registers SAF `ActivityResultContract` launchers, observes state, shows dialogs |
-| `res/layout/fragment_settings.xml` | Settings UI — Export card, Import card, About card, loading row |
-
-### What gets exported
-
-| Included | Excluded |
-|---|---|
-| Watchlist symbols + display order | `stocks` price cache (re-fetched live after import) |
-| All Net Worth assets (all types) | `price_history` chart cache |
-| Timestamps for sorting/auditing | — |
-
-### Export File Format
-
-Files are saved as **pretty-printed JSON** with the default filename `trackone_backup_YYYYMMDD_HHmmss.json`.
-
-```json
-{
-  "schema_version": 1,
-  "exported_at_ms": 1741181454000,
-  "app_package": "com.saurabh.financewidget",
-  "watchlist": [
-    {
-      "symbol": "RELIANCE.NS",
-      "display_name": "Reliance Industries Limited",
-      "position": 0,
-      "added_at_ms": 1740000000000
-    }
-  ],
-  "networth_assets": [
-    {
-      "name": "Bitcoin",
-      "asset_type": "CRYPTO",
-      "quantity": 0.05,
-      "buy_price": 3500000.0,
-      "current_value": 420000.0,
-      "currency": "INR",
-      "notes": "Hardware wallet",
-      "added_at_ms": 1740050000000,
-      "updated_at_ms": 1741181454000
-    }
-  ]
-}
-```
-
-**Key points about the format:**
-- `schema_version` — integer; currently `1`. Bumping this in future lets the app refuse to import incompatible backups gracefully.
-- `app_package` — presence of `"com.saurabh.financewidget"` is validated on import to prevent importing a backup from a different app.
-- All timestamps are **Unix epoch milliseconds**.
-- `asset_type` is the **enum name string** — valid values: `STOCK_IN`, `STOCK_US`, `MF`, `GOLD`, `SILVER`, `CRYPTO`, `CASH`, `BANK`.
-
-### Import Behaviour
-
-Import is a **full destructive replace**:
-1. Show a confirmation dialog before touching anything.
-2. Validate the JSON (parse, package check, schema version, enum names) — abort on any failure.
-3. Clear `watchlist` table → insert restored symbols.
-4. Clear `networth_assets` table → insert restored assets.
-5. Auto-generated `id` fields are reset to `0` so Room assigns fresh IDs (avoids PK conflicts).
-6. Stock prices are **not restored** — they will refresh automatically on next app foreground.
-
-### Edge Cases Handled
-
-| Scenario | Behaviour |
-|---|---|
-| Empty watchlist & net worth on export | Error dialog: "Nothing to export" |
-| User cancels the SAF file picker | Silent no-op (no dialog) |
-| File cannot be opened / written | Error dialog with reason |
-| File is empty | Error dialog |
-| JSON parse failure | Error dialog — prompts to check the file |
-| `app_package` mismatch | Error dialog — wrong app's backup |
-| `schema_version` > current (1) | Error dialog — tells user to update the app |
-| Unknown `asset_type` enum value | Error dialog — caught before any data is deleted |
-| Operation in progress | Both cards are disabled + faded + loading spinner shown |
-| Fragment detached before dialog | `isAdded` guard prevents window leak |
-
-### Upgrading the Schema (Future Agents)
-
-If you add new fields to `NetWorthAssetEntity` or `WatchlistEntity` that must be preserved in backups:
-1. Add the new field to `NetWorthAssetBackup` / `WatchlistBackup` with a sensible default.
-2. Bump `BACKUP_SCHEMA_VERSION` in `BackupRepository.kt`.
-3. Add a migration branch in `importFromUri()` that handles the older schema version gracefully instead of rejecting it.
+| `data/repository/BackupRepository.kt` | Still exists in the data layer (watchlist/asset serialisation helpers used internally) — **not exposed in UI** |
+| `data/repository/BrokerCsvRepository.kt` | Core import engine — detects broker format, parses CSV or XLSX, inserts via `NetWorthDao` |
+| `ui/settings/SettingsViewModel.kt` | Exposes only `importBrokerCsv(uri)` and `resetState()` |
+| `ui/settings/SettingsFragment.kt` | Registers only `importBrokerCsvLauncher`; observes `CsvImportSuccess`, `FetchingPrices`, `Error`, `Loading`, `Idle` states |
 
 ### Adding a New Asset Type (Future Agents)
 
@@ -773,25 +700,24 @@ When a `FORMAT_C` (US stocks) file is imported, holdings are stored with `curren
 
 ---
 
-### 3. Removal of JSON-based Assets Import
+### 3. Complete Removal of JSON Import & Export (2026-04-01)
 
-**Date:** 2026-03-30 (today, in-session — not committed yet)
+**Date:** 2026-04-01
 
-The "Import Stocks & Investments" card in Settings (which restored a JSON backup of all assets) has been **removed**. The broker CSV/XLSX import is now the sole mechanism for importing investment data. JSON backup **export** is still available and unchanged.
+All JSON-based backup UI has been **fully removed** from the Settings screen. This includes the previously-kept Watchlist export, Watchlist import, and Assets (Stocks & Investments) export cards. The broker CSV/XLSX importer (`card_import_broker_csv`) is now the **sole** data-management action in Settings.
 
 #### What was removed
 
 | Location | Removed |
 |---|---|
-| `fragment_settings.xml` | `card_import_assets` LinearLayout card |
-| `SettingsFragment.kt` | `importAssetsLauncher` registration, `binding.cardImportAssets.setOnClickListener`, `is BackupUiState.AssetsImportSuccess` state handler, `showAssetsImportConfirmationDialog()` method |
-| `SettingsViewModel.kt` | `AssetsImportSuccess` sealed class entry, `importAssets(uri)` function |
+| `fragment_settings.xml` | Entire WATCHLIST section (`card_export_watchlist`, `card_import_watchlist`) + `card_export_assets` card |
+| `SettingsFragment.kt` | `exportWatchlistLauncher`, `importWatchlistLauncher`, `exportAssetsLauncher` registrations; corresponding `setOnClickListener` blocks; `WatchlistExportSuccess`, `WatchlistImportSuccess`, `AssetsExportSuccess` state handlers; `showWatchlistImportConfirmationDialog()` method; unused imports (`BackupRepository`, `SimpleDateFormat`, `Date`, `Locale`) |
+| `SettingsViewModel.kt` | `WatchlistExportSuccess`, `WatchlistImportSuccess`, `AssetsExportSuccess` sealed class entries; `exportWatchlist(uri)`, `importWatchlist(uri)`, `exportAssets(uri)` functions; `backupRepository` constructor injection; unused imports (`BackupRepository`, `BackupResult`, `ImportResult`) |
 
-> ⚠️ **Do NOT re-add a JSON assets import card** to the Settings screen. The broker CSV/XLSX importer replaces it entirely. The `BackupRepository.importAssetsFromUri()` method still exists in the data layer (for potential future use or watchlist restore) — only the UI entry point was removed.
+> ⚠️ **Do NOT re-add any JSON export or import card** to the Settings screen. `BackupRepository.kt` still exists in the data layer and can be used internally if needed, but it must not be exposed through the UI.
 
-#### What remains (Settings screen, STOCKS & INVESTMENTS section)
+#### What remains (Settings screen)
 
 | Card | Purpose |
 |---|---|
-| `card_export_assets` | Export all investments to a JSON backup file (unchanged) |
 | `card_import_broker_csv` | Import holdings from broker CSV/XLSX (Zerodha, Groww, HDFC, Vested, IB) |

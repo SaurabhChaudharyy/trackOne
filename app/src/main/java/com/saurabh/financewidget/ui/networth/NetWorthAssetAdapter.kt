@@ -1,8 +1,10 @@
 package com.saurabh.financewidget.ui.networth
 
+import android.view.HapticFeedbackConstants
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.core.view.isVisible
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
@@ -15,20 +17,63 @@ import java.util.Locale
 
 class NetWorthAssetAdapter(
     private val onDeleteClick: (NetWorthAssetEntity) -> Unit,
-    private val onEditClick: (NetWorthAssetEntity) -> Unit
+    private val onEditClick: (NetWorthAssetEntity) -> Unit,
+    private val onLongPress: (NetWorthAssetEntity) -> Unit = {},
+    private val onSelectionChanged: (count: Int) -> Unit = {}
 ) : ListAdapter<NetWorthAssetEntity, NetWorthAssetAdapter.ViewHolder>(DIFF) {
 
     private val inrFormat = NumberFormat.getCurrencyInstance(Locale("en", "IN"))
     private val usdFormat = NumberFormat.getCurrencyInstance(Locale.US)
 
-    /** Returns the right formatter for the asset's native currency. */
-    private fun fmt(currency: String) = if (currency == "USD") usdFormat else inrFormat
+    private val selectedIds = mutableSetOf<Long>()
+    var isSelectionMode = false
+        private set
+
+    // ── Selection mode API ────────────────────────────────────────────────────
+
+    /** Enter selection mode, pre-selecting the item that was long-pressed. */
+    fun enterSelectionMode(initialId: Long) {
+        isSelectionMode = true
+        selectedIds.clear()
+        selectedIds.add(initialId)
+        notifyDataSetChanged()
+        onSelectionChanged(selectedIds.size)
+    }
+
+    /** Exit selection mode and clear all selections. */
+    fun exitSelectionMode() {
+        isSelectionMode = false
+        selectedIds.clear()
+        notifyDataSetChanged()
+        onSelectionChanged(0)
+    }
+
+    /** Select every item currently in the list. */
+    fun selectAll() {
+        selectedIds.addAll(currentList.map { it.id })
+        notifyDataSetChanged()
+        onSelectionChanged(selectedIds.size)
+    }
+
+    /** Deselect all items (stays in selection mode). */
+    fun deselectAll() {
+        selectedIds.clear()
+        notifyDataSetChanged()
+        onSelectionChanged(0)
+    }
+
+    fun getSelectedIds(): Set<Long> = selectedIds.toSet()
+    fun getSelectedCount(): Int = selectedIds.size
+    fun areAllSelected(): Boolean =
+        currentList.isNotEmpty() && selectedIds.size == currentList.size
+
+    // ── ViewHolder ────────────────────────────────────────────────────────────
 
     inner class ViewHolder(private val binding: ItemNetworthAssetBinding) :
         RecyclerView.ViewHolder(binding.root) {
 
         fun bind(asset: NetWorthAssetEntity) {
-            val fmt = fmt(asset.currency)
+            val fmt = if (asset.currency == "USD") usdFormat else inrFormat
 
             binding.tvAssetName.text = asset.name.removePrefix("^")
             binding.tvAssetValue.text = fmt.format(asset.currentValue)
@@ -70,26 +115,59 @@ class NetWorthAssetAdapter(
                 binding.tvAssetLabel.visibility = View.GONE
             }
 
-            binding.btnEditAsset.setOnClickListener {
-                binding.btnEditAsset.performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY)
-                onEditClick(asset)
-            }
+            // ── Mode-specific UI ──────────────────────────────────────────────
+            if (isSelectionMode) {
+                val checked = selectedIds.contains(asset.id)
+                binding.checkboxSelect.isVisible = true
+                binding.checkboxSelect.isChecked = checked
+                binding.btnEditAsset.isVisible   = false
+                binding.btnDeleteAsset.isVisible = false
 
-            binding.btnDeleteAsset.setOnClickListener {
-                binding.btnDeleteAsset.performHapticFeedback(android.view.HapticFeedbackConstants.CONFIRM)
-                onDeleteClick(asset)
+                binding.root.setOnLongClickListener(null)
+                binding.root.setOnClickListener { toggleSelection(asset) }
+            } else {
+                binding.checkboxSelect.isVisible = false
+                binding.btnEditAsset.isVisible   = true
+                binding.btnDeleteAsset.isVisible = true
+
+                binding.root.setOnClickListener(null)
+                binding.root.setOnLongClickListener {
+                    it.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                    onLongPress(asset)
+                    true
+                }
+                binding.btnEditAsset.setOnClickListener {
+                    it.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+                    onEditClick(asset)
+                }
+                binding.btnDeleteAsset.setOnClickListener {
+                    it.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                    onDeleteClick(asset)
+                }
             }
+        }
+
+        private fun toggleSelection(asset: NetWorthAssetEntity) {
+            if (selectedIds.contains(asset.id)) selectedIds.remove(asset.id)
+            else selectedIds.add(asset.id)
+            val idx = currentList.indexOf(asset)
+            if (idx >= 0) notifyItemChanged(idx)
+            onSelectionChanged(selectedIds.size)
         }
 
         private fun buildSubtitle(asset: NetWorthAssetEntity, fmt: NumberFormat): String {
             val isFetchable = asset.assetType in listOf(
-                AssetType.STOCK_IN, AssetType.STOCK_US, AssetType.CRYPTO, AssetType.GOLD, AssetType.SILVER
+                AssetType.STOCK_IN, AssetType.STOCK_US, AssetType.CRYPTO,
+                AssetType.GOLD, AssetType.SILVER
             )
             return when {
                 isFetchable && asset.quantity > 0 -> {
-                    val pricePerUnit = if (asset.quantity != 0.0) asset.currentValue / asset.quantity else 0.0
-                    val qtyStr = if (asset.quantity % 1.0 == 0.0) asset.quantity.toInt().toString()
-                                 else "%.4f".format(asset.quantity)
+                    val pricePerUnit =
+                        if (asset.quantity != 0.0) asset.currentValue / asset.quantity else 0.0
+                    val qtyStr = if (asset.quantity % 1.0 == 0.0)
+                        asset.quantity.toInt().toString()
+                    else
+                        "%.4f".format(asset.quantity)
                     val unitLabel = when (asset.assetType) {
                         AssetType.GOLD, AssetType.SILVER -> "g"
                         else -> " units"
@@ -115,8 +193,10 @@ class NetWorthAssetAdapter(
 
     companion object {
         private val DIFF = object : DiffUtil.ItemCallback<NetWorthAssetEntity>() {
-            override fun areItemsTheSame(a: NetWorthAssetEntity, b: NetWorthAssetEntity) = a.id == b.id
-            override fun areContentsTheSame(a: NetWorthAssetEntity, b: NetWorthAssetEntity) = a == b
+            override fun areItemsTheSame(a: NetWorthAssetEntity, b: NetWorthAssetEntity) =
+                a.id == b.id
+            override fun areContentsTheSame(a: NetWorthAssetEntity, b: NetWorthAssetEntity) =
+                a == b
         }
     }
 }

@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
@@ -117,5 +118,16 @@
         android:background="?attr/selectableItemBackgroundBorderless"
         android:alpha="0.35"
         android:contentDescription="Delete asset"/>
+
+    <!-- Shown only in bulk-selection mode; replaces the edit + delete buttons -->
+    <com.google.android.material.checkbox.MaterialCheckBox
+        android:id="@+id/checkbox_select"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="4dp"
+        android:visibility="gone"
+        android:clickable="false"
+        android:focusable="false"
+        app:useMaterialThemeColors="true"/>
 
 </LinearLayout>

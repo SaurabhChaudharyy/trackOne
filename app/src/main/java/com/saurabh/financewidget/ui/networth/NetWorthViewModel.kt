@@ -59,6 +59,10 @@ class NetWorthViewModel @Inject constructor(
         netWorthDao.deleteAsset(asset)
     }
 
+    fun deleteAssets(ids: Set<Long>) = viewModelScope.launch {
+        netWorthDao.deleteAssetsByIds(ids.toList())
+    }
+
     val assetSummary: LiveData<Map<AssetType, Double>> = allAssets.map { assets ->
         assets.groupBy { it.assetType }
             .mapValues { (_, list) -> list.sumOf { it.currentValue } }
