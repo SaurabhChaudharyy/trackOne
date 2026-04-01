@@ -4,6 +4,8 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.saurabh.financewidget.data.database.AssetType
+import com.saurabh.financewidget.data.database.NetWorthDao
 import com.saurabh.financewidget.data.database.StockEntity
 import com.saurabh.financewidget.data.repository.StockRepository
 import com.saurabh.financewidget.utils.Resource
@@ -19,7 +21,8 @@ data class IndexData(
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
-    private val repository: StockRepository
+    private val repository: StockRepository,
+    private val netWorthDao: NetWorthDao
 ) : ViewModel() {
 
     // ── Market Indexes ──────────────────────────────────────────────────
@@ -85,14 +88,45 @@ class HomeViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Finds the portfolio holding with the largest absolute daily % change.
+     * Only considers fetchable asset types: Indian stocks, US stocks, crypto,
+     * gold and silver. Deduplicates by symbol so we don't double-fetch.
+     */
     private suspend fun fetchTopMover() {
-        val stocks = repository.getWatchlistSync()
-        if (stocks.isEmpty()) {
+        val fetchableTypes = setOf(
+            AssetType.STOCK_IN, AssetType.STOCK_US,
+            AssetType.CRYPTO, AssetType.GOLD, AssetType.SILVER
+        )
+        val assets = netWorthDao.getAllAssetsSync()
+            .filter { it.assetType in fetchableTypes }
+            .distinctBy { it.name }   // avoid duplicate API calls for the same symbol
+
+        if (assets.isEmpty()) {
             _topMover.postValue(null)
             return
         }
-        // Pick the stock with the largest absolute % change
-        val top = stocks.maxByOrNull { kotlin.math.abs(it.changePercent) }
-        _topMover.postValue(top)
+
+        var bestStock: StockEntity? = null
+        var bestAbsChange = 0.0
+
+        for (asset in assets) {
+            // Map portfolio names to Yahoo Finance symbols for gold/silver
+            val symbol = when (asset.assetType) {
+                AssetType.GOLD   -> "GC=F"
+                AssetType.SILVER -> "SI=F"
+                else             -> asset.name
+            }
+            val result = repository.fetchAndCacheStock(symbol)
+            if (result is Resource.Success) {
+                val stock = result.data
+                val absChange = kotlin.math.abs(stock.changePercent)
+                if (absChange > bestAbsChange) {
+                    bestAbsChange = absChange
+                    bestStock = stock
+                }
+            }
+        }
+        _topMover.postValue(bestStock)
     }
 }

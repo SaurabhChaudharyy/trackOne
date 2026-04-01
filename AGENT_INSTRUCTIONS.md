@@ -25,7 +25,7 @@ Welcome, future AI Agent! If you are working on this project, please read this d
 
 0.  **Home (Welcome Screen Tab)**
     *   First tab; shown on cold launch.
-    *   Content: time-based greeting, date (uppercase), live clock (updates every minute), market Open/Closed status chips for NSE and NYSE, 4 market index cards (NIFTY 50 `^NSEI`, SENSEX `^BSESN`, S&P 500 `^GSPC`, NASDAQ `^IXIC`), and Top Mover (largest absolute % change in the watchlist).
+    *   Content: time-based greeting, date (uppercase), live clock (updates every minute), market Open/Closed status chips for NSE and NYSE, 4 market index cards (NIFTY 50 `^NSEI`, SENSEX `^BSESN`, S&P 500 `^GSPC`, NASDAQ `^IXIC`), and **Top Mover** (largest absolute % change among all fetchable **portfolio** assets — Indian Stocks, US Stocks, Crypto, Gold, Silver).
     *   Fragment: `HomeFragment` · ViewModel: `HomeViewModel` · Layout: `fragment_home.xml`.
     *   Market status chips are clickable → opens `dialog_market_hours.xml` (same dialog previously used in WatchlistFragment).
 
@@ -475,7 +475,7 @@ The app transitioned from a dark theme to a modern, Minna Bank-inspired light th
 | **Market Status** | NSE chip + NYSE chip at top-right. Neon yellow = Open, gray = Closed. Tappable → opens `dialog_market_hours.xml`. |
 | **INDIA indexes** | NIFTY 50 (`^NSEI`) and SENSEX (`^BSESN`) — side-by-side cards with price + gain/loss pill |
 | **US indexes** | S&P 500 (`^GSPC`) and NASDAQ (`^IXIC`) — side-by-side cards with price + gain/loss pill |
-| **Top Mover** | Stock from the user's watchlist with the largest absolute `changePercent`. Shows symbol, name, price, pill. Falls back to an empty-state message if watchlist is empty. |
+| **Top Mover** | Fetchable portfolio asset with the largest absolute `changePercent`. Shows symbol, name, price, pill. Falls back to an empty-state message if portfolio has no fetchable assets. Source: `NetWorthDao.getAllAssetsSync()` filtered to `STOCK_IN`, `STOCK_US`, `CRYPTO`, `GOLD`, `SILVER`. |
 
 **New files:**
 
@@ -483,7 +483,7 @@ The app transitioned from a dark theme to a modern, Minna Bank-inspired light th
 |---|---|
 | `res/layout/fragment_home.xml` | Full Welcome screen layout (ScrollView, date/greeting/clock, market chips, 4 index cards, top mover card) |
 | `ui/home/HomeFragment.kt` | Fragment — drives all UI: clock timer, market status, observes ViewModel LiveData, applies pill styles |
-| `ui/home/HomeViewModel.kt` | HiltViewModel — fetches 4 indexes via `StockRepository.fetchAndCacheStock()`, derives top mover from `getWatchlistSync()` |
+| `ui/home/HomeViewModel.kt` | HiltViewModel — fetches 4 indexes via `StockRepository.fetchAndCacheStock()`, derives top mover from **portfolio** (`netWorthDao.getAllAssetsSync()`, fetchable types only) |
 | `res/drawable/ic_home.xml` | Home icon (outline house) for bottom nav |
 | `res/drawable/bg_index_card.xml` | Transparent card with `border_color` stroke + 12dp corners, used for index and top mover cards |
 
@@ -721,3 +721,91 @@ All JSON-based backup UI has been **fully removed** from the Settings screen. Th
 | Card | Purpose |
 |---|---|
 | `card_import_broker_csv` | Import holdings from broker CSV/XLSX (Zerodha, Groww, HDFC, Vested, IB) |
+
+---
+
+### 4. File-Hash Deduplication for Broker CSV Uploads
+
+**Problem:** A user uploading the same broker CSV file multiple times would import the same holdings repeatedly, inflating their net worth. The upsert logic prevented _exact_ share duplicates but could not detect that the same _file_ was already imported.
+
+**Solution:** A SHA-256 hash of the CSV/XLSX byte content is computed before parsing. The hash is stored as a `SharedPreferences` `Set<String>` keyed `imported_file_hashes`. If the incoming file's hash is already in the set, the import is aborted and the user sees a snackbar indicating the file has already been imported.
+
+**Key details:**
+- Hash computed via `MessageDigest.getInstance("SHA-256")` on the raw `InputStream` bytes — no temp file written to disk.
+- The `InputStream` cannot be read twice; bytes are buffered into a `ByteArray` first (`readBytes()`), then both the hash check and the parser receive the same array.
+- Fix for `Unresolved reference: InputStream` build error — correct import is `java.io.InputStream`.
+
+**Files changed:** `BrokerCsvRepository.kt` (hash compute + deduplicate check), `SettingsViewModel.kt` (reads `SharedPreferences` for the hash set)
+
+> ⚠️ The hash set is stored in app `SharedPreferences`. It persists across sessions but is wiped on app uninstall along with all other app data.
+
+---
+
+## Session Changes Log — 2026-04-01 (Bulk Portfolio Removal · Swipe Indicator · Top Mover)
+
+### 1. Bulk Asset Removal from Net Worth (Long-Press Selection Mode)
+
+**Problem:** After importing a broker CSV the user needed a quick way to remove multiple holdings at once without tapping the individual `×` button on every row.
+
+**Solution:** A full multi-select / bulk-delete workflow was added directly inside the existing Net Worth list UI.
+
+#### UX Flow
+
+1. **Long-press** any asset row → haptic feedback → that section enters **selection mode**.
+2. The section **auto-expands** (all items shown, not just the top-N preview).
+3. All rows show a `MaterialCheckBox`; edit & delete buttons are hidden.
+4. A **sticky bottom action bar** (`ll_selection_bar`) slides into view:
+   - **Cancel** — exits selection mode without changes.
+   - **`N selected · Section Name`** count label.
+   - **Select All / Deselect All** toggle.
+   - **🗑 Delete** (red, disabled while 0 selected, alpha `0.38`).
+5. Tapping rows toggles checkboxes.
+6. **Delete** → confirmation `AlertDialog` → `viewModel.deleteAssets(ids)` → exits selection mode.
+7. **Back press** exits selection mode (handled by `OnBackPressedCallback`).
+8. Entering selection mode in one section automatically exits any active selection in another.
+
+#### Files Changed
+
+| File | Change |
+|---|---|
+| `NetWorthDao.kt` | `@Query("DELETE FROM networth_assets WHERE id IN (:ids)") suspend fun deleteAssetsByIds(ids: List<Long>)` |
+| `NetWorthViewModel.kt` | `fun deleteAssets(ids: Set<Long>)` — delegates to `deleteAssetsByIds` |
+| `item_networth_asset.xml` | Added `MaterialCheckBox` (`id: checkbox_select`, `visibility="gone"`, `app:useMaterialThemeColors="true"`) after `btn_delete_asset`. Added `xmlns:app` namespace. |
+| `fragment_networth.xml` | Root changed `NestedScrollView` → `FrameLayout`; `NestedScrollView` is now a child (`id="nested_scroll_view"`). `LinearLayout` (`id="ll_selection_bar"`, `layout_gravity="bottom"`, `elevation="12dp"`, `visibility="gone"`) added as a sibling floating over scroll content. |
+| `NetWorthAssetAdapter.kt` | **Full rewrite.** Added `onLongPress` + `onSelectionChanged` constructor callbacks. Public API: `enterSelectionMode(initialId)`, `exitSelectionMode()`, `selectAll()`, `deselectAll()`, `getSelectedIds()`, `areAllSelected()`. Selection mode shows checkboxes, hides edit/delete, rows clickable. Normal mode shows edit/delete, rows long-pressable. |
+| `NetWorthFragment.kt` | `selectionModeType: AssetType?` field. `OnBackPressedCallback` for back-press exit. `setupRecyclerViews()` passes `onLongPress`/`onSelectionChanged`. New methods: `setupSelectionBar()`, `enterSelectionMode()`, `exitSelectionMode()`, `updateSelectionBar()`, `confirmDeleteSelected()`. |
+
+#### Why MaterialCheckBox
+
+The old `CheckBox` with `android:buttonTint="@color/text_primary"` painted the button solid black — making the white ✓ invisible. `MaterialCheckBox` with `app:useMaterialThemeColors="true"` renders a Material Design filled box with a clearly visible white checkmark.
+
+---
+
+### 2. Watchlist Swipe-to-Delete "Remove" Indicator
+
+**Problem:** Left-swipe to delete a watchlist item showed no visual feedback — the row simply slid off with no affordance.
+
+**Solution:** Overrode `onChildDraw` in the existing `ItemTouchHelper.SimpleCallback` in `WatchlistFragment`.
+
+- As the user drags left, a `loss_red` background strip expands behind the item in real time.
+- Once **≥ 60 dp** is revealed, **"Remove"** appears centred in the strip (white, bold, 13sp).
+- `super.onChildDraw(...)` called after drawing so normal item translation still works.
+
+**Files changed:** `WatchlistFragment.kt` (added `onChildDraw` override + `android.graphics.{Canvas,Paint,Typeface,Color}` imports)
+
+---
+
+### 3. Top Mover Source — Watchlist → Portfolio
+
+**Previous:** `HomeViewModel.fetchTopMover()` called `repository.getWatchlistSync()`.
+
+**New:** Reads portfolio holdings via `netWorthDao.getAllAssetsSync()`, filters to `STOCK_IN`, `STOCK_US`, `CRYPTO`, `GOLD`, `SILVER`, deduplicates by name, fetches live prices, returns the largest abs `changePercent`.
+
+**Special symbol mappings inside `fetchTopMover()`:**
+- `GOLD` → `GC=F`, `SILVER` → `SI=F`, all others → `asset.name` directly.
+
+**Empty state text:** `"Add stocks to your watchlist…"` → `"Add investments to your portfolio to see today's top mover"`
+
+**Why:** Users who import via broker CSV may have no watchlist entries, making the Top Mover card always empty. Portfolio is the authoritative source of the user's actual holdings.
+
+**Files changed:** `HomeViewModel.kt` (`NetWorthDao` injected, `fetchTopMover()` rewritten), `fragment_home.xml` (empty state string)

@@ -451,7 +451,7 @@
                 android:letterSpacing="0.12"
                 android:textAllCaps="true"/>
 
-            <!-- Top mover card (hidden when no watchlist) -->
+            <!-- Top mover card (hidden when portfolio has no fetchable assets) -->
             <LinearLayout
                 android:id="@+id/card_top_mover"
                 android:layout_width="match_parent"
@@ -541,7 +541,7 @@
                 </LinearLayout>
             </LinearLayout>
 
-            <!-- Empty state when watchlist is empty -->
+            <!-- Empty state when portfolio has no fetchable assets -->
             <LinearLayout
                 android:id="@+id/top_mover_empty"
                 android:layout_width="match_parent"
@@ -555,7 +555,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Add stocks to your watchlist to see today's top mover"
+                    android:text="Add investments to your portfolio to see today's top mover"
                     android:textColor="@color/text_tertiary"
                     android:textSize="12sp"
                     android:fontFamily="@font/inter"/>
