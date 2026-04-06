@@ -32,13 +32,50 @@ interface StockDao {
 }
 
 @Dao
+interface WatchlistGroupDao {
+
+    @Query("SELECT * FROM watchlist_groups ORDER BY position ASC")
+    fun getAllGroups(): LiveData<List<WatchlistGroupEntity>>
+
+    @Query("SELECT * FROM watchlist_groups ORDER BY position ASC")
+    suspend fun getAllGroupsSync(): List<WatchlistGroupEntity>
+
+    @Query("SELECT * FROM watchlist_groups WHERE id = :id")
+    suspend fun getGroup(id: Long): WatchlistGroupEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertGroup(group: WatchlistGroupEntity): Long
+
+    @Query("UPDATE watchlist_groups SET name = :name WHERE id = :id")
+    suspend fun renameGroup(id: Long, name: String)
+
+    @Query("DELETE FROM watchlist_groups WHERE id = :id")
+    suspend fun deleteGroup(id: Long)
+
+    @Query("DELETE FROM watchlist WHERE groupId = :groupId")
+    suspend fun deleteAllInGroup(groupId: Long)
+
+    @Query("SELECT COUNT(*) FROM watchlist_groups")
+    suspend fun getGroupCount(): Int
+
+    @Query("SELECT MAX(position) FROM watchlist_groups")
+    suspend fun getMaxPosition(): Int?
+}
+
+@Dao
 interface WatchlistDao {
 
     @Query("SELECT * FROM watchlist ORDER BY position ASC")
     fun getWatchlist(): LiveData<List<WatchlistEntity>>
 
+    @Query("SELECT * FROM watchlist WHERE groupId = :groupId ORDER BY position ASC")
+    fun getWatchlistByGroup(groupId: Long): LiveData<List<WatchlistEntity>>
+
     @Query("SELECT * FROM watchlist ORDER BY position ASC")
     suspend fun getWatchlistSync(): List<WatchlistEntity>
+
+    @Query("SELECT * FROM watchlist WHERE groupId = :groupId ORDER BY position ASC")
+    suspend fun getWatchlistSyncByGroup(groupId: Long): List<WatchlistEntity>
 
     @Query("SELECT COUNT(*) FROM watchlist WHERE symbol = :symbol")
     suspend fun isInWatchlist(symbol: String): Int
@@ -49,14 +86,17 @@ interface WatchlistDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertWatchlistItems(items: List<WatchlistEntity>)
 
+    @Query("DELETE FROM watchlist WHERE symbol = :symbol AND groupId = :groupId")
+    suspend fun removeFromWatchlistInGroup(symbol: String, groupId: Long)
+
     @Query("DELETE FROM watchlist WHERE symbol = :symbol")
     suspend fun removeFromWatchlist(symbol: String)
 
-    @Query("UPDATE watchlist SET position = :position WHERE symbol = :symbol")
-    suspend fun updatePosition(symbol: String, position: Int)
+    @Query("UPDATE watchlist SET position = :position WHERE symbol = :symbol AND groupId = :groupId")
+    suspend fun updatePosition(symbol: String, groupId: Long, position: Int)
 
-    @Query("SELECT MAX(position) FROM watchlist")
-    suspend fun getMaxPosition(): Int?
+    @Query("SELECT MAX(position) FROM watchlist WHERE groupId = :groupId")
+    suspend fun getMaxPositionInGroup(groupId: Long): Int?
 
     @Query("DELETE FROM watchlist")
     suspend fun clearWatchlist()

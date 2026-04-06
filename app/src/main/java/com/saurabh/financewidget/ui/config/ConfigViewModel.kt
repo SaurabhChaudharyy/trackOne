@@ -40,11 +40,11 @@ class ConfigViewModel @Inject constructor(
         }
     }
 
-    fun addToWatchlist(symbol: String, displayName: String) {
+    fun addToWatchlist(symbol: String, displayName: String, groupId: Long = StockRepository.DEFAULT_GROUP_ID) {
         viewModelScope.launch {
             _addState.value = Resource.Loading()
             try {
-                repository.addToWatchlist(symbol, displayName)
+                repository.addToWatchlist(symbol, displayName, groupId)
                 _addState.value = Resource.Success(Unit)
             } catch (e: Exception) {
                 _addState.value = Resource.Error(e.message ?: "Failed to add stock")
@@ -52,15 +52,15 @@ class ConfigViewModel @Inject constructor(
         }
     }
 
-    suspend fun addToWatchlistSync(symbol: String, displayName: String) {
-        repository.addToWatchlist(symbol, displayName)
+    suspend fun addToWatchlistSync(symbol: String, displayName: String, groupId: Long = StockRepository.DEFAULT_GROUP_ID) {
+        repository.addToWatchlist(symbol, displayName, groupId)
     }
 
     suspend fun hasAnyStocks(): Boolean = repository.getWatchlistSync().isNotEmpty()
 
-    fun removeFromWatchlist(symbol: String) {
+    fun removeFromWatchlist(symbol: String, groupId: Long = StockRepository.DEFAULT_GROUP_ID) {
         viewModelScope.launch {
-            repository.removeFromWatchlist(symbol)
+            repository.removeFromWatchlist(symbol, groupId)
         }
     }
 

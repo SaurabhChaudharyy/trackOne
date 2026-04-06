@@ -36,6 +36,9 @@ class SplashViewModel @Inject constructor(
     fun startPrefetch() {
         if (_isReady.value) return
         viewModelScope.launch {
+            // Ensure the default watchlist group exists before any UI is shown
+            runCatching { repository.ensureDefaultGroup() }
+
             // Fetch all indexes concurrently
             val indexJobs = indexSymbols.map { symbol ->
                 launch {
@@ -48,8 +51,6 @@ class SplashViewModel @Inject constructor(
                 runCatching { repository.refreshWatchlistStocks() }
             }
 
-            // Wait for everything to complete (joins run sequentially but all
-            // launched above so they ran in parallel)
             indexJobs.forEach { it.join() }
             watchlistJob.join()
 
