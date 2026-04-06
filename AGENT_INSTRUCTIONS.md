@@ -109,8 +109,8 @@ The app uses a **single Room database** for all persistent storage. There is **n
 | **Library** | Room (via KSP) |
 | **Database class** | `FinanceDatabase` |
 | **Database file name** | `finance_widget_db` |
-| **Current schema version** | 2 |
-| **Migration policy** | `fallbackToDestructiveMigration()` — schema changes wipe and recreate the DB |
+| **Current schema version** | 4 |
+| **Migration policy** | `fallbackToDestructiveMigration()` + explicit migrations (e.g. `MIGRATION_3_4`) — explicit migrations preserve data; fallback is a safety net |
 | **Physical location on device** | `/data/data/com.saurabh.financewidget/databases/finance_widget_db` (internal storage, not accessible without root) |
 
 ### Tables
@@ -118,7 +118,7 @@ The app uses a **single Room database** for all persistent storage. There is **n
 | Table | Entity Class | Primary Key | Purpose |
 |---|---|---|---|
 | `stocks` | `StockEntity` | `symbol` (String) | Cached stock data (price, change %, market cap, etc.) fetched from Yahoo Finance |
-| `watchlist` | `WatchlistEntity` | `symbol` (String) | User's watchlist — symbols the user has added, with display order (`position`) |
+| `watchlist` | `WatchlistEntity` | `(symbol, groupId)` **composite** | Per-group stock membership — same symbol can exist in multiple groups independently |
 | `price_history` | `PriceHistoryEntity` | `id` (auto-increment Long) | OHLCV candlestick / line chart data per symbol and resolution |
 | `networth_assets` | `NetWorthAssetEntity` | `id` (auto-increment Long) | All Net Worth entries across all asset types (Indian Stocks, US Stocks, MF, Gold, Silver, Crypto, Cash, Bank) |
 
@@ -809,3 +809,188 @@ The old `CheckBox` with `android:buttonTint="@color/text_primary"` painted the b
 **Why:** Users who import via broker CSV may have no watchlist entries, making the Top Mover card always empty. Portfolio is the authoritative source of the user's actual holdings.
 
 **Files changed:** `HomeViewModel.kt` (`NetWorthDao` injected, `fetchTopMover()` rewritten), `fragment_home.xml` (empty state string)
+
+---
+
+## Session Changes Log — 2026-04-03 (Multiple Watchlists)
+
+### 1. Multiple Named Watchlists
+
+**Purpose:** Users can now create, rename, and delete multiple named watchlists (e.g. "Tech", "India", "Crypto") accessible as tabs at the top of the Watchlist screen.
+
+#### New DB Table: `watchlist_groups`
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | Long (PK, autoGenerate) | Row 1 is always the default "My Watchlist" |
+| `name` | String | User-editable display name |
+| `position` | Int | Sort order of the tab |
+| `createdAt` | Long | Epoch ms |
+
+`WatchlistEntity` gains a new **`groupId: Long`** column (default `1L`) — the foreign-key tie to `watchlist_groups.id`. The DB version was bumped to **3** (fallbackToDestructiveMigration wipes old data on upgrade).
+
+#### UX Flow
+
+| Action | Trigger |
+|---|---|
+| **Switch watchlist** | Tap a tab in the horizontal strip |
+| **Create watchlist** | Tap the **`+`** button next to the tabs → name dialog |
+| **Rename watchlist** | Long-press any tab → PopupMenu → *Rename* |
+| **Delete watchlist** | Long-press any tab → PopupMenu → *Delete* (disabled when only 1 list remains) |
+
+#### Tab Strip Design
+
+- A horizontally-scrollable `LinearLayout` (`id: ll_tabs`) inside an `HorizontalScrollView` (`id: hsv_tabs`) sits above the RecyclerView.
+- Active tab: **black** (`text_primary`) label text + neon-yellow (`#D4E510`) 3dp bottom-bar indicator (`bg_watchlist_tab_active.xml`).
+- Inactive tabs: gray (`text_tertiary`) text, no background.
+- A transparent `ImageButton` (`btn_add_watchlist`) with a `+` icon (`ic_add_watchlist.xml`) sits at the trailing edge.
+
+#### Files Changed / Created
+
+| File | Change |
+|---|---|
+| `data/database/Entities.kt` | Added `WatchlistGroupEntity`; added `groupId: Long = 1L` to `WatchlistEntity` |
+| `data/database/Daos.kt` | Added `WatchlistGroupDao`; updated `WatchlistDao` with group-scoped queries (`getWatchlistByGroup`, `getWatchlistSyncByGroup`, `removeFromWatchlistInGroup`, `updatePosition(symbol, groupId, position)`, `getMaxPositionInGroup`) |
+| `data/database/FinanceDatabase.kt` | Version **2 → 3**, registered `WatchlistGroupEntity` + `WatchlistGroupDao` |
+| `di/AppModule.kt` | Added `provideWatchlistGroupDao()` |
+| `data/repository/StockRepository.kt` | Injected `WatchlistGroupDao`; added `ensureDefaultGroup()`, `createWatchlistGroup()`, `renameWatchlistGroup()`, `deleteWatchlistGroup()`, `getWatchlistGroups()`, `getWatchlistByGroup()`; all add/remove/reorder now take `groupId` |
+| `ui/main/MainViewModel.kt` | Added `watchlistGroups`, `activeGroupId`, `activeGroupWatchlist`; `watchlistStocks` is now a `switchMap` over active group; added `selectGroup()`, `createWatchlistGroup()`, `renameWatchlistGroup()`, `deleteWatchlistGroup()` |
+| `ui/main/WatchlistFragment.kt` | Full rewrite — builds tab strip dynamically from `watchlistGroups` LiveData; handles long-press rename/delete popup; wires create dialog to `+` button |
+| `ui/config/ConfigViewModel.kt` | `addToWatchlist` / `removeFromWatchlist` / `addToWatchlistSync` accept optional `groupId` (default `DEFAULT_GROUP_ID`) |
+| `ui/splash/SplashViewModel.kt` | Calls `repository.ensureDefaultGroup()` on first launch |
+| `res/layout/fragment_watchlist.xml` | Restructured as vertical `LinearLayout`; tab strip row + divider on top; `SwipeRefreshLayout` fills rest |
+| `res/layout/item_watchlist_tab.xml` | New — single tab chip layout (TextView inside LinearLayout) |
+| `res/layout/dialog_watchlist_name.xml` | New — name input dialog for create / rename |
+| `res/drawable/ic_add_watchlist.xml` | New — plus-icon vector for add-button |
+| `res/drawable/bg_watchlist_tab_active.xml` | New — neon-yellow 3dp bottom bar for active tab |
+
+> ⚠️ Because `fallbackToDestructiveMigration()` is in effect, existing watchlist data is wiped on the v2→v3 upgrade. This is acceptable per the project policy.
+
+---
+
+## Session Changes Log — 2026-04-06 (Watchlist Multi-Group Bug Fixes & Validation)
+
+### 1. AlertDialog Type Mismatch Fix
+
+**Problem:** `MaterialAlertDialogBuilder.create()` returns `androidx.appcompat.app.AlertDialog`, but `triggerCreateWatchlist()` and `triggerRenameWatchlist()` in `WatchlistFragment` typed their `dialog` parameter as `android.app.AlertDialog` — causing a compile-time type mismatch.
+
+**Fix:** Changed both function signatures from `android.app.AlertDialog` → `androidx.appcompat.app.AlertDialog`.
+
+**Files changed:** `ui/main/WatchlistFragment.kt`
+
+---
+
+### 2. Stocks Added to Wrong Watchlist Group
+
+**Root cause (schema):** `WatchlistEntity` used `symbol` alone as `@PrimaryKey`. A stock can only occupy one row in the `watchlist` table, so adding the same symbol to a second group silently failed (`OnConflictStrategy.IGNORE`). Every stock therefore lived in whichever group first inserted it — almost always the default "My Watchlist" (group 1).
+
+**Fix:** Changed `WatchlistEntity` to a **composite primary key `(symbol, groupId)`** using `@Entity(primaryKeys = ["symbol", "groupId"])`. The same stock can now exist independently in multiple groups.
+
+```kotlin
+// Before
+@Entity(tableName = "watchlist")
+data class WatchlistEntity(
+    @PrimaryKey val symbol: String, ...
+)
+
+// After
+@Entity(tableName = "watchlist", primaryKeys = ["symbol", "groupId"])
+data class WatchlistEntity(
+    val symbol: String, ..., val groupId: Long = 1L, ...
+)
+```
+
+**DB migration:** Version bumped **3 → 4**. `MIGRATION_3_4` in `FinanceDatabase.kt` recreates the `watchlist` table with the new composite PK and migrates all existing rows (preserving them under `groupId = 1`). Wired into `Room.databaseBuilder` via `.addMigrations(MIGRATION_3_4)`.
+
+**Root cause (WidgetConfigActivity):** `WidgetConfigActivity` (the "Add Stocks" search screen) always called `addToWatchlistSync(symbol, name)` with no `groupId`, defaulting to `DEFAULT_GROUP_ID = 1L`, regardless of which watchlist was active.
+
+**Fix:**
+- `WidgetConfigActivity.start()` now accepts a `groupId: Long = 1L` parameter and passes it as an Intent extra (`EXTRA_GROUP_ID`).
+- `WatchlistFragment` reads `viewModel.activeGroupId.value` and passes it when calling `WidgetConfigActivity.start(requireActivity(), groupId)` — for both the "Add Stock" button in the toolbar and the "Add stock" button inside the empty-state layout.
+- `WidgetConfigActivity` reads the extra and forwards `activeGroupId` to `addToWatchlistSync(symbol, name, activeGroupId)`.
+
+**Files changed:** `data/database/Entities.kt`, `data/database/FinanceDatabase.kt`, `di/AppModule.kt`, `ui/config/WidgetConfigActivity.kt`, `ui/main/WatchlistFragment.kt`
+
+#### Updated Database Table Reference
+
+| Table | Entity Class | Primary Key | Purpose |
+|---|---|---|---|
+| `stocks` | `StockEntity` | `symbol` (String) | Cached stock price data |
+| `watchlist_groups` | `WatchlistGroupEntity` | `id` (Long, autoGenerate) | Named watchlist groups |
+| `watchlist` | `WatchlistEntity` | `(symbol, groupId)` **composite** | Per-group stock membership + order |
+| `price_history` | `PriceHistoryEntity` | `id` (Long, autoGenerate) | OHLCV chart data |
+| `networth_assets` | `NetWorthAssetEntity` | `id` (Long, autoGenerate) | Net Worth holdings |
+
+> **Current DB schema version: 4**
+
+---
+
+### 3. Tab-Switch Flicker Fix
+
+**Problem:** Switching between watchlist tabs caused a visible "white flash" / flicker of the list content.
+
+**Two distinct causes were identified and fixed separately:**
+
+#### Cause A — Duplicate LiveData emissions (populated → populated)
+The nested `switchMap` chain in `MainViewModel.watchlistStocks` could fire twice with the same list when switching groups (Room delivers a cached value immediately, then re-queries). The second identical emission re-drove the adapter and `updateEmptyState`, causing a redundant layout pass.
+
+**Fix:** Added `.distinctUntilChanged()` to `watchlistStocks` in `MainViewModel`.
+
+```kotlin
+val watchlistStocks: LiveData<List<StockEntity>> =
+    _activeGroupId.switchMap { groupId ->
+        repository.getWatchlistByGroup(groupId).switchMap { groupItems ->
+            ...
+        }
+    }.distinctUntilChanged()  // ← added
+```
+
+#### Cause B — RecyclerView ItemAnimator (empty → populated)
+When the adapter transitions from 0 items → N items, `DefaultItemAnimator` plays an "add" animation for every item at the exact moment `RecyclerView` changes from `GONE` to `VISIBLE`. This creates a one-frame blank flash.
+
+**Fix:** In `WatchlistFragment.observeViewModel()`, detect the `wasEmpty && isNowPopulated` transition and temporarily null the `itemAnimator` for one frame (restoring it on the next `post{}`).
+
+```kotlin
+viewModel.watchlistStocks.observe(viewLifecycleOwner) { stocks ->
+    val wasEmpty = adapter.items.isEmpty()
+    if (wasEmpty && stocks.isNotEmpty()) {
+        val saved = binding.recyclerViewWatchlist.itemAnimator
+        binding.recyclerViewWatchlist.itemAnimator = null
+        binding.recyclerViewWatchlist.post { binding.recyclerViewWatchlist.itemAnimator = saved }
+    }
+    adapter.submitList(stocks)
+    updateEmptyState(stocks.isEmpty())
+}
+```
+
+> The item animations for normal add/remove/reorder operations are **not affected** — the animator is only suppressed for the one frame when a previously-empty group first receives its items.
+
+**Files changed:** `ui/main/MainViewModel.kt`, `ui/main/WatchlistFragment.kt`
+
+---
+
+### 4. Watchlist Duplicate Name & Count Limit Validation
+
+**Problem:** Users could create multiple watchlists with the same name (including case variants like "Tech" vs "tech"), and could create unlimited watchlists.
+
+**Fix:** Three layers of validation added:
+
+| Layer | Location | Checks |
+|---|---|---|
+| `+` **button click guard** | `btnAddWatchlist.setOnClickListener` | If `groups.size >= 5` → shows Snackbar, dialog never opens |
+| `+` **button visual dim** | `watchlistGroups` observer | `btnAddWatchlist.alpha = 0.35f` when at limit, `1f` otherwise (reactive) |
+| **Create dialog confirm** | `triggerCreateWatchlist()` | (1) Empty name, (2) count ≥ limit, (3) case-insensitive duplicate name → inline error on `TextInputLayout` |
+| **Rename dialog confirm** | `triggerRenameWatchlist()` | Case-insensitive duplicate name, **excluding the group's own current name** (so saving an unchanged name doesn't error) → inline error |
+
+```kotlin
+companion object {
+    private const val MAX_WATCHLISTS = 5  // single constant — change here to adjust limit
+}
+```
+
+**Key behaviours:**
+- Duplicate check is **case-insensitive**: `"tech"` and `"Tech"` are treated as identical.
+- Rename self-exclusion: `it.id != group.id` in the duplicate check lets the user save a rename with conceptually the same casing without triggering a false positive.
+- All validation errors show **inline** in the `TextInputLayout` — the dialog stays open for correction rather than dismissing.
+
+**Files changed:** `ui/main/WatchlistFragment.kt`

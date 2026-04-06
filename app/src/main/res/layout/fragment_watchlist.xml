@@ -1,82 +1,142 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+<LinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
-    android:id="@+id/swipe_refresh_layout"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/background">
 
-    <FrameLayout
+    <!-- ── Watchlist tab strip ──────────────────────────────────────────────── -->
+    <LinearLayout
+        android:id="@+id/ll_tab_strip_container"
         android:layout_width="match_parent"
-        android:layout_height="match_parent">
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:background="@color/background"
+        android:elevation="2dp"
+        android:paddingTop="8dp"
+        android:paddingBottom="0dp">
 
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/recycler_view_watchlist"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:clipToPadding="false"
-            android:paddingBottom="8dp"
-            tools:listitem="@layout/item_stock"/>
-
-        <LinearLayout
-            android:id="@+id/empty_state_layout"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:orientation="vertical"
-            android:gravity="center"
-            android:visibility="gone">
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="No stocks yet"
-                android:textColor="@color/text_primary"
-                android:textSize="16sp"
-                android:fontFamily="@font/inter_semi_bold"
-                android:textStyle="bold"/>
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
-                android:text="Add a symbol to start tracking"
-                android:textColor="@color/text_tertiary"
-                android:textSize="13sp"/>
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btn_add_stock"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="24dp"
-                android:text="Add stock"
-                android:textSize="13sp"
-                android:textColor="@color/on_primary"
-                android:paddingHorizontal="20dp"
-                app:backgroundTint="@color/text_primary"
-                app:cornerRadius="8dp"/>
-        </LinearLayout>
-
-        <LinearLayout
-            android:id="@+id/error_view"
-            android:layout_width="match_parent"
+        <HorizontalScrollView
+            android:id="@+id/hsv_tabs"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_gravity="top"
-            android:orientation="horizontal"
-            android:background="@color/error_background"
-            android:paddingHorizontal="16dp"
-            android:paddingVertical="10dp"
-            android:gravity="center_vertical"
-            android:visibility="gone">
+            android:layout_weight="1"
+            android:scrollbars="none"
+            android:fillViewport="false"
+            android:paddingStart="12dp">
 
-            <TextView
-                android:id="@+id/error_text"
+            <LinearLayout
+                android:id="@+id/ll_tabs"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"/>
+
+        </HorizontalScrollView>
+
+        <!-- Add new watchlist button -->
+        <ImageButton
+            android:id="@+id/btn_add_watchlist"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_marginEnd="8dp"
+            android:layout_marginStart="4dp"
+            android:layout_gravity="center_vertical"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Add watchlist"
+            android:src="@drawable/ic_add_watchlist"
+            android:tint="@color/text_secondary"/>
+
+    </LinearLayout>
+
+    <!-- thin divider under tab strip -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="@color/border_color"/>
+
+    <!-- ── Body: SwipeRefresh + list ───────────────────────────────────────── -->
+    <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+        android:id="@+id/swipe_refresh_layout"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/recycler_view_watchlist"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:clipToPadding="false"
+                android:paddingBottom="8dp"
+                tools:listitem="@layout/item_stock"/>
+
+            <LinearLayout
+                android:id="@+id/empty_state_layout"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:visibility="gone">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="No stocks yet"
+                    android:textColor="@color/text_primary"
+                    android:textSize="16sp"
+                    android:fontFamily="@font/inter_semi_bold"
+                    android:textStyle="bold"/>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:text="Add a symbol to start tracking"
+                    android:textColor="@color/text_tertiary"
+                    android:textSize="13sp"/>
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_add_stock"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="24dp"
+                    android:text="Add stock"
+                    android:textSize="13sp"
+                    android:textColor="@color/on_primary"
+                    android:paddingHorizontal="20dp"
+                    app:backgroundTint="@color/text_primary"
+                    app:cornerRadius="8dp"/>
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/error_view"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Failed to refresh"
-                android:textColor="@color/loss_red"
-                android:textSize="12sp"/>
-        </LinearLayout>
+                android:layout_gravity="top"
+                android:orientation="horizontal"
+                android:background="@color/error_background"
+                android:paddingHorizontal="16dp"
+                android:paddingVertical="10dp"
+                android:gravity="center_vertical"
+                android:visibility="gone">
 
-    </FrameLayout>
-</androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
+                <TextView
+                    android:id="@+id/error_text"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Failed to refresh"
+                    android:textColor="@color/loss_red"
+                    android:textSize="12sp"/>
+            </LinearLayout>
+
+        </FrameLayout>
+    </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
+
+</LinearLayout>

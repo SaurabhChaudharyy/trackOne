@@ -103,6 +103,7 @@ class BackupRepository @Inject constructor(
                     symbol = b.symbol.trim().uppercase(),
                     displayName = b.displayName,
                     position = b.position,
+                    groupId = 1L,
                     addedAt = now + idx
                 )
             }

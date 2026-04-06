@@ -31,12 +31,26 @@ data class StockEntity(
     val isStale: Boolean get() = System.currentTimeMillis() - lastUpdated > 15 * 60 * 1000
 }
 
-@Entity(tableName = "watchlist")
+/** A named watchlist "group" — users can create multiple. */
+@Entity(tableName = "watchlist_groups")
+data class WatchlistGroupEntity(
+    @PrimaryKey(autoGenerate = true)
+    val id: Long = 0,
+    val name: String,
+    val position: Int,
+    val createdAt: Long = System.currentTimeMillis()
+)
+
+@Entity(
+    tableName = "watchlist",
+    primaryKeys = ["symbol", "groupId"]
+)
 data class WatchlistEntity(
-    @PrimaryKey
     val symbol: String,
     val displayName: String,
     val position: Int,
+    /** Foreign key to watchlist_groups.id — default 1 ("My Watchlist"). */
+    val groupId: Long = 1L,
     val addedAt: Long = System.currentTimeMillis()
 )
 

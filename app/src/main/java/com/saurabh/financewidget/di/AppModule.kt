@@ -75,6 +75,7 @@ object AppModule {
             FinanceDatabase::class.java,
             "finance_widget_db"
         )
+            .addMigrations(MIGRATION_3_4)
             .fallbackToDestructiveMigration()
             .build()
     }
@@ -82,6 +83,10 @@ object AppModule {
     @Provides
     @Singleton
     fun provideStockDao(database: FinanceDatabase): StockDao = database.stockDao()
+
+    @Provides
+    @Singleton
+    fun provideWatchlistGroupDao(database: FinanceDatabase): WatchlistGroupDao = database.watchlistGroupDao()
 
     @Provides
     @Singleton

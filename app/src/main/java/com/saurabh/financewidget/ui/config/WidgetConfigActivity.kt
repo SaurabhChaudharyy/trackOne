@@ -25,10 +25,16 @@ class WidgetConfigActivity : AppCompatActivity() {
     private val viewModel: ConfigViewModel by viewModels()
     private lateinit var searchAdapter: SearchResultAdapter
     private var appWidgetId = AppWidgetManager.INVALID_APPWIDGET_ID
+    private var activeGroupId: Long = 1L
 
     companion object {
-        fun start(context: Context) {
-            context.startActivity(Intent(context, WidgetConfigActivity::class.java))
+        private const val EXTRA_GROUP_ID = "extra_group_id"
+
+        fun start(context: Context, groupId: Long = 1L) {
+            context.startActivity(
+                Intent(context, WidgetConfigActivity::class.java)
+                    .putExtra(EXTRA_GROUP_ID, groupId)
+            )
         }
     }
 
@@ -41,6 +47,7 @@ class WidgetConfigActivity : AppCompatActivity() {
             AppWidgetManager.EXTRA_APPWIDGET_ID,
             AppWidgetManager.INVALID_APPWIDGET_ID
         )
+        activeGroupId = intent.getLongExtra(EXTRA_GROUP_ID, 1L)
         setResult(RESULT_CANCELED)
 
         if (appWidgetId != AppWidgetManager.INVALID_APPWIDGET_ID) {
@@ -105,7 +112,7 @@ class WidgetConfigActivity : AppCompatActivity() {
                 var addedCount = 0
                 selected.forEach { result ->
                     try {
-                        viewModel.addToWatchlistSync(result.symbol, result.displayName)
+                        viewModel.addToWatchlistSync(result.symbol, result.displayName, activeGroupId)
                         addedCount++
                     } catch (_: Exception) {}
                 }
