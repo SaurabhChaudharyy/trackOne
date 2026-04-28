@@ -19,6 +19,27 @@ data class IndexData(
     val currency: String
 )
 
+/**
+ * A single top-mover row: live price data + user's position info.
+ * [invested] and [currentVal] are 0 when the user has no buy price recorded.
+ */
+data class TopMover(
+    val stock: StockEntity,
+    val invested: Double,   // buyPrice * quantity (0 if no buy price)
+    val currentVal: Double, // currentPrice * quantity
+    val qty: Double
+)
+
+/**
+ * Aggregated portfolio summary for the Home screen card.
+ */
+data class PortfolioSummary(
+    val totalCurrent: Double,
+    val totalInvested: Double,
+    val absChange: Double,
+    val pctChange: Double
+)
+
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     private val repository: StockRepository,
@@ -38,10 +59,15 @@ class HomeViewModel @Inject constructor(
     private val _nasdaq  = MutableLiveData<Resource<IndexData>>()
     val nasdaq: LiveData<Resource<IndexData>> = _nasdaq
 
-    // ── Top Mover ───────────────────────────────────────────────────────
-    private val _topMover = MutableLiveData<StockEntity?>()
-    val topMover: LiveData<StockEntity?> = _topMover
+    // ── Top Movers (up to 5) ────────────────────────────────────────────
+    private val _topMovers = MutableLiveData<List<TopMover>>()
+    val topMovers: LiveData<List<TopMover>> = _topMovers
 
+    // ── Portfolio Summary ───────────────────────────────────────────────
+    private val _portfolioSummary = MutableLiveData<PortfolioSummary?>()
+    val portfolioSummary: LiveData<PortfolioSummary?> = _portfolioSummary
+
+    // ── Loading state ────────────────────────────────────────────────────
     private val _isLoading = MutableLiveData<Boolean>(false)
     val isLoading: LiveData<Boolean> = _isLoading
 
@@ -53,13 +79,13 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             _isLoading.value = true
             fetchIndexes()
-            fetchTopMover()
+            fetchTopMovers()
+            computePortfolioSummary()
             _isLoading.value = false
         }
     }
 
     private suspend fun fetchIndexes() {
-        // Fetch all 4 indexes concurrently
         val symbols = listOf(
             "^NSEI"  to _nifty,
             "^BSESN" to _sensex,
@@ -89,29 +115,27 @@ class HomeViewModel @Inject constructor(
     }
 
     /**
-     * Finds the portfolio holding with the largest absolute daily % change.
-     * Only considers fetchable asset types: Indian stocks, US stocks, crypto,
-     * gold and silver. Deduplicates by symbol so we don't double-fetch.
+     * Finds up to 3 portfolio holdings with the largest absolute daily % change.
+     * Only considers fetchable asset types: Indian stocks, US stocks, crypto, gold, silver.
+     * Deduplicates by symbol so we don't double-fetch.
      */
-    private suspend fun fetchTopMover() {
+    private suspend fun fetchTopMovers() {
         val fetchableTypes = setOf(
             AssetType.STOCK_IN, AssetType.STOCK_US,
             AssetType.CRYPTO, AssetType.GOLD, AssetType.SILVER
         )
         val assets = netWorthDao.getAllAssetsSync()
             .filter { it.assetType in fetchableTypes }
-            .distinctBy { it.name }   // avoid duplicate API calls for the same symbol
+            .distinctBy { it.name }
 
         if (assets.isEmpty()) {
-            _topMover.postValue(null)
+            _topMovers.postValue(emptyList())
             return
         }
 
-        var bestStock: StockEntity? = null
-        var bestAbsChange = 0.0
+        val results = mutableListOf<TopMover>()
 
         for (asset in assets) {
-            // Map portfolio names to Yahoo Finance symbols for gold/silver
             val symbol = when (asset.assetType) {
                 AssetType.GOLD   -> "GC=F"
                 AssetType.SILVER -> "SI=F"
@@ -120,13 +144,56 @@ class HomeViewModel @Inject constructor(
             val result = repository.fetchAndCacheStock(symbol)
             if (result is Resource.Success) {
                 val stock = result.data
-                val absChange = kotlin.math.abs(stock.changePercent)
-                if (absChange > bestAbsChange) {
-                    bestAbsChange = absChange
-                    bestStock = stock
-                }
+                val currentVal = stock.currentPrice * asset.quantity
+                val invested   = if (asset.buyPrice > 0.0) asset.buyPrice * asset.quantity else 0.0
+                results.add(TopMover(
+                    stock      = stock,
+                    invested   = invested,
+                    currentVal = currentVal,
+                    qty        = asset.quantity
+                ))
             }
         }
-        _topMover.postValue(bestStock)
+
+        // Sort by absolute % change descending, take top 5
+        val top5 = results.sortedByDescending { kotlin.math.abs(it.stock.changePercent) }.take(5)
+        _topMovers.postValue(top5)
+    }
+
+    /**
+     * Computes the portfolio P&L summary from all assets.
+     * Assets with buyPrice == 0 are counted as break-even (no artificial loss/gain).
+     * Posts null if no assets have a buy price (so the card is hidden).
+     */
+    private suspend fun computePortfolioSummary() {
+        val assets = netWorthDao.getAllAssetsSync()
+        if (assets.isEmpty()) {
+            _portfolioSummary.postValue(null)
+            return
+        }
+
+        var totalInvested = 0.0
+        var totalCurrent  = 0.0
+        for (asset in assets) {
+            if (asset.buyPrice > 0.0) {
+                totalInvested += asset.buyPrice * asset.quantity
+                totalCurrent  += asset.currentValue
+            } else {
+                totalInvested += asset.currentValue
+                totalCurrent  += asset.currentValue
+            }
+        }
+
+        val absChange = totalCurrent - totalInvested
+        val pct = if (totalInvested > 0.0) (absChange / totalInvested) * 100.0 else 0.0
+
+        _portfolioSummary.postValue(
+            PortfolioSummary(
+                totalCurrent  = totalCurrent,
+                totalInvested = totalInvested,
+                absChange     = absChange,
+                pctChange     = pct
+            )
+        )
     }
 }

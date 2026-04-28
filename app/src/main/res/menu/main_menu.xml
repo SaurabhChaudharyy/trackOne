@@ -2,20 +2,7 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
-    <item
-        android:id="@+id/action_add_stock"
-        android:title="@string/action_add_stock"
-        android:icon="@drawable/ic_add"
-        app:iconTint="@color/neon_highlight"
-        app:showAsAction="always"
-        android:contentDescription="Add stock to watchlist"/>
-
-    <item
-        android:id="@+id/action_refresh"
-        android:title="@string/action_refresh"
-        android:icon="@drawable/ic_refresh"
-        app:iconTint="@color/neon_highlight"
-        app:showAsAction="always"
-        android:contentDescription="Refresh stock data"/>
+    <!-- No toolbar items needed on Home — refresh is pull-to-refresh,
+         add stock is via Watchlist tab -->
 
 </menu>

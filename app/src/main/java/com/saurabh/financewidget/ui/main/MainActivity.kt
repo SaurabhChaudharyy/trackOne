@@ -1,14 +1,11 @@
 package com.saurabh.financewidget.ui.main
 
 import android.os.Bundle
-import android.view.Menu
-import android.view.MenuItem
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.Fragment
 import com.saurabh.financewidget.R
 import com.saurabh.financewidget.databinding.ActivityMainBinding
-import com.saurabh.financewidget.ui.config.WidgetConfigActivity
 import com.saurabh.financewidget.ui.home.HomeFragment
 import com.saurabh.financewidget.ui.networth.NetWorthFragment
 import com.saurabh.financewidget.ui.settings.SettingsFragment
@@ -74,16 +71,6 @@ class MainActivity : AppCompatActivity() {
         activeFragment = target
     }
 
-    override fun onCreateOptionsMenu(menu: Menu): Boolean {
-        menuInflater.inflate(R.menu.main_menu, menu)
-        return true
-    }
-
-    override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        return when (item.itemId) {
-            R.id.action_add_stock -> { WidgetConfigActivity.start(this); true }
-            R.id.action_refresh   -> { viewModel.refresh(); true }
-            else -> super.onOptionsItemSelected(item)
-        }
-    }
+    override fun onCreateOptionsMenu(menu: android.view.Menu): Boolean = false
 }
+

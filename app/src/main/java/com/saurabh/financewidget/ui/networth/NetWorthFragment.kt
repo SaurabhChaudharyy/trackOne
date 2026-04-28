@@ -23,6 +23,7 @@ import com.saurabh.financewidget.data.database.AssetType
 import com.saurabh.financewidget.data.database.NetWorthAssetEntity
 import com.saurabh.financewidget.databinding.DialogAddAssetBinding
 import com.saurabh.financewidget.databinding.FragmentNetworthBinding
+import com.saurabh.financewidget.utils.AnimationUtils.animateNumberFromZero
 import com.saurabh.financewidget.utils.Resource
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
@@ -39,6 +40,9 @@ class NetWorthFragment : Fragment() {
     private val inrFormat = NumberFormat.getCurrencyInstance(Locale("en", "IN"))
 
     private val adapters = mutableMapOf<AssetType, NetWorthAssetAdapter>()
+
+    /** Animated number ticker — only runs on the first emission. */
+    private var hasAnimatedTotal = false
 
     /** Which section is currently in bulk-selection mode; null = normal mode. */
     private var selectionModeType: AssetType? = null
@@ -228,7 +232,13 @@ class NetWorthFragment : Fragment() {
 
     private fun observeViewModel() {
         viewModel.totalNetWorth.observe(viewLifecycleOwner) { total ->
-            binding.tvTotalNetworth.text = inrFormat.format(total ?: 0.0)
+            val value = total ?: 0.0
+            if (!hasAnimatedTotal && value > 0.0) {
+                binding.tvTotalNetworth.animateNumberFromZero(value) { inrFormat.format(it) }
+                hasAnimatedTotal = true
+            } else {
+                binding.tvTotalNetworth.text = inrFormat.format(value)
+            }
         }
 
         viewModel.totalPnL.observe(viewLifecycleOwner) { (absChange, pct) ->
