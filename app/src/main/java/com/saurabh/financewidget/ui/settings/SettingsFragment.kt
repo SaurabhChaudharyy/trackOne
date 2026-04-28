@@ -1,5 +1,6 @@
 package com.saurabh.financewidget.ui.settings
 
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
@@ -17,10 +18,16 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.android.material.textfield.TextInputEditText
+import com.google.android.material.textfield.TextInputLayout
+import com.saurabh.financewidget.R
 import com.saurabh.financewidget.data.repository.BrokerCsvRepository
 import com.saurabh.financewidget.databinding.FragmentSettingsBinding
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
+
+private const val PREFS_NAME         = "trackone_prefs"
+private const val PREF_USER_NAME     = "user_name"
 
 @AndroidEntryPoint
 class SettingsFragment : Fragment() {
@@ -53,7 +60,23 @@ class SettingsFragment : Fragment() {
         observeViewModel()
     }
 
+    override fun onResume() {
+        super.onResume()
+        refreshNameCard()
+    }
+
+    private fun refreshNameCard() {
+        val prefs = requireContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val name  = prefs.getString(PREF_USER_NAME, "").orEmpty().trim()
+        binding.tvYourNameValue.text = if (name.isNotEmpty()) name else "Tap to set your name for greeting"
+    }
+
     private fun setupClickListeners() {
+        binding.cardYourName.setOnClickListener {
+            it.performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY)
+            showNameEditDialog()
+        }
+
         binding.cardImportBrokerCsv.setOnClickListener {
             it.performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY)
             importBrokerCsvLauncher.launch(BrokerCsvRepository.IMPORT_MIME_TYPES)
@@ -128,6 +151,31 @@ class SettingsFragment : Fragment() {
                 showErrorDialog(state.message)
             }
         }
+    }
+
+    private fun showNameEditDialog() {
+        if (!isAdded) return
+        val prefs = requireContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val current = prefs.getString(PREF_USER_NAME, "").orEmpty().trim()
+
+        val dialogView = LayoutInflater.from(requireContext())
+            .inflate(R.layout.dialog_watchlist_name, null)
+        val til = dialogView.findViewById<TextInputLayout>(R.id.til_watchlist_name)
+        val et  = dialogView.findViewById<TextInputEditText>(R.id.et_watchlist_name)
+        til.hint = "Your first name"
+        et.setText(current)
+        et.setSelection(current.length)
+
+        MaterialAlertDialogBuilder(requireContext(), R.style.ThemeOverlay_App_MaterialAlertDialog)
+            .setTitle("Your name")
+            .setView(dialogView)
+            .setPositiveButton("Save") { _, _ ->
+                val name = et.text?.toString()?.trim().orEmpty()
+                prefs.edit().putString(PREF_USER_NAME, name).apply()
+                refreshNameCard()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     // ── Blocking progress dialog ──────────────────────────────────────────────

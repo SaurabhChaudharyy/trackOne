@@ -19,6 +19,7 @@ import com.saurabh.financewidget.R
 import com.saurabh.financewidget.data.database.PriceHistoryEntity
 import com.saurabh.financewidget.data.database.StockEntity
 import com.saurabh.financewidget.databinding.ActivityStockDetailBinding
+import com.saurabh.financewidget.utils.AnimationUtils.animateNumberFromZero
 import com.saurabh.financewidget.utils.FormatUtils
 import com.saurabh.financewidget.utils.Resource
 import dagger.hilt.android.AndroidEntryPoint
@@ -32,8 +33,8 @@ class StockDetailActivity : AppCompatActivity() {
     private lateinit var binding: ActivityStockDetailBinding
     private val viewModel: StockDetailViewModel by viewModels()
     private var currentResolution = "D"
-
     private var chartTimestamps: List<Long> = emptyList()
+    private var hasPriceAnimated = false
 
     companion object {
         const val EXTRA_SYMBOL = "extra_symbol"
@@ -246,10 +247,18 @@ class StockDetailActivity : AppCompatActivity() {
         val isIndex = stock.symbol.startsWith("^")
         binding.tvDetailSymbol.text = stock.symbol.removePrefix("^")
         binding.tvDetailCompanyName.text = stock.companyName
-        binding.tvDetailPrice.text = if (isIndex)
-            FormatUtils.formatIndexPrice(stock.currentPrice, stock.currency)
-        else
-            FormatUtils.formatPrice(stock.currentPrice, stock.currency)
+
+        // Animated number ticker — only on first load; instant update on subsequent refreshes
+        val priceFormatter: (Double) -> String = { price ->
+            if (isIndex) FormatUtils.formatIndexPrice(price, stock.currency)
+            else FormatUtils.formatPrice(price, stock.currency)
+        }
+        if (!hasPriceAnimated) {
+            binding.tvDetailPrice.animateNumberFromZero(stock.currentPrice, format = priceFormatter)
+            hasPriceAnimated = true
+        } else {
+            binding.tvDetailPrice.text = priceFormatter(stock.currentPrice)
+        }
 
         // Format change with arrow indicator like Coinbase
         val arrow = if (stock.isPositive) "↗" else "↘"
