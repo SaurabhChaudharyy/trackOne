@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import com.saurabh.financewidget.data.database.AssetType
 import com.saurabh.financewidget.data.database.NetWorthDao
 import com.saurabh.financewidget.data.database.StockEntity
+import com.saurabh.financewidget.data.repository.NetWorthRepository
 import com.saurabh.financewidget.data.repository.StockRepository
 import com.saurabh.financewidget.utils.Resource
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -40,9 +41,21 @@ data class PortfolioSummary(
     val pctChange: Double
 )
 
+/**
+ * A single point on the portfolio value chart.
+ * [timestamp] is a Unix epoch in millis, [invested] is cumulative cost-basis,
+ * [current] is cumulative current market value at that moment.
+ */
+data class PortfolioChartPoint(
+    val timestamp: Long,   // millis
+    val invested: Double,
+    val current: Double
+)
+
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     private val repository: StockRepository,
+    private val netWorthRepository: NetWorthRepository,
     private val netWorthDao: NetWorthDao
 ) : ViewModel() {
 
@@ -67,22 +80,80 @@ class HomeViewModel @Inject constructor(
     private val _portfolioSummary = MutableLiveData<PortfolioSummary?>()
     val portfolioSummary: LiveData<PortfolioSummary?> = _portfolioSummary
 
+    // ── Portfolio Chart data ────────────────────────────────────────────
+    private val _portfolioChartData = MutableLiveData<List<PortfolioChartPoint>>(emptyList())
+    val portfolioChartData: LiveData<List<PortfolioChartPoint>> = _portfolioChartData
+
+    // ── Portfolio refresh event (fires when live data differs from cached) ─────
+    /** Carries the fresh PortfolioSummary so the Fragment can show a "Updated" banner. */
+    private val _portfolioRefreshed = MutableLiveData<PortfolioSummary?>()
+    val portfolioRefreshed: LiveData<PortfolioSummary?> = _portfolioRefreshed
+
     // ── Loading state ────────────────────────────────────────────────────
     private val _isLoading = MutableLiveData<Boolean>(false)
     val isLoading: LiveData<Boolean> = _isLoading
 
     init {
-        fetchAll()
+        // 1️⃣ Show cached data immediately (instant — no network)
+        viewModelScope.launch { loadCachedPortfolio() }
+        // 2️⃣ Refresh live prices in background; emit banner event if values changed
+        viewModelScope.launch { refreshLivePricesQuietly() }
+        // 3️⃣ Fetch indexes + top movers (also background)
+        viewModelScope.launch { fetchIndexes(); fetchTopMovers() }
     }
 
+    // ───────────────────────────────────────────────────────────────
+
+    /**
+     * Called on swipe-to-refresh. Shows loading indicator, re-fetches everything,
+     * and applies the live values directly (no banner — user explicitly requested it).
+     */
     fun fetchAll() {
         viewModelScope.launch {
             _isLoading.value = true
+            // Apply live prices to DB first, then recompute
+            netWorthRepository.refreshNetWorthAssets()
             fetchIndexes()
             fetchTopMovers()
             computePortfolioSummary()
+            computePortfolioChartData()
             _isLoading.value = false
         }
+    }
+
+    /**
+     * Reads asset values from Room cache and immediately posts them to the UI.
+     * No network calls — runs in milliseconds.
+     */
+    private suspend fun loadCachedPortfolio() {
+        computePortfolioSummary()
+        computePortfolioChartData()
+    }
+
+    /**
+     * Silently refreshes live prices from the network.
+     * If the resulting portfolio value differs from the current cached value by > ₹1,
+     * emits [portfolioRefreshed] so the Fragment can show an "Updated" banner.
+     * Does NOT auto-apply — the user taps the banner to accept the new value.
+     */
+    private suspend fun refreshLivePricesQuietly() {
+        val cachedSummary = _portfolioSummary.value
+        netWorthRepository.refreshNetWorthAssets()  // updates currentValue in DB
+        val freshSummary = buildPortfolioSummary() ?: return
+        // Emit only if the value changed meaningfully (> ₹1 delta)
+        if (cachedSummary == null ||
+            kotlin.math.abs(freshSummary.totalCurrent - cachedSummary.totalCurrent) > 1.0) {
+            _portfolioRefreshed.postValue(freshSummary)
+        }
+    }
+
+    /** Called from the Fragment when the user taps the "Updated" banner. */
+    fun applyRefreshedPortfolio() {
+        val fresh = _portfolioRefreshed.value ?: return
+        _portfolioSummary.postValue(fresh)
+        _portfolioRefreshed.postValue(null)          // dismiss banner
+        // Rebuild chart with the now-updated DB values
+        viewModelScope.launch { computePortfolioChartData() }
     }
 
     private suspend fun fetchIndexes() {
@@ -162,15 +233,12 @@ class HomeViewModel @Inject constructor(
 
     /**
      * Computes the portfolio P&L summary from all assets.
-     * Assets with buyPrice == 0 are counted as break-even (no artificial loss/gain).
-     * Posts null if no assets have a buy price (so the card is hidden).
+     * Assets with buyPrice == 0 are counted as break-even.
+     * Returns null if there are no assets.
      */
-    private suspend fun computePortfolioSummary() {
+    private suspend fun buildPortfolioSummary(): PortfolioSummary? {
         val assets = netWorthDao.getAllAssetsSync()
-        if (assets.isEmpty()) {
-            _portfolioSummary.postValue(null)
-            return
-        }
+        if (assets.isEmpty()) return null
 
         var totalInvested = 0.0
         var totalCurrent  = 0.0
@@ -183,17 +251,66 @@ class HomeViewModel @Inject constructor(
                 totalCurrent  += asset.currentValue
             }
         }
-
         val absChange = totalCurrent - totalInvested
         val pct = if (totalInvested > 0.0) (absChange / totalInvested) * 100.0 else 0.0
-
-        _portfolioSummary.postValue(
-            PortfolioSummary(
-                totalCurrent  = totalCurrent,
-                totalInvested = totalInvested,
-                absChange     = absChange,
-                pctChange     = pct
-            )
+        return PortfolioSummary(
+            totalCurrent  = totalCurrent,
+            totalInvested = totalInvested,
+            absChange     = absChange,
+            pctChange     = pct
         )
+    }
+
+    private suspend fun computePortfolioSummary() {
+        _portfolioSummary.postValue(buildPortfolioSummary())
+    }
+
+    /**
+     * Builds a time-series of cumulative portfolio value vs invested cost-basis.
+     * Assets are sorted by addedAt timestamp; each distinct calendar-day boundary
+     * becomes a data point showing cumulative invested + current values up to that day.
+     * We append today as the final "live" point using current market values.
+     */
+    private suspend fun computePortfolioChartData() {
+        val assets = netWorthDao.getAllAssetsSync()
+        if (assets.size < 2) {
+            _portfolioChartData.postValue(emptyList())
+            return
+        }
+
+        // Sort by when each asset was added
+        val sorted = assets.sortedBy { it.addedAt }
+
+        // Build cumulative points: one point per asset-addition event
+        val points = mutableListOf<PortfolioChartPoint>()
+        var cumulativeInvested = 0.0
+        var cumulativeCurrent  = 0.0
+
+        for (asset in sorted) {
+            val invested = if (asset.buyPrice > 0.0) asset.buyPrice * asset.quantity else asset.currentValue
+            cumulativeInvested += invested
+            cumulativeCurrent  += asset.currentValue
+            points.add(
+                PortfolioChartPoint(
+                    timestamp = asset.addedAt,
+                    invested  = cumulativeInvested,
+                    current   = cumulativeCurrent
+                )
+            )
+        }
+
+        // Ensure the last point is "now" with fresh current values (covers same-day additions)
+        val nowTs = System.currentTimeMillis()
+        if (points.isNotEmpty() && nowTs > points.last().timestamp) {
+            points.add(
+                PortfolioChartPoint(
+                    timestamp = nowTs,
+                    invested  = points.last().invested,
+                    current   = points.last().current
+                )
+            )
+        }
+
+        _portfolioChartData.postValue(points)
     }
 }
