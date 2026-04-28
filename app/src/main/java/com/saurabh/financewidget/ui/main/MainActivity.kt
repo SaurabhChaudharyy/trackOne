@@ -45,9 +45,12 @@ class MainActivity : AppCompatActivity() {
             .commit()
     }
 
+    private val navItemIds = listOf(R.id.nav_home, R.id.nav_watchlist, R.id.nav_networth, R.id.nav_settings)
+
     private fun setupBottomNav() {
         binding.bottomNav.setOnItemSelectedListener { item ->
             binding.bottomNav.performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY)
+            val isHome = item.itemId == R.id.nav_home
             val (fragment, title) = when (item.itemId) {
                 R.id.nav_home      -> homeFragment      to getString(R.string.tab_home)
                 R.id.nav_watchlist -> watchlistFragment to getString(R.string.tab_markets)
@@ -56,7 +59,13 @@ class MainActivity : AppCompatActivity() {
                 else               -> return@setOnItemSelectedListener false
             }
             showFragment(fragment)
-            binding.tvToolbarTitle.text = title
+            binding.tvToolbarTitle.apply {
+                text = title
+                val interSemiBold = androidx.core.content.res.ResourcesCompat.getFont(context, R.font.inter_semi_bold)
+                textSize = 28f
+                letterSpacing = -0.03f
+                setTypeface(interSemiBold, android.graphics.Typeface.NORMAL)
+            }
             true
         }
         binding.bottomNav.selectedItemId = R.id.nav_home
@@ -73,4 +82,3 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreateOptionsMenu(menu: android.view.Menu): Boolean = false
 }
-

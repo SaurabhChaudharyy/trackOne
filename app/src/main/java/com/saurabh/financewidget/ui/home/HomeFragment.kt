@@ -1,9 +1,12 @@
 package com.saurabh.financewidget.ui.home
 
+import android.graphics.Color
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.animation.AccelerateInterpolator
+import android.view.animation.DecelerateInterpolator
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -11,6 +14,9 @@ import androidx.appcompat.app.AlertDialog
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
+import com.github.mikephil.charting.data.Entry
+import com.github.mikephil.charting.data.LineData
+import com.github.mikephil.charting.data.LineDataSet
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.saurabh.financewidget.R
 import com.saurabh.financewidget.data.database.StockEntity
@@ -20,7 +26,6 @@ import com.saurabh.financewidget.utils.AnimationUtils.animateNumberFromZero
 import com.saurabh.financewidget.utils.FormatUtils
 import com.saurabh.financewidget.utils.MarketUtils
 import com.saurabh.financewidget.utils.Resource
-
 import dagger.hilt.android.AndroidEntryPoint
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -43,6 +48,9 @@ class HomeFragment : Fragment() {
     private var nasdaqAnimated  = false
     private var portfolioAnimated = false
 
+    // Chart state
+    private var allChartPoints: List<PortfolioChartPoint> = emptyList()
+
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -55,6 +63,7 @@ class HomeFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         setupDateTime()
+        setupPortfolioChart()
         setupMarketStatusChips()
         setupIndexCardClicks()
         setupPortfolioCardClick()
@@ -147,15 +156,165 @@ class HomeFragment : Fragment() {
             applyPortfolioSummary(summary)
         }
 
+        viewModel.portfolioChartData.observe(viewLifecycleOwner) { points ->
+            allChartPoints = points
+            if (points.size >= 2) {
+                binding.llPortfolioChartSection.visibility = View.VISIBLE
+                drawPortfolioChart(points)
+            } else {
+                binding.llPortfolioChartSection.visibility = View.GONE
+            }
+        }
+
+        viewModel.portfolioRefreshed.observe(viewLifecycleOwner) { freshSummary ->
+            if (freshSummary != null) showUpdateBanner() else dismissUpdateBanner()
+        }
+
         viewModel.isLoading.observe(viewLifecycleOwner) { loading ->
             if (!loading) {
                 binding.swipeRefreshHome.isRefreshing = false
             }
-            if (loading) {
-                binding.topMoverLoading.visibility          = View.VISIBLE
-                binding.llTopMoversContainer.visibility     = View.GONE
-                binding.topMoverEmpty.visibility            = View.GONE
+        }
+    }
+
+    // ── Portfolio chart ─────────────────────────────────────────────────
+
+    // ── Update banner ─────────────────────────────────────────────────
+
+    private fun showUpdateBanner() {
+        val banner = binding.bannerPortfolioUpdated
+        if (banner.visibility == View.VISIBLE) return
+        banner.visibility = View.VISIBLE
+        banner.translationY = banner.height.toFloat().coerceAtLeast(120f)
+        banner.animate()
+            .translationY(0f)
+            .setDuration(300)
+            .setInterpolator(DecelerateInterpolator())
+            .start()
+        banner.setOnClickListener {
+            viewModel.applyRefreshedPortfolio()
+        }
+    }
+
+    private fun dismissUpdateBanner() {
+        val banner = binding.bannerPortfolioUpdated
+        if (banner.visibility != View.VISIBLE) return
+        banner.animate()
+            .translationY(banner.height.toFloat().coerceAtLeast(120f))
+            .setDuration(250)
+            .setInterpolator(AccelerateInterpolator())
+            .withEndAction { banner.visibility = View.GONE }
+            .start()
+    }
+
+    private fun setupPortfolioChart() {
+        binding.portfolioLineChart.apply {
+            description.isEnabled = false
+            legend.isEnabled      = false
+            setBackgroundColor(Color.TRANSPARENT)
+            setTouchEnabled(false)
+            isDragEnabled             = false
+            setScaleEnabled(false)
+            setPinchZoom(false)
+            isDoubleTapToZoomEnabled  = false
+            isHighlightPerTapEnabled  = false
+            isHighlightPerDragEnabled = false
+            setDrawGridBackground(false)
+            setDrawBorders(false)
+            minOffset = 0f
+            setExtraOffsets(12f, 8f, 12f, 12f)
+            setNoDataText("")
+
+            // Right axis — thin horizontal grid lines + compact value labels
+            axisRight.apply {
+                isEnabled        = true
+                setDrawAxisLine(false)
+                setDrawLabels(true)
+                setLabelCount(4, false)
+                axisMinimum      = 0f  // Prevents negative Y-axis values
+                textColor  = Color.parseColor("#A1A1AA")   // zinc-400
+                textSize   = 9f
+                gridColor  = Color.parseColor("#F4F4F5")   // zinc-100
+                gridLineWidth = 0.5f
+                setPosition(com.github.mikephil.charting.components.YAxis.YAxisLabelPosition.INSIDE_CHART)
+                // Format values as ₹XL or ₹XK
+                valueFormatter = object : com.github.mikephil.charting.formatter.ValueFormatter() {
+                    override fun getAxisLabel(value: Float, axis: com.github.mikephil.charting.components.AxisBase?): String {
+                        return when {
+                            value >= 10_00_000 -> "₹${String.format("%.1f", value / 100_000)}L"
+                            value >= 1_000     -> "₹${String.format("%.0f", value / 1_000)}K"
+                            value <= 0         -> "₹0"
+                            else               -> "₹${value.toInt()}"
+                        }
+                    }
+                }
             }
+
+            axisLeft.isEnabled = false
+
+            // Bottom axis — show first and last date labels only
+            xAxis.apply {
+                isEnabled        = true
+                setDrawAxisLine(false)
+                setDrawGridLines(false)
+                setDrawLabels(true)
+                setLabelCount(2, true)
+                setAvoidFirstLastClipping(true)  // Prevents months from cutting off at edges
+                position  = com.github.mikephil.charting.components.XAxis.XAxisPosition.BOTTOM
+                textColor = Color.parseColor("#A1A1AA")
+                textSize  = 9f
+                yOffset   = 4f
+            }
+        }
+    }
+
+    private fun drawPortfolioChart(points: List<PortfolioChartPoint>) {
+        if (_binding == null || points.size < 2) return
+
+        val isGain   = points.last().current >= points.first().current
+        val lineColor = if (isGain) Color.parseColor("#16A34A") else Color.parseColor("#DC2626")
+        val fillStartColor = if (isGain) Color.parseColor("#2216A34A") else Color.parseColor("#22DC2626")
+        val fillEndColor   = Color.parseColor("#0016A34A")  // transparent bottom
+
+        val currentEntries = points.mapIndexed { i, p -> Entry(i.toFloat(), p.current.toFloat()) }
+
+        // Gradient fill drawable
+        val gradientDrawable = android.graphics.drawable.GradientDrawable(
+            android.graphics.drawable.GradientDrawable.Orientation.TOP_BOTTOM,
+            intArrayOf(fillStartColor, fillEndColor)
+        )
+
+        val currentDataSet = LineDataSet(currentEntries, "Current").apply {
+            color = lineColor
+            setDrawCircles(false)
+            setDrawCircleHole(false)
+            setDrawValues(false)
+            lineWidth      = 1.5f
+            mode           = LineDataSet.Mode.CUBIC_BEZIER
+            cubicIntensity = 0.15f
+            setDrawFilled(true)
+            fillDrawable = gradientDrawable
+            isHighlightEnabled = false
+        }
+
+        // Date formatter for xAxis labels
+        val span = points.last().timestamp - points.first().timestamp
+        val dateFmt = if (span < 30L * 24 * 60 * 60 * 1000) {
+            SimpleDateFormat("d MMM", Locale.getDefault())
+        } else {
+            SimpleDateFormat("MMM yy", Locale.getDefault())
+        }
+        binding.portfolioLineChart.xAxis.valueFormatter = object : com.github.mikephil.charting.formatter.ValueFormatter() {
+            override fun getAxisLabel(value: Float, axis: com.github.mikephil.charting.components.AxisBase?): String {
+                val idx = value.toInt().coerceIn(0, points.size - 1)
+                return dateFmt.format(java.util.Date(points[idx].timestamp))
+            }
+        }
+
+        binding.portfolioLineChart.apply {
+            data = LineData(currentDataSet)
+            animateX(700)
+            invalidate()
         }
     }
 
