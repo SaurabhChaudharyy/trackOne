@@ -25,6 +25,16 @@
 
 ---
 
+## What's New in v1.2
+
+*   **Highlighter Aesthetic Revamp**: Brand new bold, high-contrast UI using a neon highlighter (`#F3FE78`) style for gains and a stark red (`#E74C3C`) for losses.
+*   **Portfolio Chart Integration**: View your portfolio's performance via an intuitive, interactive line chart directly on the Home Screen.
+*   **Polished Asset Management**: Replaced standard popup menus with smooth `BottomSheetDialog`s for editing and deleting assets.
+*   **Improved Bulk Deletion**: Enhanced multi-select UI with a persistent bottom action bar and polished confirmation dialogs.
+*   **Dynamic UI Elements**: Timeframe chips, P&L markers, and action buttons have all been redesigned to align with a cohesive, premium light-theme.
+
+---
+
 ## 📲 Download & Install
 
 1. Tap the **Download APK** badge above (or go to [Releases](https://github.com/SaurabhChaudharyy/trackOne/releases/latest))
