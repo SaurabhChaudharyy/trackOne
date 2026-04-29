@@ -6,6 +6,43 @@ import androidx.room.TypeConverters
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
+val MIGRATION_1_2 = object : Migration(1, 2) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("""
+            CREATE TABLE IF NOT EXISTS networth_assets (
+                id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                name TEXT NOT NULL,
+                assetType TEXT NOT NULL,
+                quantity REAL NOT NULL,
+                buyPrice REAL NOT NULL,
+                currentValue REAL NOT NULL,
+                currency TEXT NOT NULL,
+                notes TEXT NOT NULL,
+                addedAt INTEGER NOT NULL,
+                updatedAt INTEGER NOT NULL
+            )
+        """.trimIndent())
+    }
+}
+
+val MIGRATION_2_3 = object : Migration(2, 3) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("""
+            CREATE TABLE IF NOT EXISTS watchlist_groups (
+                id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                name TEXT NOT NULL,
+                position INTEGER NOT NULL,
+                createdAt INTEGER NOT NULL
+            )
+        """.trimIndent())
+        // Insert a default group to satisfy the foreign key or logical default (groupId = 1)
+        db.execSQL("""
+            INSERT OR IGNORE INTO watchlist_groups (id, name, position, createdAt) 
+            VALUES (1, 'My Watchlist', 0, ${System.currentTimeMillis()})
+        """.trimIndent())
+    }
+}
+
 val MIGRATION_3_4 = object : Migration(3, 4) {
     override fun migrate(db: SupportSQLiteDatabase) {
         // Recreate watchlist table with composite PK (symbol, groupId)

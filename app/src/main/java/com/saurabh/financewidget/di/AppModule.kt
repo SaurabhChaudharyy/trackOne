@@ -75,7 +75,7 @@ object AppModule {
             FinanceDatabase::class.java,
             "finance_widget_db"
         )
-            .addMigrations(MIGRATION_3_4)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
             .fallbackToDestructiveMigration()
             .build()
     }
