@@ -95,14 +95,30 @@ class HomeFragment : Fragment() {
         val usOpen    = MarketUtils.isUsMarketOpen()
         val indiaOpen = MarketUtils.isIndiaMarketOpen()
 
+        // US chip — inverted black pill for Open, gray pill for Closed
         binding.tvUsMarketStatus.text = if (usOpen) "Open" else "Closed"
         binding.tvUsMarketStatus.setTextColor(
-            requireContext().getColor(if (usOpen) R.color.neon_highlight else R.color.text_tertiary)
+            requireContext().getColor(if (usOpen) R.color.on_primary else R.color.text_tertiary)
+        )
+        binding.tvUsLabel.setTextColor(
+            requireContext().getColor(if (usOpen) R.color.on_primary else R.color.text_tertiary)
+        )
+        binding.chipUsMarket.background = ContextCompat.getDrawable(
+            requireContext(),
+            if (usOpen) R.drawable.bg_market_chip_open else R.drawable.bg_market_chip
         )
 
+        // India chip — inverted black pill for Open, gray pill for Closed
         binding.tvIndiaMarketStatus.text = if (indiaOpen) "Open" else "Closed"
         binding.tvIndiaMarketStatus.setTextColor(
-            requireContext().getColor(if (indiaOpen) R.color.neon_highlight else R.color.text_tertiary)
+            requireContext().getColor(if (indiaOpen) R.color.on_primary else R.color.text_tertiary)
+        )
+        binding.tvIndiaLabel.setTextColor(
+            requireContext().getColor(if (indiaOpen) R.color.on_primary else R.color.text_tertiary)
+        )
+        binding.chipIndiaMarket.background = ContextCompat.getDrawable(
+            requireContext(),
+            if (indiaOpen) R.drawable.bg_market_chip_open else R.drawable.bg_market_chip
         )
     }
 
@@ -272,9 +288,9 @@ class HomeFragment : Fragment() {
         if (_binding == null || points.size < 2) return
 
         val isGain   = points.last().current >= points.first().current
-        val lineColor = if (isGain) Color.parseColor("#16A34A") else Color.parseColor("#DC2626")
-        val fillStartColor = if (isGain) Color.parseColor("#2216A34A") else Color.parseColor("#22DC2626")
-        val fillEndColor   = Color.parseColor("#0016A34A")  // transparent bottom
+        val lineColor = if (isGain) Color.parseColor("#09090B") else Color.parseColor("#E74C3C")
+        val fillStartColor = if (isGain) Color.parseColor("#33F3FE78") else Color.parseColor("#22E74C3C")
+        val fillEndColor   = Color.parseColor("#00F3FE78")  // transparent bottom
 
         val currentEntries = points.mapIndexed { i, p -> Entry(i.toFloat(), p.current.toFloat()) }
 
@@ -395,15 +411,12 @@ class HomeFragment : Fragment() {
         pill.background = requireContext().getDrawable(
             if (isGain) R.drawable.bg_gain_pill else R.drawable.bg_loss_pill
         )
-        tvChange.setTextColor(
-            requireContext().getColor(if (isGain) R.color.gain_green else R.color.loss_red)
-        )
+        val blackColor = requireContext().getColor(R.color.text_primary)
+        tvChange.setTextColor(blackColor)
         ivTrend.setImageResource(
             if (isGain) R.drawable.ic_trending_up else R.drawable.ic_trending_down
         )
-        ivTrend.imageTintList = android.content.res.ColorStateList.valueOf(
-            requireContext().getColor(if (isGain) R.color.gain_green else R.color.loss_red)
-        )
+        ivTrend.imageTintList = android.content.res.ColorStateList.valueOf(blackColor)
     }
 
     // ── Top Movers ───────────────────────────────────────────────────────
@@ -490,14 +503,14 @@ class HomeFragment : Fragment() {
         val ivTrend = ImageView(requireContext()).apply {
             setImageResource(if (isGain) R.drawable.ic_trending_up else R.drawable.ic_trending_down)
             imageTintList = android.content.res.ColorStateList.valueOf(
-                requireContext().getColor(if (isGain) R.color.gain_green else R.color.loss_red)
+                requireContext().getColor(R.color.text_primary)
             )
             layoutParams = LinearLayout.LayoutParams(9.dp, 9.dp).also { it.marginEnd = 2.dp }
         }
         val tvChange = TextView(requireContext()).apply {
             text = FormatUtils.formatChangePercent(stock.changePercent)
             textSize = 10f
-            setTextColor(requireContext().getColor(if (isGain) R.color.gain_green else R.color.loss_red))
+            setTextColor(requireContext().getColor(R.color.text_primary))
         }
         pill.addView(ivTrend)
         pill.addView(tvChange)
@@ -560,12 +573,17 @@ class HomeFragment : Fragment() {
             val pctStr   = FormatUtils.formatChangePercent(summary.pctChange)
             binding.tvPortfolioPnl.text = "$arrow $absStr ($pctStr)"
 
-            val textColor = requireContext().getColor(if (isGain) R.color.gain_green else R.color.loss_red)
-            val bgColor   = requireContext().getColor(if (isGain) R.color.gain_green_bg else R.color.loss_red_bg)
+            // Highlighter effect: black bold text on neon wash for gain, red on red-tint for loss
+            val textColor = requireContext().getColor(if (isGain) R.color.text_primary else R.color.loss_red)
 
             binding.tvPortfolioPnl.setTextColor(textColor)
-            (binding.tvPortfolioPnl.background.mutate() as? android.graphics.drawable.GradientDrawable)
-                ?.setColor(bgColor)
+            binding.tvPortfolioPnl.setTypeface(
+                androidx.core.content.res.ResourcesCompat.getFont(requireContext(), R.font.inter_semi_bold),
+                android.graphics.Typeface.NORMAL
+            )
+            binding.tvPortfolioPnl.background = requireContext().getDrawable(
+                if (isGain) R.drawable.bg_gain_pill else R.drawable.bg_loss_pill
+            )
             binding.tvPortfolioPnl.visibility = View.VISIBLE
         } else {
             binding.tvPortfolioPnl.visibility = View.GONE

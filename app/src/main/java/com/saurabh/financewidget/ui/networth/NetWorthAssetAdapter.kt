@@ -98,7 +98,9 @@ class NetWorthAssetAdapter(
                 binding.tvAssetPl.text = "%s %s (%+.2f%%)".format(
                     arrow, fmt.format(gain), gainPct
                 )
-                binding.tvAssetPl.setTextColor(ctx.getColor(colour))
+                binding.tvAssetPl.setTextColor(ctx.getColor(R.color.text_primary))
+                val bgRes = if (isGain) R.drawable.bg_gain_pill else R.drawable.bg_loss_pill
+                binding.tvAssetPl.background = ctx.getDrawable(bgRes)
                 binding.tvAssetPl.visibility = View.VISIBLE
 
                 binding.tvAssetInvested.text = "inv ${fmt.format(invested)}"
@@ -120,29 +122,36 @@ class NetWorthAssetAdapter(
                 val checked = selectedIds.contains(asset.id)
                 binding.checkboxSelect.isVisible = true
                 binding.checkboxSelect.isChecked = checked
-                binding.btnEditAsset.isVisible   = false
-                binding.btnDeleteAsset.isVisible = false
 
                 binding.root.setOnLongClickListener(null)
                 binding.root.setOnClickListener { toggleSelection(asset) }
             } else {
                 binding.checkboxSelect.isVisible = false
-                binding.btnEditAsset.isVisible   = true
-                binding.btnDeleteAsset.isVisible = true
 
                 binding.root.setOnClickListener(null)
-                binding.root.setOnLongClickListener {
-                    it.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
-                    onLongPress(asset)
+                binding.root.setOnLongClickListener { view ->
+                    view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                    val bottomSheet = com.google.android.material.bottomsheet.BottomSheetDialog(view.context)
+                    val bsView = LayoutInflater.from(view.context).inflate(R.layout.bottom_sheet_asset_actions, null)
+                    
+                    bsView.findViewById<android.widget.TextView>(R.id.tv_bs_title).text = asset.name.removePrefix("^")
+                    
+                    bsView.findViewById<View>(R.id.action_edit).setOnClickListener {
+                        bottomSheet.dismiss()
+                        onEditClick(asset)
+                    }
+                    bsView.findViewById<View>(R.id.action_remove).setOnClickListener {
+                        bottomSheet.dismiss()
+                        onDeleteClick(asset)
+                    }
+                    bsView.findViewById<View>(R.id.action_select).setOnClickListener {
+                        bottomSheet.dismiss()
+                        onLongPress(asset)
+                    }
+                    
+                    bottomSheet.setContentView(bsView)
+                    bottomSheet.show()
                     true
-                }
-                binding.btnEditAsset.setOnClickListener {
-                    it.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
-                    onEditClick(asset)
-                }
-                binding.btnDeleteAsset.setOnClickListener {
-                    it.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                    onDeleteClick(asset)
                 }
             }
         }

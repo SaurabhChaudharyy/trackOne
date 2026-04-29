@@ -72,8 +72,11 @@ Welcome, future AI Agent! If you are working on this project, please read this d
 
 ## Design System & Aesthetics
 
+*   **App Name**: TrackOne (Always use PascalCase TrackOne in UI strings and logos).
 *   **Color Theme**: Light theme focus (inspired by Minna Bank). Monochrome black & white core, utilizing pure white `#FFFFFF` backgrounds and black `#09090B` text.
-*   **Accent Color**: Vibrant neon yellow (`#D4E510`) is exclusively used as an accent for active states, positive changes, and count badges.
+*   **Accent Colors (Highlighter Aesthetic)**: Vibrant neon yellow (`#F3FE78`) is used for active states and positive changes. Red (`#E74C3C`) is used for negative changes.
+*   **Highlighter Pill Design**: All gain/loss P&L chips, count pills, timeframe chips, and stock change indicators use a solid rectangular (0dp corner radius) "highlighter marker" design. The text/icons inside these pills must always be **solid black** (`@color/text_primary`) without any synthetic bolding or italics.
+*   **List Layout Uniformity**: Percentage change containers in lists use a fixed width (e.g., 72dp) with center gravity to ensure alignment uniformity across varying numeric string lengths.
 *   **Typography**: 
     *   **Inter**: Global primary font for all UI text elements (headers, labels, body text, buttons). Gives a clean, modern aesthetic.
     *   **Geist Mono**: Reserved *strictly* for numeric data display (prices, percentages, amounts, dates) to retain a precise, financial tech feel.
@@ -994,3 +997,24 @@ companion object {
 - All validation errors show **inline** in the `TextInputLayout` — the dialog stays open for correction rather than dismissing.
 
 **Files changed:** `ui/main/WatchlistFragment.kt`
+
+---
+
+## Active Development Branches
+
+### Branch: `feature/home-screen-improvements`
+This branch contains a major redesign of the Home Screen along with animated value tickers and portfolio chart integrations.
+
+**Key Changes:**
+1. **Home Screen Redesign & Animations**:
+   - Added `AnimationUtils.kt` containing `animateNumberFromZero` for animated number tickers. This is now used in `StockDetailActivity` to animate the price on first load.
+   - Significant layout and UI updates to `fragment_home.xml` and `HomeFragment.kt` for a refreshed design.
+   - Added `MarketCalendar.kt` to handle market timing and status logic more robustly.
+
+2. **Portfolio Chart Integration**:
+   - Integrated MPAndroidChart to visualize the user's portfolio performance over time directly on the Home Screen (`HomeFragment`).
+   - Uses `PortfolioChartPoint` data emitted from `HomeViewModel.portfolioChartData`.
+   - The chart features a green (`#16A34A`) or red (`#DC2626`) gradient fill depending on whether the portfolio is currently at a gain or loss relative to the first data point.
+
+3. **Live Update Notification Banner**:
+   - Added a live update banner to the Home Screen that triggers when the portfolio data refreshes (`viewModel.portfolioRefreshed`).

@@ -90,10 +90,10 @@
                         android:id="@+id/tv_portfolio_pnl"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:paddingHorizontal="10dp"
-                        android:paddingVertical="5dp"
-                        android:textSize="12sp"
-                        android:fontFamily="@font/geist_mono"
+                        android:paddingHorizontal="4dp"
+                        android:paddingVertical="0dp"
+                        android:textSize="15sp"
+                        android:letterSpacing="-0.02"
                         android:textStyle="bold"
                         android:background="@drawable/bg_pnl_chip"
                         android:visibility="gone"
@@ -197,9 +197,9 @@
                     android:layout_height="wrap_content"
                     android:text="TODAY'S MOVERS"
                     android:textColor="@color/text_tertiary"
-                    android:textSize="10sp"
+                    android:textSize="9sp"
                     android:fontFamily="@font/inter_semi_bold"
-                    android:letterSpacing="0.12"
+                    android:letterSpacing="0.16"
                     android:textAllCaps="true"
                     android:paddingHorizontal="20dp"/>
 
@@ -301,6 +301,7 @@
                     android:focusable="true">
 
                     <TextView
+                        android:id="@+id/tv_india_label"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="NSE  "
@@ -334,6 +335,7 @@
                     android:focusable="true">
 
                     <TextView
+                        android:id="@+id/tv_us_label"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="NYSE  "
@@ -363,9 +365,9 @@
                 android:paddingHorizontal="20dp"
                 android:text="INDIA"
                 android:textColor="@color/text_tertiary"
-                android:textSize="10sp"
+                android:textSize="9sp"
                 android:fontFamily="@font/inter_semi_bold"
-                android:letterSpacing="0.12"
+                android:letterSpacing="0.16"
                 android:textAllCaps="true"/>
 
             <!-- ── INDIA INDEX CARDS ──────────────────────────────────────── -->
@@ -517,9 +519,9 @@
                 android:paddingHorizontal="20dp"
                 android:text="UNITED STATES"
                 android:textColor="@color/text_tertiary"
-                android:textSize="10sp"
+                android:textSize="9sp"
                 android:fontFamily="@font/inter_semi_bold"
-                android:letterSpacing="0.12"
+                android:letterSpacing="0.16"
                 android:textAllCaps="true"/>
 
             <!-- ── US INDEX CARDS ─────────────────────────────────────────── -->

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">trackOne</string>
-    <string name="widget_description">trackOne</string>
+    <string name="app_name">TrackOne</string>
+    <string name="widget_description">TrackOne</string>
     <string name="action_add_stock">Add Stock</string>
     <string name="action_refresh">Refresh</string>
     <string name="action_settings">Settings</string>
@@ -31,6 +31,6 @@
     <string name="tab_networth">Net Worth</string>
     <string name="tab_settings">Settings</string>
     <string name="your_portfolio_simplified">Your portfolio. Simplified.</string>
-    <string name="trackone_logo">trackOne logo</string>
+    <string name="trackone_logo">TrackOne logo</string>
     <string name="trackone">TrackOne</string>
 </resources>

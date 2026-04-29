@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:paddingTop="16dp"
+    android:paddingBottom="24dp">
+
+    <TextView
+        android:id="@+id/tv_bs_title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingHorizontal="24dp"
+        android:paddingBottom="12dp"
+        android:text="Asset Actions"
+        android:textColor="@color/text_secondary"
+        android:textSize="13sp"
+        android:fontFamily="@font/inter" />
+
+    <LinearLayout
+        android:id="@+id/action_edit"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingHorizontal="24dp"
+        android:paddingVertical="14dp"
+        android:background="?attr/selectableItemBackground">
+        <ImageView
+            android:layout_width="22dp"
+            android:layout_height="22dp"
+            android:src="@drawable/ic_edit"
+            app:tint="@color/text_primary"/>
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:text="Edit"
+            android:textColor="@color/text_primary"
+            android:textSize="16sp"
+            android:fontFamily="@font/inter"/>
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/action_select"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingHorizontal="24dp"
+        android:paddingVertical="14dp"
+        android:background="?attr/selectableItemBackground">
+        <ImageView
+            android:layout_width="22dp"
+            android:layout_height="22dp"
+            android:src="@drawable/ic_check_circle"
+            app:tint="@color/text_primary"/>
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:text="Select"
+            android:textColor="@color/text_primary"
+            android:textSize="16sp"
+            android:fontFamily="@font/inter"/>
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/action_remove"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingHorizontal="24dp"
+        android:paddingVertical="14dp"
+        android:background="?attr/selectableItemBackground">
+        <ImageView
+            android:layout_width="22dp"
+            android:layout_height="22dp"
+            android:src="@drawable/ic_close"
+            app:tint="@color/loss_red"/>
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:text="Remove"
+            android:textColor="@color/loss_red"
+            android:textSize="16sp"
+            android:fontFamily="@font/inter"/>
+    </LinearLayout>
+</LinearLayout>

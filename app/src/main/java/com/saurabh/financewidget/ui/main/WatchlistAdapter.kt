@@ -68,16 +68,14 @@ class WatchlistAdapter(
             binding.tvChange.text = FormatUtils.formatChange(stock.change)
             binding.tvChangePercent.text = FormatUtils.formatChangePercent(stock.changePercent)
 
-            val gainColor = ContextCompat.getColor(ctx, R.color.gain_green)
-            val lossColor = ContextCompat.getColor(ctx, R.color.loss_red)
-            val changeColor = if (stock.isPositive) gainColor else lossColor
+            val primaryColor = ContextCompat.getColor(ctx, R.color.text_primary)
 
-            binding.tvChange.setTextColor(changeColor)
-            binding.tvChangePercent.setTextColor(changeColor)
+            binding.tvChange.setTextColor(primaryColor)
+            binding.tvChangePercent.setTextColor(primaryColor)
             binding.ivTrend.setImageResource(
                 if (stock.isPositive) R.drawable.ic_arrow_up else R.drawable.ic_arrow_down
             )
-            binding.ivTrend.setColorFilter(changeColor)
+            binding.ivTrend.setColorFilter(primaryColor)
 
             binding.changeContainer.setBackgroundResource(
                 if (stock.isPositive) R.drawable.bg_gain_pill else R.drawable.bg_loss_pill

@@ -12,9 +12,9 @@
 
         <item name="android:windowBackground">@color/background</item>
         <item name="android:statusBarColor">@color/background</item>
-        <item name="android:navigationBarColor">@color/background</item>
+        <item name="android:navigationBarColor">@color/nav_bar_bg</item>
         <item name="android:windowLightStatusBar">true</item>
-        <item name="android:windowLightNavigationBar">true</item>
+        <item name="android:windowLightNavigationBar">false</item>
 
         <item name="android:windowSplashScreenAnimatedIcon">@drawable/transparent_splash</item>
         <item name="android:windowSplashScreenBackground">@color/background</item>
@@ -97,6 +97,8 @@
     <style name="Widget.App.Button" parent="Widget.Material3.Button">
         <item name="android:fontFamily">@font/inter_semi_bold</item>
         <item name="cornerRadius">8dp</item>
+        <item name="backgroundTint">@color/text_primary</item>
+        <item name="android:textColor">@color/on_primary</item>
     </style>
 
     <style name="Widget.App.Button.Tonal" parent="Widget.Material3.Button.TonalButton">
@@ -109,32 +111,54 @@
     </style>
 
     <style name="ThemeOverlay.App.MaterialAlertDialog" parent="ThemeOverlay.Material3.MaterialAlertDialog">
-        <item name="android:background">@color/surface_variant</item>
+        <item name="android:background">@color/background</item>
         <item name="android:fontFamily">@font/inter</item>
+        <item name="buttonBarPositiveButtonStyle">@style/Widget.App.DialogButton.Positive</item>
+        <item name="buttonBarNegativeButtonStyle">@style/Widget.App.DialogButton.Negative</item>
     </style>
+
+    <!-- Dialog positive button: solid black with white text -->
+    <style name="Widget.App.DialogButton.Positive" parent="Widget.Material3.Button.TextButton.Dialog">
+        <item name="android:fontFamily">@font/inter_semi_bold</item>
+        <item name="android:textColor">@color/text_primary</item>
+    </style>
+
+    <!-- Dialog negative button: outlined, black text -->
+    <style name="Widget.App.DialogButton.Negative" parent="Widget.Material3.Button.TextButton.Dialog">
+        <item name="android:fontFamily">@font/inter</item>
+        <item name="android:textColor">@color/text_secondary</item>
+    </style>
+
+    <!-- ── Bottom Navigation ──────────────────────────────── -->
 
     <style name="Widget.App.BottomNav" parent="Widget.Material3.BottomNavigationView">
         <item name="itemActiveIndicatorStyle">@style/Widget.App.BottomNav.ActiveIndicator</item>
-        <item name="itemTextAppearanceActive">@style/TextAppearance.App.BottomNav.Active</item>
-        <item name="itemTextAppearanceInactive">@style/TextAppearance.App.BottomNav.Inactive</item>
         <item name="itemIconSize">22dp</item>
+        <item name="android:background">@color/nav_bar_bg</item>
     </style>
 
     <style name="Widget.App.BottomNav.ActiveIndicator" parent="Widget.Material3.BottomNavigationView.ActiveIndicator">
+        <item name="shapeAppearance">@style/ShapeAppearance.App.BottomNav.Indicator</item>
         <item name="android:color">@android:color/transparent</item>
+        <item name="android:width">0dp</item>
+        <item name="android:height">0dp</item>
+    </style>
+
+    <style name="ShapeAppearance.App.BottomNav.Indicator" parent="ShapeAppearance.Material3.Corner.Full">
+        <item name="cornerSize">50%</item>
     </style>
 
     <!-- Smaller text so "Net Worth" never truncates -->
     <style name="TextAppearance.App.BottomNav.Active" parent="TextAppearance.Material3.LabelSmall">
         <item name="android:fontFamily">@font/inter_semi_bold</item>
         <item name="android:textSize">11sp</item>
-        <item name="android:textColor">@color/text_primary</item>
+        <item name="android:textColor">@color/nav_icon_active</item>
     </style>
 
     <style name="TextAppearance.App.BottomNav.Inactive" parent="TextAppearance.Material3.LabelSmall">
         <item name="android:fontFamily">@font/inter</item>
         <item name="android:textSize">11sp</item>
-        <item name="android:textColor">@color/text_tertiary</item>
+        <item name="android:textColor">@color/nav_icon_inactive</item>
     </style>
 
     <!-- Splash Activity theme — no action bar, white background, invisible system splash icon -->
