@@ -176,15 +176,15 @@ class StockDetailActivity : AppCompatActivity() {
             val chip = Chip(this).apply {
                 text = label
                 isCheckable = true
+                chipCornerRadius = 0f
                 chipStrokeWidth = 0f
-
                 chipBackgroundColor = android.content.res.ColorStateList(
                     arrayOf(
                         intArrayOf(android.R.attr.state_checked),
                         intArrayOf()
                     ),
                     intArrayOf(
-                        Color.TRANSPARENT,
+                        neonColor,
                         Color.TRANSPARENT
                     )
                 )
@@ -196,7 +196,7 @@ class StockDetailActivity : AppCompatActivity() {
                             intArrayOf()
                         ),
                         intArrayOf(
-                            neonColor,
+                            getColor(R.color.text_primary),
                             getColor(R.color.text_tertiary)
                         )
                     )
@@ -265,8 +265,11 @@ class StockDetailActivity : AppCompatActivity() {
         binding.tvDetailChange.text = "$arrow ${FormatUtils.formatChange(stock.change)} · ${FormatUtils.formatChangePercent(stock.changePercent)}"
 
         // Neon for positive, red for negative
-        val changeColor = if (stock.isPositive) getColor(R.color.neon_highlight) else getColor(R.color.loss_red)
-        binding.tvDetailChange.setTextColor(changeColor)
+        val primaryColor = getColor(R.color.text_primary)
+        binding.tvDetailChange.setTextColor(primaryColor)
+        binding.tvDetailChange.setBackgroundResource(
+            if (stock.isPositive) R.drawable.bg_gain_pill else R.drawable.bg_loss_pill
+        )
 
         binding.tvStatOpen.text = if (stock.openPrice != 0.0)
             (if (isIndex) FormatUtils.formatIndexPrice(stock.openPrice, stock.currency)

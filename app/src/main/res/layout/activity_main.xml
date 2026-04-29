@@ -28,7 +28,7 @@
                 android:id="@+id/tv_toolbar_title"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Markets"
+                android:text="TrackOne"
                 android:textSize="18sp"
                 android:textColor="@color/text_primary"
                 android:fontFamily="@font/inter_semi_bold"
@@ -50,23 +50,17 @@
         android:paddingBottom="56dp"
         android:clipToPadding="false"/>
 
-    <View
-        android:layout_width="match_parent"
-        android:layout_height="1dp"
-        android:layout_gravity="bottom"
-        android:layout_marginBottom="56dp"
-        android:background="@color/divider_color"/>
-
     <com.google.android.material.bottomnavigation.BottomNavigationView
         android:id="@+id/bottom_nav"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="56dp"
         android:layout_gravity="bottom"
-        android:background="@color/background"
+        android:background="@color/nav_bar_bg"
         app:menu="@menu/bottom_nav_menu"
-        app:labelVisibilityMode="labeled"
+        app:labelVisibilityMode="unlabeled"
         app:itemTextColor="@drawable/selector_nav_text"
         app:itemIconTint="@drawable/selector_nav_icon"
+        app:itemActiveIndicatorStyle="@style/Widget.App.BottomNav.ActiveIndicator"
         app:elevation="0dp"
         style="@style/Widget.App.BottomNav"/>
 

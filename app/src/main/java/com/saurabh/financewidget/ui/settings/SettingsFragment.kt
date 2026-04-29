@@ -74,13 +74,13 @@ class SettingsFragment : Fragment() {
             val intent = Intent(Intent.ACTION_SENDTO).apply {
                 data = Uri.parse("mailto:")
                 putExtra(Intent.EXTRA_EMAIL, arrayOf("saurabh@trackone.app"))
-                putExtra(Intent.EXTRA_SUBJECT, "[trackOne] Feedback / Bug Report")
+                putExtra(Intent.EXTRA_SUBJECT, "[TrackOne] Feedback / Bug Report")
                 putExtra(
                     Intent.EXTRA_TEXT,
                     "Hi,\n\n" +
                     "[Describe your issue or feedback here]\n\n" +
                     "---\n" +
-                    "App: trackOne v1.0\n" +
+                    "App: TrackOne v1.0\n" +
                     "Device: ${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}\n" +
                     "Android: ${android.os.Build.VERSION.RELEASE}"
                 )

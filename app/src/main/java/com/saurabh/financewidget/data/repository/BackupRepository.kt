@@ -206,7 +206,7 @@ class BackupRepository @Inject constructor(
         } catch (e: Exception) {
             return EnvelopeResult.Err(
                 ImportResult.Failure(
-                    "Invalid backup file — the JSON could not be parsed. Make sure you selected a trackOne backup file.",
+                    "Invalid backup file — the JSON could not be parsed. Make sure you selected a TrackOne backup file.",
                     e
                 )
             )

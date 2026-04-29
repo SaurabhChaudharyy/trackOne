@@ -65,7 +65,9 @@
             android:id="@+id/tv_asset_pl"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="2dp"
+            android:layout_marginTop="3dp"
+            android:paddingHorizontal="4dp"
+            android:paddingVertical="1dp"
             android:textSize="11sp"
             android:fontFamily="@font/geist_mono"
             android:visibility="gone"
@@ -100,24 +102,6 @@
             tools:text="inv ₹1,16,800"/>
     </LinearLayout>
 
-    <ImageButton
-        android:id="@+id/btn_edit_asset"
-        android:layout_width="28dp"
-        android:layout_height="28dp"
-        android:src="@drawable/ic_edit"
-        android:background="?attr/selectableItemBackgroundBorderless"
-        android:alpha="0.35"
-        android:layout_marginEnd="2dp"
-        android:contentDescription="Edit asset"/>
-
-    <ImageButton
-        android:id="@+id/btn_delete_asset"
-        android:layout_width="28dp"
-        android:layout_height="28dp"
-        android:src="@drawable/ic_close"
-        android:background="?attr/selectableItemBackgroundBorderless"
-        android:alpha="0.35"
-        android:contentDescription="Delete asset"/>
 
     <!-- Shown only in bulk-selection mode; replaces the edit + delete buttons -->
     <com.google.android.material.checkbox.MaterialCheckBox

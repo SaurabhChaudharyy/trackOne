@@ -120,7 +120,9 @@
                         android:id="@+id/tv_detail_change"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:textColor="@color/neon_highlight"
+                        android:textColor="@color/text_primary"
+                        android:paddingHorizontal="4dp"
+                        android:paddingVertical="0dp"
                         android:textSize="14sp"
                         android:fontFamily="@font/geist_mono"
                         tools:text="↗ $13.14 · 6.00%"/>

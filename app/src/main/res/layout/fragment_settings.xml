@@ -26,9 +26,9 @@
             android:layout_height="wrap_content"
             android:text="STOCKS &amp; INVESTMENTS"
             android:textColor="@color/text_tertiary"
-            android:textSize="10sp"
+            android:textSize="9sp"
             android:fontFamily="@font/inter_semi_bold"
-            android:letterSpacing="0.12"
+            android:letterSpacing="0.16"
             android:layout_marginBottom="10dp"/>
 
         <LinearLayout
@@ -59,7 +59,7 @@
                         android:layout_width="18dp"
                         android:layout_height="18dp"
                         android:src="@drawable/ic_import"
-                        android:tint="@color/text_primary"
+                        android:tint="@color/on_primary"
                         tools:ignore="ContentDescription"/>
                 </LinearLayout>
 
@@ -102,9 +102,9 @@
             android:layout_height="wrap_content"
             android:text="ABOUT"
             android:textColor="@color/text_tertiary"
-            android:textSize="10sp"
+            android:textSize="9sp"
             android:fontFamily="@font/inter_semi_bold"
-            android:letterSpacing="0.12"
+            android:letterSpacing="0.16"
             android:layout_marginBottom="10dp"/>
 
         <LinearLayout
@@ -126,7 +126,7 @@
                     android:layout_width="18dp"
                     android:layout_height="18dp"
                     android:src="@drawable/ic_info"
-                    android:tint="@color/text_primary"
+                    android:tint="@color/on_primary"
                     tools:ignore="ContentDescription"/>
             </LinearLayout>
 
@@ -140,7 +140,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:fontFamily="@font/inter_semi_bold"
-                    android:text="trackOne"
+                    android:text="TrackOne"
                     android:textColor="@color/text_primary"
                     android:textSize="14sp" />
 
@@ -159,9 +159,9 @@
             android:layout_height="wrap_content"
             android:text="SUPPORT"
             android:textColor="@color/text_tertiary"
-            android:textSize="10sp"
+            android:textSize="9sp"
             android:fontFamily="@font/inter_semi_bold"
-            android:letterSpacing="0.12"
+            android:letterSpacing="0.16"
             android:layout_marginTop="24dp"
             android:layout_marginBottom="10dp"/>
 
@@ -193,7 +193,7 @@
                         android:layout_width="18dp"
                         android:layout_height="18dp"
                         android:src="@drawable/ic_email"
-                        android:tint="@color/text_primary"
+                        android:tint="@color/on_primary"
                         tools:ignore="ContentDescription"/>
                 </LinearLayout>
 

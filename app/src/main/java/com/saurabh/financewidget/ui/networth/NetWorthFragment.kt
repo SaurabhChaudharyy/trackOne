@@ -250,22 +250,23 @@ class NetWorthFragment : Fragment() {
             val isGain   = absChange >= 0
             val arrow    = if (isGain) "↗" else "↘"
             val sign     = if (isGain) "+" else "-"
+            // Highlighter effect: black bold text on neon wash for gain
             val textColor = requireContext().getColor(
-                if (isGain) R.color.gain_green else R.color.loss_red
-            )
-            val bgColor  = requireContext().getColor(
-                if (isGain) R.color.gain_green_bg else R.color.loss_red_bg
+                if (isGain) R.color.text_primary else R.color.loss_red
             )
 
             chip.text = "$arrow $sign${inrFormat.format(kotlin.math.abs(absChange))} (${"%.2f".format(kotlin.math.abs(pct))}%)"
             chip.setTextColor(textColor)
+            chip.setTypeface(
+                androidx.core.content.res.ResourcesCompat.getFont(requireContext(), R.font.inter_semi_bold),
+                android.graphics.Typeface.NORMAL
+            )
 
-            // Tint background programmatically using a GradientDrawable clone
-            val bg = androidx.core.content.ContextCompat.getDrawable(
-                requireContext(), R.drawable.bg_pnl_chip
-            )?.mutate() as? android.graphics.drawable.GradientDrawable
-            bg?.setColor(bgColor)
-            chip.background = bg
+            // Highlighter-style background
+            chip.background = androidx.core.content.ContextCompat.getDrawable(
+                requireContext(),
+                if (isGain) R.drawable.bg_gain_pill else R.drawable.bg_loss_pill
+            )
 
             chip.isVisible = true
         }
@@ -855,12 +856,20 @@ class NetWorthFragment : Fragment() {
     }
 
     private fun confirmDelete(asset: NetWorthAssetEntity) {
-        AlertDialog.Builder(requireContext(), R.style.ThemeOverlay_App_MaterialAlertDialog)
-            .setTitle("Remove ${asset.name}?")
-            .setMessage("This will be removed from your net worth.")
-            .setPositiveButton("Remove") { _, _ -> viewModel.deleteAsset(asset) }
-            .setNegativeButton("Cancel", null)
-            .show()
+        val bottomSheet = com.google.android.material.bottomsheet.BottomSheetDialog(requireContext())
+        val view = layoutInflater.inflate(R.layout.bottom_sheet_confirm, null)
+        
+        view.findViewById<android.widget.TextView>(R.id.tv_confirm_title).text = "Remove ${asset.name}?"
+        view.findViewById<android.widget.TextView>(R.id.tv_confirm_message).text = "This will be removed from your net worth."
+        
+        view.findViewById<android.widget.Button>(R.id.btn_cancel).setOnClickListener { bottomSheet.dismiss() }
+        view.findViewById<android.widget.Button>(R.id.btn_confirm).setOnClickListener { 
+            viewModel.deleteAsset(asset)
+            bottomSheet.dismiss() 
+        }
+        
+        bottomSheet.setContentView(view)
+        bottomSheet.show()
     }
 
     private fun showEditDialog(asset: NetWorthAssetEntity) {
@@ -1135,15 +1144,21 @@ class NetWorthFragment : Fragment() {
         if (ids.isEmpty()) return
 
         val sectionName = getCategoryName(type)
-        AlertDialog.Builder(requireContext(), R.style.ThemeOverlay_App_MaterialAlertDialog)
-            .setTitle("Remove ${ids.size} ${sectionName.lowercase()}?")
-            .setMessage("${ids.size} holding(s) will be permanently removed from your net worth.")
-            .setPositiveButton("Remove") { _, _ ->
-                viewModel.deleteAssets(ids)
-                exitSelectionMode()
-            }
-            .setNegativeButton("Cancel", null)
-            .show()
+        val bottomSheet = com.google.android.material.bottomsheet.BottomSheetDialog(requireContext())
+        val view = layoutInflater.inflate(R.layout.bottom_sheet_confirm, null)
+        
+        view.findViewById<android.widget.TextView>(R.id.tv_confirm_title).text = "Remove ${ids.size} ${sectionName.lowercase()}?"
+        view.findViewById<android.widget.TextView>(R.id.tv_confirm_message).text = "${ids.size} holding(s) will be permanently removed from your net worth."
+        
+        view.findViewById<android.widget.Button>(R.id.btn_cancel).setOnClickListener { bottomSheet.dismiss() }
+        view.findViewById<android.widget.Button>(R.id.btn_confirm).setOnClickListener { 
+            viewModel.deleteAssets(ids)
+            exitSelectionMode()
+            bottomSheet.dismiss() 
+        }
+        
+        bottomSheet.setContentView(view)
+        bottomSheet.show()
     }
 
     override fun onDestroyView() {

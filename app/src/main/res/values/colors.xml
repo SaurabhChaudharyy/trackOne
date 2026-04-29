@@ -14,16 +14,23 @@
     <color name="text_secondary">#71717A</color>
     <color name="text_tertiary">#A1A1AA</color>
 
-    <color name="gain_green">#16A34A</color>
-    <color name="gain_green_bg">#F0FDF4</color>
-    <color name="loss_red">#DC2626</color>
+    <!-- Gain = neon yellow (Minna no Ginko style) -->
+    <color name="gain_green">#F3FE78</color>
+    <color name="gain_green_bg">#1AF3FE78</color>
+    <!-- Loss = red (unchanged) -->
+    <color name="loss_red">#E74C3C</color>
     <color name="loss_red_bg">#FEF2F2</color>
 
-    <color name="accent_blue">#D4E510</color>
-    <color name="neon_highlight">#D4E510</color>
+    <color name="accent_blue">#F3FE78</color>
+    <color name="neon_highlight">#F3FE78</color>
     <color name="primary">#09090B</color>
     <color name="primary_variant">#F4F4F5</color>
     <color name="on_primary">#FFFFFF</color>
+
+    <!-- Nav bar (black) -->
+    <color name="nav_bar_bg">#09090B</color>
+    <color name="nav_icon_active">#FFFFFF</color>
+    <color name="nav_icon_inactive">#71717A</color>
 
     <color name="widget_background">#E6FFFFFF</color>
     <color name="widget_surface">#E6F4F4F5</color>
@@ -33,7 +40,7 @@
     <color name="cat_mf">#F97316</color>
     <color name="cat_gold">#EAB308</color>
     <color name="cat_silver">#9CA3AF</color>
-    <color name="cat_crypto">#D4E510</color>
+    <color name="cat_crypto">#F3FE78</color>
     <color name="cat_cash">#10B981</color>
     <color name="cat_bank">#06B6D4</color>
 </resources>
