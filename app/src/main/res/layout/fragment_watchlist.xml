@@ -136,6 +136,19 @@
                     android:textSize="12sp"/>
             </LinearLayout>
 
+            <!-- Floating Action Button for adding stocks -->
+            <com.google.android.material.floatingactionbutton.FloatingActionButton
+                android:id="@+id/fab_add_stock"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="bottom|end"
+                android:layout_margin="24dp"
+                android:src="@drawable/ic_add"
+                android:contentDescription="Add stock"
+                app:backgroundTint="@color/text_primary"
+                app:tint="@color/background"
+                app:elevation="4dp"/>
+
         </FrameLayout>
     </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
 

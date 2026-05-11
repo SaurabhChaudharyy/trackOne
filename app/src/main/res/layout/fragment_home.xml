@@ -437,7 +437,7 @@
                             android:id="@+id/tv_nifty_change"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:textColor="@color/loss_red"
+                            android:textColor="@color/text_primary"
                             android:textSize="11sp"
                             android:fontFamily="@font/geist_mono"
                             tools:text="-0.73%"/>
@@ -503,7 +503,7 @@
                             android:id="@+id/tv_sensex_change"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:textColor="@color/gain_green"
+                            android:textColor="@color/text_primary"
                             android:textSize="11sp"
                             android:fontFamily="@font/geist_mono"
                             tools:text="+0.42%"/>
@@ -591,7 +591,7 @@
                             android:id="@+id/tv_sp500_change"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:textColor="@color/gain_green"
+                            android:textColor="@color/text_primary"
                             android:textSize="11sp"
                             android:fontFamily="@font/geist_mono"
                             tools:text="+0.22%"/>
@@ -657,7 +657,7 @@
                             android:id="@+id/tv_nasdaq_change"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:textColor="@color/loss_red"
+                            android:textColor="@color/text_primary"
                             android:textSize="11sp"
                             android:fontFamily="@font/geist_mono"
                             tools:text="-0.18%"/>

@@ -37,10 +37,10 @@
 -keep class com.github.mikephil.charting.** { *; }
 
 # Data models
--keep class com.saurabh.financewidget.data.** { *; }
+-keep class app.trackone.data.** { *; }
 
 # Widget components
--keep class com.saurabh.financewidget.ui.widget.** { *; }
+-keep class app.trackone.ui.widget.** { *; }
 
 # WorkManager
 -keep class * extends androidx.work.Worker

@@ -4,17 +4,18 @@ plugins {
     alias(libs.plugins.ksp)                  // KSP replaces KAPT for Hilt + Room
     alias(libs.plugins.kotlin.parcelize)
     alias(libs.plugins.hilt)
+    alias(libs.plugins.google.services)
 }
 
 android {
-    namespace = "com.saurabh.financewidget"
+    namespace = "app.trackone"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.saurabh.financewidget"
+        applicationId = "app.trackone"
         minSdk = 26
         targetSdk = 34
-        versionCode = 2
+        versionCode = 1
         versionName = "1.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -46,7 +47,6 @@ android {
         }
         debug {
             isDebuggable = true
-            applicationIdSuffix = ".debug"
         }
     }
 
@@ -112,6 +112,13 @@ dependencies {
     // Charts
     implementation(libs.mpandroidchart)
 
+    // Firebase
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.auth)
+    implementation(libs.firebase.firestore)
+
+    // Google Sign-In
+    implementation(libs.play.services.auth)
 
     // Testing
     testImplementation(libs.junit)

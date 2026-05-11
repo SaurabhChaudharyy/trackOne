@@ -46,6 +46,7 @@
         <activity
             android:name=".ui.config.WidgetConfigActivity"
             android:exported="true"
+            android:windowSoftInputMode="adjustResize"
             android:theme="@style/Theme.FinanceWidget">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
@@ -57,8 +58,8 @@
             android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-                <action android:name="com.saurabh.financewidget.ACTION_REFRESH_WIDGET" />
-                <action android:name="com.saurabh.financewidget.ACTION_WIDGET_ITEM_CLICK" />
+                <action android:name="app.trackone.ACTION_REFRESH_WIDGET" />
+                <action android:name="app.trackone.ACTION_WIDGET_ITEM_CLICK" />
             </intent-filter>
             <meta-data
                 android:name="android.appwidget.provider"

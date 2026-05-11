@@ -7,10 +7,9 @@
     android:orientation="horizontal"
     android:gravity="center_vertical"
     android:paddingLeft="8dp"
-    android:paddingRight="8dp"
-    android:paddingTop="2dp"
-    android:paddingBottom="2dp">
+    android:paddingRight="8dp">
 
+    <!-- Left column: symbol + company name -->
     <LinearLayout
         android:layout_width="0dp"
         android:layout_height="wrap_content"
@@ -32,6 +31,7 @@
             android:id="@+id/widget_item_name"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_marginTop="1dp"
             android:text="NVIDIA Corp"
             android:textColor="#A1A1AA"
             android:textSize="10sp"
@@ -40,54 +40,71 @@
             android:fontFamily="@font/inter"/>
     </LinearLayout>
 
-    <TextView
-        android:id="@+id/widget_item_price"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_weight="1"
-        android:text="$187.62"
-        android:textColor="#09090B"
-        android:textSize="12sp"
-        android:gravity="end"
-        android:singleLine="true"
-        android:fontFamily="@font/geist_mono_regular"/>
-
+    <!-- Middle column: price -->
     <LinearLayout
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_weight="1"
-        android:orientation="horizontal"
-        android:gravity="end|center_vertical"
-        android:layout_marginLeft="4dp">
+        android:gravity="end|center_vertical">
 
         <TextView
-            android:id="@+id/widget_item_change"
+            android:id="@+id/widget_item_price"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="-7.94"
-            android:textColor="#E74C3C"
-            android:textSize="11sp"
-            android:singleLine="true"
-            android:visibility="gone"
-            android:fontFamily="@font/geist_mono_regular"/>
-
-        <TextView
-            android:id="@+id/widget_item_change_percent"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="-4.06%"
-            android:textColor="#E74C3C"
+            android:text="$187.62"
+            android:textColor="#09090B"
             android:textSize="12sp"
             android:singleLine="true"
             android:fontFamily="@font/geist_mono_regular"/>
+    </LinearLayout>
 
-        <ImageView
-            android:id="@+id/widget_item_indicator"
-            android:layout_width="11dp"
-            android:layout_height="11dp"
-            android:layout_marginLeft="2dp"
-            android:src="@drawable/ic_arrow_down"
-            android:contentDescription="Trend"/>
+    <!-- Right column: change pill -->
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:gravity="end|center_vertical"
+        android:orientation="horizontal">
+
+        <!-- Gain pill: neon yellow bg, black text -->
+        <!-- Gain pill: neon yellow bg, black text -->
+        <TextView
+            android:id="@+id/widget_item_gain"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:minWidth="64dp"
+            android:gravity="center"
+            android:text="+2.65%"
+            android:textColor="#09090B"
+            android:textSize="12sp"
+            android:singleLine="true"
+            android:fontFamily="@font/geist_mono_regular"
+            android:background="@drawable/bg_gain_pill"
+            android:paddingLeft="8dp"
+            android:paddingRight="8dp"
+            android:paddingTop="2dp"
+            android:paddingBottom="2dp"
+            android:visibility="gone"/>
+
+        <!-- Loss pill: red bg, black text -->
+        <TextView
+            android:id="@+id/widget_item_loss"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:minWidth="64dp"
+            android:gravity="center"
+            android:text="-4.06%"
+            android:textColor="#09090B"
+            android:textSize="12sp"
+            android:singleLine="true"
+            android:fontFamily="@font/geist_mono_regular"
+            android:background="@drawable/bg_loss_pill"
+            android:paddingLeft="8dp"
+            android:paddingRight="8dp"
+            android:paddingTop="2dp"
+            android:paddingBottom="2dp"
+            android:visibility="gone"/>
+
     </LinearLayout>
 
 </LinearLayout>
