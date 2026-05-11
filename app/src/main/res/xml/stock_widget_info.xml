@@ -11,7 +11,7 @@
     android:targetCellHeight="3"
     android:updatePeriodMillis="1800000"
     android:initialLayout="@layout/widget_stock_list"
-    android:configure="com.saurabh.financewidget.ui.config.WidgetConfigActivity"
+    android:configure="app.trackone.ui.config.WidgetConfigActivity"
     android:resizeMode="horizontal|vertical"
     android:widgetCategory="home_screen"
     android:widgetFeatures="reconfigurable"

@@ -141,7 +141,7 @@ Backups are plain JSON files (`trackone_backup_YYYYMMDD_HHmmss.json`):
 {
   "schema_version": 1,
   "exported_at_ms": 1741181454000,
-  "app_package": "com.saurabh.financewidget",
+  "app_package": "app.trackone",
   "watchlist": [
     { "symbol": "RELIANCE.NS", "display_name": "Reliance Industries Limited", "position": 0, "added_at_ms": 1740000000000 }
   ],

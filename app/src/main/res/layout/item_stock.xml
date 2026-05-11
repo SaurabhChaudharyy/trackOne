@@ -116,7 +116,7 @@
                     android:id="@+id/tv_change_percent"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textColor="@color/loss_red"
+                    android:textColor="@color/text_primary"
                     android:textSize="12sp"
                     tools:text="-4.06%"/>
 
