@@ -527,13 +527,7 @@ class HomeFragment : Fragment() {
                 typeface = android.graphics.Typeface.DEFAULT_BOLD
                 maxLines = 1
                 ellipsize = android.text.TextUtils.TruncateAt.END
-                
-                // Wrap in a small highlighter pill
-                background = ContextCompat.getDrawable(
-                    requireContext(), 
-                    if (isInvGain) R.drawable.bg_gain_pill else R.drawable.bg_loss_pill
-                )
-                setPadding(5.dp, 1.dp, 5.dp, 1.dp)
+                // No background for this sub-line as per user request
             }
             
             val invContainer = LinearLayout(requireContext()).apply {
@@ -588,7 +582,7 @@ class HomeFragment : Fragment() {
             binding.tvPortfolioPnl.text = "$arrow $absStr ($pctStr)"
 
             // Highlighter effect: black bold text on neon wash for gain, red on red-tint for loss
-            val textColor = requireContext().getColor(if (isGain) R.color.text_primary else R.color.loss_red)
+            val textColor = requireContext().getColor(R.color.text_primary)
 
             binding.tvPortfolioPnl.setTextColor(textColor)
             binding.tvPortfolioPnl.setTypeface(

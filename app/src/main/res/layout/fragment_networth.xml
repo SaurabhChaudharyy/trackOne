@@ -28,6 +28,7 @@
             android:paddingBottom="24dp">
 
             <TextView
+                android:id="@+id/tv_total_networth_label"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Total Net Worth"
@@ -48,22 +49,61 @@
                 android:letterSpacing="-0.02"
                 tools:text="₹12,50,000"/>
 
-            <!-- Overall Gain / Loss pill -->
-            <TextView
-                android:id="@+id/tv_total_pnl"
-                android:layout_width="wrap_content"
+            <!-- P&L chip + spacer + Invested (right) -->
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="10dp"
-                android:paddingHorizontal="4dp"
-                android:paddingVertical="0dp"
-                android:textSize="15sp"
-                android:letterSpacing="-0.02"
-                android:textStyle="bold"
-                android:background="@drawable/bg_pnl_chip"
-                android:visibility="gone"
-                tools:text="↗ +₹8,432 (0.68%)"
-                tools:visibility="visible"
-                tools:textColor="@color/gain_green"/>
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginTop="12dp">
+
+                <TextView
+                    android:id="@+id/tv_total_pnl"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:paddingHorizontal="4dp"
+                    android:paddingVertical="0dp"
+                    android:textSize="15sp"
+                    android:letterSpacing="-0.02"
+                    android:textStyle="bold"
+                    android:background="@drawable/bg_pnl_chip"
+                    android:visibility="gone"
+                    tools:text="↗ +₹8,432 (0.68%)"
+                    tools:visibility="visible"
+                    tools:textColor="@color/gain_green"/>
+
+                <View
+                    android:layout_width="0dp"
+                    android:layout_height="1dp"
+                    android:layout_weight="1"/>
+
+                <LinearLayout
+                    android:id="@+id/ll_invested_row"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:visibility="gone"
+                    tools:visibility="visible">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Invested "
+                        android:textColor="@color/text_tertiary"
+                        android:textSize="11sp"
+                        android:fontFamily="@font/inter"/>
+
+                    <TextView
+                        android:id="@+id/tv_total_invested"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="11sp"
+                        android:fontFamily="@font/geist_mono"
+                        tools:text="₹10,00,000"/>
+                </LinearLayout>
+            </LinearLayout>
 
         </LinearLayout>
 
@@ -210,8 +250,9 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="₹0"
-                    android:textColor="@color/text_tertiary"
+                    android:textColor="@color/text_primary"
                     android:textSize="12sp"
+                    android:textStyle="bold"
                     android:layout_marginEnd="8dp"
                     tools:text="₹5,00,000"/>
 
@@ -306,8 +347,9 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="₹0"
-                    android:textColor="@color/text_tertiary"
+                    android:textColor="@color/text_primary"
                     android:textSize="12sp"
+                    android:textStyle="bold"
                     android:layout_marginEnd="8dp"/>
 
                 <ImageButton
@@ -401,8 +443,9 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="₹0"
-                    android:textColor="@color/text_tertiary"
+                    android:textColor="@color/text_primary"
                     android:textSize="12sp"
+                    android:textStyle="bold"
                     android:layout_marginEnd="8dp"/>
 
                 <ImageButton
@@ -496,8 +539,9 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="₹0"
-                    android:textColor="@color/text_tertiary"
+                    android:textColor="@color/text_primary"
                     android:textSize="12sp"
+                    android:textStyle="bold"
                     android:layout_marginEnd="8dp"/>
 
                 <ImageButton
@@ -591,8 +635,9 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="₹0"
-                    android:textColor="@color/text_tertiary"
+                    android:textColor="@color/text_primary"
                     android:textSize="12sp"
+                    android:textStyle="bold"
                     android:layout_marginEnd="8dp"/>
 
                 <ImageButton
@@ -686,8 +731,9 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="₹0"
-                    android:textColor="@color/text_tertiary"
+                    android:textColor="@color/text_primary"
                     android:textSize="12sp"
+                    android:textStyle="bold"
                     android:layout_marginEnd="8dp"/>
 
                 <ImageButton
@@ -781,8 +827,9 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="₹0"
-                    android:textColor="@color/text_tertiary"
+                    android:textColor="@color/text_primary"
                     android:textSize="12sp"
+                    android:textStyle="bold"
                     android:layout_marginEnd="8dp"/>
 
                 <ImageButton
@@ -876,8 +923,9 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="₹0"
-                    android:textColor="@color/text_tertiary"
+                    android:textColor="@color/text_primary"
                     android:textSize="12sp"
+                    android:textStyle="bold"
                     android:layout_marginEnd="8dp"/>
 
                 <ImageButton
