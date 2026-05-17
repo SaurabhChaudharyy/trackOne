@@ -43,6 +43,10 @@ jobs:
       - name: Decode keystore
         run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > app/keystore.jks
 
+      # 4.5 Decode the base64 google-services.json secret back into a real file
+      - name: Decode google-services.json
+        run: echo "${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}" | base64 --decode > app/google-services.json
+
       # 5. Ensure gradlew script is executable on Linux
       - name: Make gradlew executable
         run: chmod +x ./gradlew
