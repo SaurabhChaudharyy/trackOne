@@ -39,3 +39,6 @@ scratch/
 
 # Agent instructions (internal project context — not needed by contributors)
 AGENT_INSTRUCTIONS.md
+
+# Firebase
+app/google-services.json
