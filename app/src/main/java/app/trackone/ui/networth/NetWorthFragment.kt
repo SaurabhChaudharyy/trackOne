@@ -13,6 +13,7 @@ import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AlertDialog
 import androidx.core.content.res.ResourcesCompat
 import androidx.core.view.isVisible
+import androidx.core.view.isInvisible
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
@@ -230,48 +231,96 @@ class NetWorthFragment : Fragment() {
         }
     }
 
-    private fun observeViewModel() {
-        viewModel.totalNetWorth.observe(viewLifecycleOwner) { total ->
-            val value = total ?: 0.0
-            if (!hasAnimatedTotal && value > 0.0) {
-                binding.tvTotalNetworth.animateNumberFromZero(value) { inrFormat.format(it) }
-                hasAnimatedTotal = true
+    private fun expandSection(type: AssetType) {
+        sectionExpanded[type] = true
+        sectionShowAll[type] = true
+        
+        val rvMap = mapOf(
+            AssetType.STOCK_IN to binding.rvStockIn,
+            AssetType.STOCK_US to binding.rvStockUs,
+            AssetType.MF       to binding.rvMf,
+            AssetType.GOLD     to binding.rvGold,
+            AssetType.SILVER   to binding.rvSilver,
+            AssetType.CRYPTO   to binding.rvCrypto,
+            AssetType.CASH     to binding.rvCash,
+            AssetType.BANK     to binding.rvBank
+        )
+        rvMap[type]?.isVisible = true
+        
+        val full = fullListCache[type] ?: emptyList()
+        adapters[type]?.submitList(full)
+        
+        viewAllButtonFor(type)?.apply {
+            isVisible = full.size > TOP_N
+            text = "View less"
+        }
+    }
+
+    private fun updateMainHeaderStats() {
+        val allAssets = viewModel.allAssets.value ?: emptyList()
+        val filtered = if (activeFilter == null) allAssets else allAssets.filter { it.assetType == activeFilter }
+        
+        var totalInvested = 0.0
+        var totalCurrent = 0.0
+        
+        for (asset in filtered) {
+            if (asset.buyPrice > 0.0) {
+                val cost = asset.buyPrice * asset.quantity
+                totalInvested += cost
+                totalCurrent += asset.currentValue
             } else {
-                binding.tvTotalNetworth.text = inrFormat.format(value)
+                totalInvested += asset.currentValue
+                totalCurrent += asset.currentValue
             }
         }
-
-        viewModel.totalPnL.observe(viewLifecycleOwner) { (absChange, pct) ->
-            val chip = binding.tvTotalPnl
-            if (absChange == 0.0 && pct == 0.0) {
-                chip.isVisible = false
-                return@observe
-            }
-            val isGain   = absChange >= 0
-            val arrow    = if (isGain) "↗" else "↘"
-            val sign     = if (isGain) "+" else "-"
-            // Highlighter effect: black bold text on neon wash for gain
-            val textColor = requireContext().getColor(
-                if (isGain) R.color.text_primary else R.color.loss_red
-            )
-
+        
+        val absChange = totalCurrent - totalInvested
+        val pct = if (totalInvested > 0.0) (absChange / totalInvested) * 100.0 else 0.0
+        
+        // update current amount text
+        if (!hasAnimatedTotal && totalCurrent > 0.0) {
+            binding.tvTotalNetworth.animateNumberFromZero(totalCurrent) { inrFormat.format(it) }
+            hasAnimatedTotal = true
+        } else {
+            binding.tvTotalNetworth.text = inrFormat.format(totalCurrent)
+        }
+        
+        binding.tvTotalNetworthLabel.isInvisible = (activeFilter != null)
+        
+        // update invested amount text
+        if (totalInvested > 0.0) {
+            binding.llInvestedRow.isVisible = true
+            binding.tvTotalInvested.text = inrFormat.format(totalInvested)
+        } else {
+            binding.llInvestedRow.isVisible = false
+        }
+        
+        // update pnl chip
+        val chip = binding.tvTotalPnl
+        if (absChange == 0.0 && pct == 0.0) {
+            chip.isVisible = false
+        } else {
+            val isGain = absChange >= 0
+            val arrow = if (isGain) "↗" else "↘"
+            val sign = if (isGain) "+" else "-"
+            val textColor = requireContext().getColor(R.color.text_primary)
             chip.text = "$arrow $sign${inrFormat.format(kotlin.math.abs(absChange))} (${"%.2f".format(kotlin.math.abs(pct))}%)"
             chip.setTextColor(textColor)
             chip.setTypeface(
                 androidx.core.content.res.ResourcesCompat.getFont(requireContext(), R.font.inter_semi_bold),
                 android.graphics.Typeface.NORMAL
             )
-
-            // Highlighter-style background
             chip.background = androidx.core.content.ContextCompat.getDrawable(
                 requireContext(),
                 if (isGain) R.drawable.bg_gain_pill else R.drawable.bg_loss_pill
             )
-
             chip.isVisible = true
         }
+    }
 
+    private fun observeViewModel() {
         viewModel.allAssets.observe(viewLifecycleOwner) { all ->
+            updateMainHeaderStats()
             val grouped = all.groupBy { it.assetType }
             for ((type, adapter) in adapters) {
                 val list = grouped[type] ?: emptyList()
@@ -416,6 +465,8 @@ class NetWorthFragment : Fragment() {
             // Clicking the row acts as a filter tab
             itemBinding.root.setOnClickListener {
                 activeFilter = if (activeFilter == type) null else type
+                activeFilter?.let { expandSection(it) }
+                updateMainHeaderStats()
                 updateBreakdownUI(summary)
                 refreshChipStates()
                 updateSectionVisibility()
@@ -458,6 +509,8 @@ class NetWorthFragment : Fragment() {
 
             setOnClickListener {
                 activeFilter = if (isAll) null else type
+                activeFilter?.let { expandSection(it) }
+                updateMainHeaderStats()
                 viewModel.assetSummary.value?.let { summary ->
                     updateBreakdownUI(summary)
                 }
