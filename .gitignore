@@ -42,3 +42,6 @@ AGENT_INSTRUCTIONS.md
 
 # Firebase
 app/google-services.json
+
+# Internal docs — not needed by contributors
+docs/

@@ -27,6 +27,16 @@ sealed class AuthState {
 
 // ── UI state (backup / sync operations) ───────────────────────────────────
 
+// ── Email/password auth dialog state ────────────────────────────────────
+
+sealed class EmailAuthUiState {
+    object Idle : EmailAuthUiState()
+    object Loading : EmailAuthUiState()
+    object Success : EmailAuthUiState()
+    data class Info(val message: String) : EmailAuthUiState()
+    data class Error(val message: String) : EmailAuthUiState()
+}
+
 sealed class BackupUiState {
     object Idle : BackupUiState()
     object Loading : BackupUiState()
@@ -101,6 +111,62 @@ class SettingsViewModel @Inject constructor(
     }
 
     fun getGoogleSignInClient() = authRepository.getGoogleSignInClient()
+
+    // ── Email/password auth ──────────────────────────────────────────────
+
+    private val _emailAuthState = MutableStateFlow<EmailAuthUiState>(EmailAuthUiState.Idle)
+    val emailAuthState: StateFlow<EmailAuthUiState> = _emailAuthState.asStateFlow()
+
+    fun signUpWithEmail(email: String, password: String) {
+        viewModelScope.launch {
+            _emailAuthState.value = EmailAuthUiState.Loading
+            val result = authRepository.signUpWithEmail(email, password)
+            result.fold(
+                onSuccess = {
+                    refreshAuthState()
+                    _emailAuthState.value = EmailAuthUiState.Success
+                },
+                onFailure = { e ->
+                    _emailAuthState.value = EmailAuthUiState.Error(e.message ?: "Sign-up failed")
+                }
+            )
+        }
+    }
+
+    fun signInWithEmail(email: String, password: String) {
+        viewModelScope.launch {
+            _emailAuthState.value = EmailAuthUiState.Loading
+            val result = authRepository.signInWithEmail(email, password)
+            result.fold(
+                onSuccess = {
+                    refreshAuthState()
+                    _emailAuthState.value = EmailAuthUiState.Success
+                },
+                onFailure = { e ->
+                    _emailAuthState.value = EmailAuthUiState.Error(e.message ?: "Sign-in failed")
+                }
+            )
+        }
+    }
+
+    fun sendPasswordReset(email: String) {
+        viewModelScope.launch {
+            _emailAuthState.value = EmailAuthUiState.Loading
+            val result = authRepository.sendPasswordResetEmail(email)
+            result.fold(
+                onSuccess = {
+                    _emailAuthState.value = EmailAuthUiState.Info("Password reset email sent to $email")
+                },
+                onFailure = { e ->
+                    _emailAuthState.value = EmailAuthUiState.Error(e.message ?: "Could not send reset email")
+                }
+            )
+        }
+    }
+
+    fun resetEmailAuthState() {
+        _emailAuthState.value = EmailAuthUiState.Idle
+    }
 
     fun handleGoogleSignInResult(idToken: String) {
         viewModelScope.launch {
