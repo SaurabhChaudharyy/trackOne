@@ -143,7 +143,7 @@ class HomeFragment : Fragment() {
 
     private fun setupSwipeRefresh() {
         binding.swipeRefreshHome.setColorSchemeColors(
-            requireContext().getColor(R.color.neon_highlight)
+            requireContext().getColor(R.color.primary)
         )
         binding.swipeRefreshHome.setOnRefreshListener {
             // Reset animation flags so numbers re-animate on refresh
