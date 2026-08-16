@@ -66,8 +66,16 @@ class SettingsFragment : Fragment() {
                     Toast.makeText(requireContext(), "Sign-in failed: no ID token", Toast.LENGTH_SHORT).show()
                 }
             } catch (e: ApiException) {
-                Toast.makeText(requireContext(), "Sign-in cancelled", Toast.LENGTH_SHORT).show()
+                android.util.Log.e("SettingsFragment", "Google Sign-In failed: statusCode=${e.statusCode}, message=${e.message}", e)
+                Toast.makeText(
+                    requireContext(),
+                    "Sign-in failed (code ${e.statusCode}): ${e.message}",
+                    Toast.LENGTH_LONG
+                ).show()
             }
+        } else {
+            android.util.Log.w("SettingsFragment", "Google Sign-In: unexpected resultCode=${result.resultCode}")
+            Toast.makeText(requireContext(), "Sign-in was interrupted, please try again", Toast.LENGTH_SHORT).show()
         }
     }
 

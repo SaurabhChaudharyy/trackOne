@@ -397,7 +397,7 @@ class WatchlistFragment : Fragment() {
 
     private fun setupSwipeRefresh() {
         binding.swipeRefreshLayout.setOnRefreshListener { viewModel.refresh() }
-        binding.swipeRefreshLayout.setColorSchemeResources(R.color.neon_highlight)
+        binding.swipeRefreshLayout.setColorSchemeResources(R.color.primary)
     }
 
     // ── ViewModel observers ───────────────────────────────────────────────────
