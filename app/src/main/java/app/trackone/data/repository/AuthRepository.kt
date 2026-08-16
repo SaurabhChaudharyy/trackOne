@@ -72,6 +72,58 @@ class AuthRepository @Inject constructor(
     }
 
     /**
+     * Creates a new account with email + password and signs the user in.
+     */
+    suspend fun signUpWithEmail(email: String, password: String): Result<FirebaseUser> {
+        return try {
+            val result = auth.createUserWithEmailAndPassword(email, password).await()
+            val user = result.user
+            if (user != null) {
+                Log.d(TAG, "signUpWithEmail: success – ${user.email}")
+                Result.success(user)
+            } else {
+                Result.failure(Exception("Account created but user is null"))
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "signUpWithEmail: failed", e)
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Signs in with an existing email + password account.
+     */
+    suspend fun signInWithEmail(email: String, password: String): Result<FirebaseUser> {
+        return try {
+            val result = auth.signInWithEmailAndPassword(email, password).await()
+            val user = result.user
+            if (user != null) {
+                Log.d(TAG, "signInWithEmail: success – ${user.email}")
+                Result.success(user)
+            } else {
+                Result.failure(Exception("Sign-in succeeded but user is null"))
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "signInWithEmail: failed", e)
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Sends a password-reset email for the given address.
+     */
+    suspend fun sendPasswordResetEmail(email: String): Result<Unit> {
+        return try {
+            auth.sendPasswordResetEmail(email).await()
+            Log.d(TAG, "sendPasswordResetEmail: sent to $email")
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "sendPasswordResetEmail: failed", e)
+            Result.failure(e)
+        }
+    }
+
+    /**
      * Signs the user out of Firebase and the Google Sign-In client
      * so the account picker is shown again on the next sign-in attempt.
      */

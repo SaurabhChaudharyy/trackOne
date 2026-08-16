@@ -22,11 +22,13 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.resource.bitmap.CircleCrop
+import android.util.Patterns
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.common.api.ApiException
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import app.trackone.R
 import app.trackone.data.repository.BrokerCsvRepository
+import app.trackone.databinding.DialogEmailAuthBinding
 import app.trackone.databinding.FragmentSettingsBinding
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
@@ -64,8 +66,16 @@ class SettingsFragment : Fragment() {
                     Toast.makeText(requireContext(), "Sign-in failed: no ID token", Toast.LENGTH_SHORT).show()
                 }
             } catch (e: ApiException) {
-                Toast.makeText(requireContext(), "Sign-in cancelled", Toast.LENGTH_SHORT).show()
+                android.util.Log.e("SettingsFragment", "Google Sign-In failed: statusCode=${e.statusCode}, message=${e.message}", e)
+                Toast.makeText(
+                    requireContext(),
+                    "Sign-in failed (code ${e.statusCode}): ${e.message}",
+                    Toast.LENGTH_LONG
+                ).show()
             }
+        } else {
+            android.util.Log.w("SettingsFragment", "Google Sign-In: unexpected resultCode=${result.resultCode}")
+            Toast.makeText(requireContext(), "Sign-in was interrupted, please try again", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -100,6 +110,12 @@ class SettingsFragment : Fragment() {
         binding.cardSignIn.setOnClickListener {
             it.performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY)
             launchGoogleSignIn()
+        }
+
+        // Email / Password Sign-In
+        binding.cardSignInEmail.setOnClickListener {
+            it.performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY)
+            showEmailAuthDialog()
         }
 
         // Sign Out
@@ -160,6 +176,112 @@ class SettingsFragment : Fragment() {
     private fun launchGoogleSignIn() {
         val signInClient = viewModel.getGoogleSignInClient()
         googleSignInLauncher.launch(signInClient.signInIntent)
+    }
+
+    // ── Email / Password Sign-In ─────────────────────────────────────────
+
+    private fun showEmailAuthDialog() {
+        if (!isAdded) return
+
+        val d = DialogEmailAuthBinding.inflate(LayoutInflater.from(requireContext()))
+        var isSignUpMode = false
+
+        fun updateModeText() {
+            d.tvToggleMode.text = if (isSignUpMode) {
+                "Already have an account? Sign in"
+            } else {
+                "Don't have an account? Sign up"
+            }
+        }
+        updateModeText()
+
+        d.tvToggleMode.setOnClickListener {
+            isSignUpMode = !isSignUpMode
+            updateModeText()
+            d.tvError.isVisible = false
+        }
+
+        d.tvForgotPassword.setOnClickListener {
+            val email = d.etEmail.text?.toString()?.trim().orEmpty()
+            if (!Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
+                d.tvError.text = "Enter a valid email first"
+                d.tvError.isVisible = true
+                return@setOnClickListener
+            }
+            viewModel.sendPasswordReset(email)
+        }
+
+        val dialog = AlertDialog.Builder(requireContext(), R.style.ThemeOverlay_App_MaterialAlertDialog)
+            .setTitle("Sign in with Email")
+            .setView(d.root)
+            .setPositiveButton("Continue", null)
+            .setNegativeButton("Cancel") { dlg, _ -> dlg.dismiss() }
+            .create()
+
+        dialog.setOnShowListener {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                val email = d.etEmail.text?.toString()?.trim().orEmpty()
+                val password = d.etPassword.text?.toString().orEmpty()
+
+                d.tvError.isVisible = false
+
+                when {
+                    !Patterns.EMAIL_ADDRESS.matcher(email).matches() -> {
+                        d.tvError.text = "Enter a valid email address"
+                        d.tvError.isVisible = true
+                    }
+                    password.length < 6 -> {
+                        d.tvError.text = "Password must be at least 6 characters"
+                        d.tvError.isVisible = true
+                    }
+                    else -> {
+                        if (isSignUpMode) {
+                            viewModel.signUpWithEmail(email, password)
+                        } else {
+                            viewModel.signInWithEmail(email, password)
+                        }
+                    }
+                }
+            }
+        }
+
+        // Observe email-auth results only while this dialog is alive
+        val job = viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.emailAuthState.collect { state ->
+                    when (state) {
+                        is EmailAuthUiState.Idle -> Unit
+                        is EmailAuthUiState.Loading -> {
+                            dialog.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled = false
+                            d.tvError.isVisible = false
+                        }
+                        is EmailAuthUiState.Success -> {
+                            viewModel.resetEmailAuthState()
+                            dialog.dismiss()
+                        }
+                        is EmailAuthUiState.Info -> {
+                            dialog.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled = true
+                            d.tvError.setTextColor(requireContext().getColor(R.color.text_secondary))
+                            d.tvError.text = state.message
+                            d.tvError.isVisible = true
+                        }
+                        is EmailAuthUiState.Error -> {
+                            dialog.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled = true
+                            d.tvError.setTextColor(requireContext().getColor(R.color.loss_red))
+                            d.tvError.text = state.message
+                            d.tvError.isVisible = true
+                        }
+                    }
+                }
+            }
+        }
+
+        dialog.setOnDismissListener {
+            job.cancel()
+            viewModel.resetEmailAuthState()
+        }
+
+        dialog.show()
     }
 
     // ── Observe auth state ────────────────────────────────────────────────

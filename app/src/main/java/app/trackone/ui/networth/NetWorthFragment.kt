@@ -729,7 +729,11 @@ class NetWorthFragment : Fragment() {
                 val qty = if (fetchable) d.etQuantity.text?.toString()?.toDoubleOrNull() ?: 1.0 else 1.0
 
                 if (name.isBlank() && type != AssetType.GOLD && type != AssetType.SILVER) {
-                    d.tilSymbol.error = "Select a symbol first"
+                    if (fetchable) {
+                        d.tilSymbol.error = "Select a symbol first"
+                    } else {
+                        d.tilName.error = "Enter a label"
+                    }
                     return@setOnClickListener
                 }
                 if (value == null || value <= 0) {
