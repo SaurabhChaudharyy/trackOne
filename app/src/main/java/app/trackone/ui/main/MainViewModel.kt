@@ -48,8 +48,9 @@ class MainViewModel @Inject constructor(
             }
         }.distinctUntilChanged()
 
-    /** Raw WatchlistEntity rows for the active group (used for drag-reorder). */
-    val activeGroupWatchlist: LiveData<List<WatchlistEntity>> =
+    /** Raw WatchlistEntity rows for the active group — internal only, used by [reorderWatchlist]
+     *  to preserve each item's groupId when translating reordered symbols back into entities. */
+    private val activeGroupWatchlist: LiveData<List<WatchlistEntity>> =
         _activeGroupId.switchMap { repository.getWatchlistByGroup(it) }
 
     // ── Refresh state ─────────────────────────────────────────────────────────
@@ -87,16 +88,17 @@ class MainViewModel @Inject constructor(
         viewModelScope.launch { repository.renameWatchlistGroup(id, newName) }
     }
 
-    fun deleteWatchlistGroup(id: Long) {
+    fun deleteWatchlistGroup(id: Long, onResult: (deleted: Boolean) -> Unit = {}) {
         viewModelScope.launch {
-            repository.deleteWatchlistGroup(id)
+            val deleted = repository.deleteWatchlistGroup(id)
             // Fall back to the default group if we deleted the active one
-            if (_activeGroupId.value == id) {
+            if (deleted && _activeGroupId.value == id) {
                 val remaining = watchlistGroups.value
                 val fallback = remaining?.firstOrNull { it.id != id }?.id
                     ?: StockRepository.DEFAULT_GROUP_ID
                 _activeGroupId.value = fallback
             }
+            onResult(deleted)
         }
     }
 
@@ -108,10 +110,10 @@ class MainViewModel @Inject constructor(
             _refreshState.value = Resource.Loading()
 
             val watchlistJob = async { repository.refreshWatchlistStocks() }
-            val netWorthJob  = async { netWorthRepository.refreshNetWorthAssets() }
+            val netWorthJob  = launch { netWorthRepository.refreshNetWorthAssets() }
 
             val result = watchlistJob.await()
-            netWorthJob.await()
+            netWorthJob.join()
 
             _refreshState.value = result
             _isRefreshing.value = false
@@ -128,8 +130,23 @@ class MainViewModel @Inject constructor(
         viewModelScope.launch { repository.addToWatchlist(symbol, displayName, groupId) }
     }
 
-    fun reorderWatchlist(items: List<WatchlistEntity>) {
+    /**
+     * Reorders the active group's watchlist to match [orderedSymbols]. Callers pass symbols
+     * only — this owns translating them into [WatchlistEntity] rows (preserving each item's
+     * groupId from the current snapshot) so the UI layer never has to construct entities itself.
+     */
+    fun reorderWatchlist(orderedSymbols: List<String>) {
         val groupId = _activeGroupId.value ?: StockRepository.DEFAULT_GROUP_ID
-        viewModelScope.launch { repository.updateWatchlistOrder(items, groupId) }
+        val currentItems = activeGroupWatchlist.value ?: return
+        val reordered = orderedSymbols.mapIndexed { index, symbol ->
+            val original = currentItems.firstOrNull { it.symbol == symbol }
+            WatchlistEntity(
+                symbol = symbol,
+                displayName = original?.displayName ?: symbol,
+                position = index,
+                groupId = original?.groupId ?: groupId
+            )
+        }
+        viewModelScope.launch { repository.updateWatchlistOrder(reordered, groupId) }
     }
 }

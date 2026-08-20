@@ -6,6 +6,9 @@ import app.trackone.data.database.*
 import app.trackone.data.model.YahooSearchResult
 import app.trackone.utils.Resource
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -54,9 +57,14 @@ class StockRepository @Inject constructor(
         watchlistGroupDao.renameGroup(id, newName)
     }
 
-    suspend fun deleteWatchlistGroup(id: Long) = withContext(Dispatchers.IO) {
+    /** Returns false without deleting if [id] is the only remaining group — the app has
+     *  nowhere left to put watchlist items and several call sites assume at least one
+     *  group always exists. */
+    suspend fun deleteWatchlistGroup(id: Long): Boolean = withContext(Dispatchers.IO) {
+        if (watchlistGroupDao.getGroupCount() <= 1) return@withContext false
         watchlistGroupDao.deleteAllInGroup(id)
         watchlistGroupDao.deleteGroup(id)
+        true
     }
 
     // ── Stock watchlist (group-scoped) ────────────────────────────────────────
@@ -74,12 +82,15 @@ class StockRepository @Inject constructor(
 
     suspend fun refreshWatchlistStocks(): Resource<Unit> = withContext(Dispatchers.IO) {
         try {
-            val watchlist = watchlistDao.getWatchlistSync()
-            val errors = mutableListOf<String>()
-            watchlist.forEach { item ->
-                val result = fetchAndCacheStock(item.symbol)
-                if (result is Resource.Error) errors.add(item.symbol)
-            }
+            // Same symbol can appear in multiple groups (composite PK); fetch each symbol
+            // once, concurrently, instead of sequentially re-fetching duplicates.
+            val symbols = watchlistDao.getWatchlistSync().map { it.symbol }.distinct()
+            val errors = coroutineScope {
+                symbols.map { symbol ->
+                    async { symbol to fetchAndCacheStock(symbol) }
+                }.awaitAll()
+            }.filter { (_, result) -> result is Resource.Error }.map { it.first }
+
             if (errors.isEmpty()) Resource.Success(Unit)
             else Resource.Error("Failed to refresh: ${errors.joinToString()}")
         } catch (e: Exception) {

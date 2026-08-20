@@ -6,10 +6,14 @@ import androidx.room.*
 @Dao
 interface StockDao {
 
-    @Query("SELECT * FROM stocks WHERE symbol IN (SELECT symbol FROM watchlist) ORDER BY (SELECT position FROM watchlist WHERE watchlist.symbol = stocks.symbol)")
+    // `watchlist` has a composite PK (symbol, groupId), so the same symbol can appear in
+    // multiple groups with different positions. `stocks` is keyed only by symbol (one row
+    // globally), so this dedupes across groups — order by the symbol's best (lowest)
+    // position across all groups rather than an arbitrary/undefined single row.
+    @Query("SELECT * FROM stocks WHERE symbol IN (SELECT symbol FROM watchlist) ORDER BY (SELECT MIN(position) FROM watchlist WHERE watchlist.symbol = stocks.symbol)")
     fun getWatchlistStocks(): LiveData<List<StockEntity>>
 
-    @Query("SELECT * FROM stocks WHERE symbol IN (SELECT symbol FROM watchlist) ORDER BY (SELECT position FROM watchlist WHERE watchlist.symbol = stocks.symbol)")
+    @Query("SELECT * FROM stocks WHERE symbol IN (SELECT symbol FROM watchlist) ORDER BY (SELECT MIN(position) FROM watchlist WHERE watchlist.symbol = stocks.symbol)")
     suspend fun getWatchlistStocksSync(): List<StockEntity>
 
     @Query("SELECT * FROM stocks WHERE symbol = :symbol")
@@ -88,9 +92,6 @@ interface WatchlistDao {
 
     @Query("DELETE FROM watchlist WHERE symbol = :symbol AND groupId = :groupId")
     suspend fun removeFromWatchlistInGroup(symbol: String, groupId: Long)
-
-    @Query("DELETE FROM watchlist WHERE symbol = :symbol")
-    suspend fun removeFromWatchlist(symbol: String)
 
     @Query("UPDATE watchlist SET position = :position WHERE symbol = :symbol AND groupId = :groupId")
     suspend fun updatePosition(symbol: String, groupId: Long, position: Int)

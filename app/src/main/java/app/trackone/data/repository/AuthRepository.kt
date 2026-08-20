@@ -36,6 +36,14 @@ class AuthRepository @Inject constructor(
 
     val currentUser: FirebaseUser? get() = auth.currentUser
     val isSignedIn: Boolean get() = currentUser != null
+    val currentUserId: String? get() = currentUser?.uid
+
+    /**
+     * False when this build has no real `google-services.json` (the Web Client ID resolves
+     * to the hardcoded placeholder). Google Sign-In would otherwise fail with an opaque
+     * [com.google.android.gms.common.api.ApiException] after the account picker is shown.
+     */
+    val isGoogleSignInConfigured: Boolean get() = getWebClientId() != DEFAULT_WEB_CLIENT_ID
 
     /**
      * Builds a [GoogleSignInClient] configured for ID-token authentication.

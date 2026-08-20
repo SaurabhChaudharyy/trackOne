@@ -37,8 +37,15 @@ val MIGRATION_2_3 = object : Migration(2, 3) {
         """.trimIndent())
         // Insert a default group to satisfy the foreign key or logical default (groupId = 1)
         db.execSQL("""
-            INSERT OR IGNORE INTO watchlist_groups (id, name, position, createdAt) 
+            INSERT OR IGNORE INTO watchlist_groups (id, name, position, createdAt)
             VALUES (1, 'My Watchlist', 0, ${System.currentTimeMillis()})
+        """.trimIndent())
+        // Physically add the groupId column to the existing `watchlist` table so that
+        // MIGRATION_3_4's `SELECT ... groupId FROM watchlist` has a real column to read.
+        // Without this, upgrading a real on-device DB from v2/v3 to v4 throws
+        // "no such column: groupId" and the app fails to open its database.
+        db.execSQL("""
+            ALTER TABLE watchlist ADD COLUMN groupId INTEGER NOT NULL DEFAULT 1
         """.trimIndent())
     }
 }

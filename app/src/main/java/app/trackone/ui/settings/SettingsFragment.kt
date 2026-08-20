@@ -33,13 +33,21 @@ import app.trackone.databinding.FragmentSettingsBinding
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 
+/**
+ * Thin renderer over three independent seams: [AuthViewModel] (Google + email/password sign-in),
+ * [CloudSyncViewModel] (Firestore backup/restore), and [CsvImportViewModel] (broker CSV import).
+ * None of the three ViewModels know about each other — this Fragment is the only place that
+ * wires an effect from one into another (e.g. refreshing last-sync time when auth state changes).
+ */
 @AndroidEntryPoint
 class SettingsFragment : Fragment() {
 
     private var _binding: FragmentSettingsBinding? = null
     private val binding get() = _binding!!
 
-    private val viewModel: SettingsViewModel by viewModels()
+    private val authViewModel: AuthViewModel by viewModels()
+    private val cloudSyncViewModel: CloudSyncViewModel by viewModels()
+    private val csvImportViewModel: CsvImportViewModel by viewModels()
 
     /** Non-cancelable Activity-level dialog — blocks the entire window (including bottom nav). */
     private var blockingDialog: AlertDialog? = null
@@ -61,7 +69,7 @@ class SettingsFragment : Fragment() {
                 val account = task.getResult(ApiException::class.java)
                 val idToken = account.idToken
                 if (idToken != null) {
-                    viewModel.handleGoogleSignInResult(idToken)
+                    authViewModel.handleGoogleSignInResult(idToken)
                 } else {
                     Toast.makeText(requireContext(), "Sign-in failed: no ID token", Toast.LENGTH_SHORT).show()
                 }
@@ -92,14 +100,16 @@ class SettingsFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         setupClickListeners()
-        observeViewModel()
         observeAuthState()
+        observeGoogleSignInState()
+        observeCloudSyncState()
+        observeCsvImportState()
     }
 
     override fun onResume() {
         super.onResume()
         // Refresh auth state when returning to the fragment (e.g. after a Google sign-in)
-        viewModel.refreshAuthState()
+        authViewModel.refreshAuthState()
     }
 
     // ── Click listeners ───────────────────────────────────────────────────
@@ -174,8 +184,34 @@ class SettingsFragment : Fragment() {
     // ── Google Sign-In ────────────────────────────────────────────────────
 
     private fun launchGoogleSignIn() {
-        val signInClient = viewModel.getGoogleSignInClient()
+        if (!authViewModel.isGoogleSignInConfigured) {
+            Toast.makeText(
+                requireContext(),
+                "Google Sign-In isn't available in this build. Use email/password sign-in instead.",
+                Toast.LENGTH_LONG
+            ).show()
+            return
+        }
+        val signInClient = authViewModel.getGoogleSignInClient()
         googleSignInLauncher.launch(signInClient.signInIntent)
+    }
+
+    private fun observeGoogleSignInState() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                authViewModel.googleSignInState.collect { state ->
+                    when (state) {
+                        is GoogleSignInUiState.Idle -> dismissBlockingProgress()
+                        is GoogleSignInUiState.Loading -> showBlockingProgress("Signing in…")
+                        is GoogleSignInUiState.Error -> {
+                            dismissBlockingProgress()
+                            authViewModel.resetGoogleSignInState()
+                            showErrorDialog(state.message)
+                        }
+                    }
+                }
+            }
+        }
     }
 
     // ── Email / Password Sign-In ─────────────────────────────────────────
@@ -208,7 +244,7 @@ class SettingsFragment : Fragment() {
                 d.tvError.isVisible = true
                 return@setOnClickListener
             }
-            viewModel.sendPasswordReset(email)
+            authViewModel.sendPasswordReset(email)
         }
 
         val dialog = AlertDialog.Builder(requireContext(), R.style.ThemeOverlay_App_MaterialAlertDialog)
@@ -221,7 +257,7 @@ class SettingsFragment : Fragment() {
         dialog.setOnShowListener {
             dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
                 val email = d.etEmail.text?.toString()?.trim().orEmpty()
-                val password = d.etPassword.text?.toString().orEmpty()
+                val password = d.etPassword.text?.toString()?.trim().orEmpty()
 
                 d.tvError.isVisible = false
 
@@ -236,9 +272,9 @@ class SettingsFragment : Fragment() {
                     }
                     else -> {
                         if (isSignUpMode) {
-                            viewModel.signUpWithEmail(email, password)
+                            authViewModel.signUpWithEmail(email, password)
                         } else {
-                            viewModel.signInWithEmail(email, password)
+                            authViewModel.signInWithEmail(email, password)
                         }
                     }
                 }
@@ -248,7 +284,7 @@ class SettingsFragment : Fragment() {
         // Observe email-auth results only while this dialog is alive
         val job = viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                viewModel.emailAuthState.collect { state ->
+                authViewModel.emailAuthState.collect { state ->
                     when (state) {
                         is EmailAuthUiState.Idle -> Unit
                         is EmailAuthUiState.Loading -> {
@@ -256,7 +292,7 @@ class SettingsFragment : Fragment() {
                             d.tvError.isVisible = false
                         }
                         is EmailAuthUiState.Success -> {
-                            viewModel.resetEmailAuthState()
+                            authViewModel.resetEmailAuthState()
                             dialog.dismiss()
                         }
                         is EmailAuthUiState.Info -> {
@@ -278,7 +314,7 @@ class SettingsFragment : Fragment() {
 
         dialog.setOnDismissListener {
             job.cancel()
-            viewModel.resetEmailAuthState()
+            authViewModel.resetEmailAuthState()
         }
 
         dialog.show()
@@ -289,16 +325,13 @@ class SettingsFragment : Fragment() {
     private fun observeAuthState() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                viewModel.authState.collect { authState ->
+                authViewModel.authState.collect { authState ->
                     updateAuthUi(authState)
-                }
-            }
-        }
-
-        viewLifecycleOwner.lifecycleScope.launch {
-            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                viewModel.lastSyncTime.collect { timestamp ->
-                    updateLastSyncLabel(timestamp)
+                    when (authState) {
+                        is AuthState.SignedIn -> cloudSyncViewModel.refreshLastSyncTime()
+                        is AuthState.SignedOut -> cloudSyncViewModel.clearLastSyncTime()
+                        is AuthState.Unknown -> Unit
+                    }
                 }
             }
         }
@@ -355,65 +388,72 @@ class SettingsFragment : Fragment() {
         }
     }
 
-    // ── Observe backup/sync UI state ──────────────────────────────────────
+    // ── Observe cloud sync state ────────────────────────────────────────────
 
-    private fun observeViewModel() {
+    private fun observeCloudSyncState() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                viewModel.state.collect { state -> handleState(state) }
+                cloudSyncViewModel.lastSyncTime.collect { timestamp -> updateLastSyncLabel(timestamp) }
+            }
+        }
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                cloudSyncViewModel.state.collect { state -> handleCloudSyncState(state) }
             }
         }
     }
 
-    private fun handleState(state: BackupUiState) {
+    private fun handleCloudSyncState(state: CloudSyncUiState) {
         when (state) {
-            is BackupUiState.Idle -> {
+            is CloudSyncUiState.Idle -> dismissBlockingProgress()
+            is CloudSyncUiState.SyncingUp -> showBlockingProgress("Backing up to cloud…")
+            is CloudSyncUiState.SyncingDown -> showBlockingProgress("Restoring from cloud…")
+            is CloudSyncUiState.FetchingPrices -> showBlockingProgress("Fetching live prices…")
+            is CloudSyncUiState.Success -> {
                 dismissBlockingProgress()
+                cloudSyncViewModel.resetState()
+                showSuccessDialog(title = "Sync complete", message = state.message)
             }
-
-            is BackupUiState.Loading -> {
-                showBlockingProgress("Importing…")
-            }
-
-            is BackupUiState.FetchingPrices -> {
-                showBlockingProgress("Fetching live prices…")
-            }
-
-            is BackupUiState.SyncingUp -> {
-                showBlockingProgress("Backing up to cloud…")
-            }
-
-            is BackupUiState.SyncingDown -> {
-                showBlockingProgress("Restoring from cloud…")
-            }
-
-            is BackupUiState.CsvImportSuccess -> {
+            is CloudSyncUiState.Error -> {
                 dismissBlockingProgress()
-                viewModel.resetState()
+                cloudSyncViewModel.resetState()
+                showErrorDialog(state.message)
+            }
+        }
+    }
+
+    // ── Observe CSV import state ────────────────────────────────────────────
+
+    private fun observeCsvImportState() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                csvImportViewModel.state.collect { state -> handleCsvImportState(state) }
+            }
+        }
+    }
+
+    private fun handleCsvImportState(state: CsvImportUiState) {
+        when (state) {
+            is CsvImportUiState.Idle -> dismissBlockingProgress()
+            is CsvImportUiState.Loading -> showBlockingProgress("Importing…")
+            is CsvImportUiState.FetchingPrices -> showBlockingProgress("Fetching live prices…")
+            is CsvImportUiState.Success -> {
+                dismissBlockingProgress()
+                csvImportViewModel.resetState()
                 val skippedNote = if (state.skipped > 0) "\n${state.skipped} row(s) were skipped." else ""
                 showSuccessDialog(
                     title   = "Broker import complete",
                     message = "Added ${state.imported} holding(s) to your portfolio with live INR prices.$skippedNote"
                 )
             }
-
-            is BackupUiState.SyncSuccess -> {
+            is CsvImportUiState.Error -> {
                 dismissBlockingProgress()
-                viewModel.resetState()
-                showSuccessDialog(
-                    title = "Sync complete",
-                    message = state.message
-                )
-            }
-
-            is BackupUiState.Error -> {
-                dismissBlockingProgress()
-                viewModel.resetState()
+                csvImportViewModel.resetState()
                 showErrorDialog(state.message)
             }
         }
     }
-
 
     // ── Blocking progress dialog ──────────────────────────────────────────
 
@@ -482,7 +522,7 @@ class SettingsFragment : Fragment() {
                 "Live prices will be fetched and converted to INR automatically.\n\n" +
                 "Your existing investments and watchlist will NOT be deleted. Continue?"
             )
-            .setPositiveButton("Import") { dlg, _ -> dlg.dismiss(); viewModel.importBrokerCsv(uri) }
+            .setPositiveButton("Import") { dlg, _ -> dlg.dismiss(); csvImportViewModel.importBrokerCsv(uri) }
             .setNegativeButton("Cancel") { dlg, _ -> dlg.dismiss() }
             .show()
     }
@@ -495,7 +535,7 @@ class SettingsFragment : Fragment() {
                 "Your local data will remain on this device.\n\n" +
                 "You can sign in again anytime to access your cloud backup."
             )
-            .setPositiveButton("Sign out") { dlg, _ -> dlg.dismiss(); viewModel.signOut() }
+            .setPositiveButton("Sign out") { dlg, _ -> dlg.dismiss(); authViewModel.signOut() }
             .setNegativeButton("Cancel") { dlg, _ -> dlg.dismiss() }
             .show()
     }
@@ -508,7 +548,7 @@ class SettingsFragment : Fragment() {
                 "This will upload your current watchlists and investments to your Google account.\n\n" +
                 "Any existing cloud backup will be replaced."
             )
-            .setPositiveButton("Backup") { dlg, _ -> dlg.dismiss(); viewModel.backupToCloud() }
+            .setPositiveButton("Backup") { dlg, _ -> dlg.dismiss(); cloudSyncViewModel.backupToCloud() }
             .setNegativeButton("Cancel") { dlg, _ -> dlg.dismiss() }
             .show()
     }
@@ -522,7 +562,7 @@ class SettingsFragment : Fragment() {
                 "with the cloud backup.\n\n" +
                 "This action cannot be undone. Continue?"
             )
-            .setPositiveButton("Restore") { dlg, _ -> dlg.dismiss(); viewModel.restoreFromCloud() }
+            .setPositiveButton("Restore") { dlg, _ -> dlg.dismiss(); cloudSyncViewModel.restoreFromCloud() }
             .setNegativeButton("Cancel") { dlg, _ -> dlg.dismiss() }
             .show()
     }
