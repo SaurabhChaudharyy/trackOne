@@ -1,5 +1,6 @@
 package app.trackone.data.repository
 
+import android.util.Log
 import app.trackone.data.api.YahooFinanceApiService
 import app.trackone.data.database.AssetType
 import app.trackone.data.database.NetWorthDao
@@ -14,7 +15,19 @@ class NetWorthRepository @Inject constructor(
     private val netWorthDao: NetWorthDao,
     private val apiService: YahooFinanceApiService
 ) {
-    suspend fun fetchLivePrice(symbol: String, assetType: AssetType): Resource<Double> =
+    companion object {
+        private const val TAG = "NetWorthRepository"
+
+        /** Used only if a live USD→INR quote can't be fetched. Kept as a single source of
+         *  truth so every conversion in this class degrades to the same fallback rate. */
+        private const val FALLBACK_USD_INR_RATE = 83.0
+    }
+
+    suspend fun fetchLivePrice(
+        symbol: String,
+        assetType: AssetType,
+        usdInrRate: Double? = null
+    ): Resource<Double> =
         withContext(Dispatchers.IO) {
             try {
 
@@ -39,8 +52,9 @@ class NetWorthRepository @Inject constructor(
 
                 val currency = meta.currency
                 val priceInr = if (currency == "USD" || currency == "USX") {
-                    val fxResp = apiService.getQuote("USDINR=X")
-                    val usdInr = fxResp.body()?.chart?.result?.firstOrNull()?.meta?.regularMarketPrice ?: 83.0
+                    // Reuse a batch-level rate when the caller already fetched one, instead
+                    // of issuing a fresh USDINR=X call per asset.
+                    val usdInr = usdInrRate ?: fetchUsdInrRate()
                     priceInNativeCurrency * usdInr
                 } else {
                     priceInNativeCurrency
@@ -59,14 +73,20 @@ class NetWorthRepository @Inject constructor(
 
     /**
      * Fetches the current USD→INR exchange rate.
-     * Falls back to 85.0 if the network call fails.
+     * Falls back to [FALLBACK_USD_INR_RATE] if the network call fails.
      */
     suspend fun fetchUsdInrRate(): Double = try {
         val fxResp = apiService.getQuote("USDINR=X")
-        fxResp.body()?.chart?.result?.firstOrNull()?.meta?.regularMarketPrice ?: 85.0
-    } catch (e: Exception) { 85.0 }
+        fxResp.body()?.chart?.result?.firstOrNull()?.meta?.regularMarketPrice ?: FALLBACK_USD_INR_RATE
+    } catch (e: Exception) { FALLBACK_USD_INR_RATE }
 
-    suspend fun refreshNetWorthAssets(): Resource<Unit> = withContext(Dispatchers.IO) {
+    /**
+     * Refreshes live prices for all fetchable assets, best-effort: a failure on one asset
+     * (or the whole batch) is logged and swallowed, never surfaced to callers — every call
+     * site treats this as fire-and-forget, so the interface says so instead of returning
+     * an error type nothing reads.
+     */
+    suspend fun refreshNetWorthAssets(): Unit = withContext(Dispatchers.IO) {
         try {
             val assets = netWorthDao.getAllAssetsSync()
             val fetchableTypes = setOf(
@@ -74,15 +94,15 @@ class NetWorthRepository @Inject constructor(
                 AssetType.GOLD, AssetType.SILVER
             )
 
-            // Fetch USDINR once for the whole batch — used to also convert buyPrice for USD assets.
+            // Fetch USDINR once for the whole batch — reused below for both live-price
+            // conversion and buyPrice conversion, instead of being re-fetched per asset.
             val usdInrRate = fetchUsdInrRate()
 
-            var hasErrors = false
             for (asset in assets) {
                 if (asset.assetType !in fetchableTypes || asset.name.isBlank()) continue
 
                 val symbol = if (asset.assetType == AssetType.GOLD) "GC=F" else asset.name
-                val result = fetchLivePrice(symbol, asset.assetType)
+                val result = fetchLivePrice(symbol, asset.assetType, usdInrRate)
 
                 if (result is Resource.Success) {
                     val currentPriceInr = result.data   // already in INR
@@ -105,15 +125,12 @@ class NetWorthRepository @Inject constructor(
                             updatedAt    = System.currentTimeMillis()
                         )
                     )
-                } else {
-                    hasErrors = true
+                } else if (result is Resource.Error) {
+                    Log.w(TAG, "refreshNetWorthAssets: failed to update ${asset.name}: ${result.message}")
                 }
             }
-
-            if (hasErrors) Resource.Error("Failed to update some assets")
-            else           Resource.Success(Unit)
         } catch (e: Exception) {
-            Resource.Error(e.message ?: "Unknown error during net worth refresh")
+            Log.w(TAG, "refreshNetWorthAssets: batch failed", e)
         }
     }
 }

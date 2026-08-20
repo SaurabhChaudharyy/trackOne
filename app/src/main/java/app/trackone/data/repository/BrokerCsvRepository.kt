@@ -22,35 +22,12 @@ sealed class CsvImportResult {
     data class Failure(val reason: String, val cause: Throwable? = null) : CsvImportResult()
 }
 
-// ─── Broker formats ────────────────────────────────────────────────────────────
-
-private enum class BrokerFormat {
-    /**
-     * HDFC Securities / Angel / similar
-     * Columns: Stock Name | ISIN | Quantity | Average buy price | Buy value |
-     *          Closing price | Closing value | Unrealised P&L
-     */
-    FORMAT_A,
-
-    /**
-     * Zerodha / Groww / similar
-     * Columns: Instrument | Qty. | Avg. cost | LTP | Invested | Cur. val | P&L | Net chg.
-     */
-    FORMAT_B,
-
-    /**
-     * Vested / Interactive Brokers / similar (US stocks)
-     * Columns: name | quantity | buyPrice | currentValue
-     * buyPrice may be blank — treated as 0.0 (break-even).
-     */
-    FORMAT_C
-}
-
-// ─── A single parsed row (common intermediate) ────────────────────────────────
-
-private data class RawRow(val cols: List<String>)
-
-// ─── Repository ───────────────────────────────────────────────────────────────
+// ─── Repository — file access, dedup, and persistence ─────────────────────────
+//
+// Parsing (format detection, XLSX/CSV reading, row parsing) lives entirely in
+// BrokerCsvParser below and has no Context or DAO dependency. This class owns
+// everything that does need Android framework types: reading the picked Uri,
+// the SharedPreferences-backed dedup check, and the Room upsert.
 
 @Singleton
 class BrokerCsvRepository @Inject constructor(
@@ -70,48 +47,10 @@ class BrokerCsvRepository @Inject constructor(
 
         private const val PREFS_NAME = "broker_import_hashes"
         private const val KEY_HASHES  = "imported_file_hashes"
+        private const val KEY_ORDER   = "imported_file_hashes_order"
 
-        /**
-         * Maps Vested's full company-name strings (as exported in the `name` column)
-         * to the Yahoo Finance ticker symbol used by NetWorthRepository for live price lookups.
-         * Interactive Brokers already exports tickers, so they pass through unchanged.
-         */
-        val VESTED_NAME_TO_TICKER = mapOf(
-            "APPLE INC"                          to "AAPL",
-            "ADVANCED MICRO DEVICES INC"         to "AMD",
-            "AMAZON COM INC"                     to "AMZN",
-            "ASML HLDG NV"                       to "ASML",
-            "BANK AMERICA CORP"                  to "BAC",
-            "SALESFORCE INC"                     to "CRM",
-            "DISNEY WALT CO"                     to "DIS",
-            "ALPHABET INC CAP STK CL C"          to "GOOG",
-            "ALPHABET INC CAP STK CL A"          to "GOOGL",
-            "INTUIT"                             to "INTU",
-            "JPMORGAN CHASE & CO"                to "JPM",
-            "MASTERCARD INCORPORATED CL A"       to "MA",
-            "META PLATFORMS INC CL A"            to "META",
-            "MICROSOFT CORP"                     to "MSFT",
-            "NETFLIX INC"                        to "NFLX",
-            "NVIDIA CORPORATION"                 to "NVDA",
-            "QUALCOMM INC"                       to "QCOM",
-            "INVESCO QQQ TR UNIT SER 1"          to "QQQ",
-            "SHOPIFY INC CL A SUB VTG SHS"       to "SHOP",
-            "SPOTIFY TECHNOLOGY S A SHS"         to "SPOT",
-            "TESLA INC"                          to "TSLA",
-            "TAIWAN SEMICONDUCTOR MANUFACT"      to "TSM",
-            "VISA INC COM CL A"                  to "V",
-            "VANGUARD INDEX FDS S&P 500 ETF"     to "VOO",
-            "VANGUARD INDEX FDS SP 500 ETF"      to "VOO",
-            "BROADCOM INC"                       to "AVGO",
-            "COSTCO WHOLESALE CORP"              to "COST",
-            "BERKSHIRE HATHAWAY INC CL B"        to "BRK-B",
-            "BERKSHIRE HATHAWAY INC CL A"        to "BRK-A",
-            "EATON VANCE FLOATING RATE TR"       to "EOSE",
-            "DOCUSIGN INC"                       to "DOCU",
-            "PALANTIR TECHNOLOGIES INC"          to "PLTR",
-            "PANW"                               to "PANW",
-            "PALO ALTO NETWORKS INC"             to "PANW"
-        )
+        /** Caps how many past import hashes are retained, so this doesn't grow unbounded. */
+        private const val MAX_TRACKED_HASHES = 200
     }
 
     /**
@@ -144,72 +83,42 @@ class BrokerCsvRepository @Inject constructor(
                 )
             }
 
-            val parsed = (if (isXlsx) parseXlsx(fileBytes) else parseCsv(fileBytes.inputStream()))
-                ?: return@withContext CsvImportResult.Failure(
-                    "The file has no data rows. Make sure you exported the portfolio holdings from your broker."
-                )
-
-            val (header, rows) = parsed
-            val format = detectFormat(header)
-                ?: return@withContext CsvImportResult.Failure(
-                    "Unrecognised broker format.\n\n" +
-                        "Supported brokers:\n" +
-                        "  HDFC Securities / Angel (columns: Stock Name, ISIN, Quantity, Average buy price...)\n" +
-                        "  Zerodha / Groww (columns: Instrument, Qty., Avg. cost, LTP...)\n" +
-                        "  Vested / Interactive Brokers (columns: name, quantity, buyPrice, currentValue)\n\n" +
-                        "Make sure you're selecting the Holdings / Portfolio export file."
-                )
-
-            val now = System.currentTimeMillis()
-            var imported = 0
-            var skipped = 0
-            val entities = mutableListOf<NetWorthAssetEntity>()
-
-            for (row in rows) {
-                val entity = when (format) {
-                    BrokerFormat.FORMAT_A -> parseFormatA(row.cols, now)
-                    BrokerFormat.FORMAT_B -> parseFormatB(row.cols, now)
-                    BrokerFormat.FORMAT_C -> parseFormatC(row.cols, now)
-                }
-                if (entity != null) {
-                    entities.add(entity); imported++
-                } else {
-                    skipped++
+            when (val outcome = BrokerCsvParser.parse(fileBytes, isXlsx, System.currentTimeMillis())) {
+                is BrokerCsvParser.ParseOutcome.Failure -> CsvImportResult.Failure(outcome.reason)
+                is BrokerCsvParser.ParseOutcome.Success -> {
+                    persist(outcome.entities)
+                    // Record hash only after a fully successful import.
+                    recordImportHash(fileHash)
+                    CsvImportResult.Success(imported = outcome.entities.size, skipped = outcome.skipped)
                 }
             }
-
-            if (entities.isEmpty()) {
-                return@withContext CsvImportResult.Failure(
-                    "No valid holdings found in the file. The file may be empty or the columns could not be parsed."
-                )
-            }
-
-            // ── Upsert loop ───────────────────────────────────────────────────
-            // For each parsed row: update the existing holding if name+type matches,
-            // otherwise insert as a new holding. This prevents duplicate rows on
-            // re-import of an updated broker export.
-            for (entity in entities) {
-                val existing = netWorthDao.findAssetByNameAndType(entity.name, entity.assetType)
-                if (existing != null) {
-                    netWorthDao.updateAsset(
-                        existing.copy(
-                            quantity     = entity.quantity,
-                            buyPrice     = entity.buyPrice,
-                            currentValue = entity.currentValue,
-                            updatedAt    = entity.updatedAt
-                        )
-                    )
-                } else {
-                    netWorthDao.insertAsset(entity)
-                }
-            }
-
-            // Record hash only after a fully successful import.
-            recordImportHash(fileHash)
-            CsvImportResult.Success(imported = imported, skipped = skipped)
-
         } catch (e: Exception) {
             CsvImportResult.Failure("Import failed: ${e.message}", e)
+        }
+    }
+
+    // ── Persist ──────────────────────────────────────────────────────────────
+
+    /**
+     * For each parsed entity: update the existing holding if name+type matches,
+     * otherwise insert as a new holding. This prevents duplicate rows on
+     * re-import of an updated broker export.
+     */
+    private suspend fun persist(entities: List<NetWorthAssetEntity>) {
+        for (entity in entities) {
+            val existing = netWorthDao.findAssetByNameAndType(entity.name, entity.assetType)
+            if (existing != null) {
+                netWorthDao.updateAsset(
+                    existing.copy(
+                        quantity     = entity.quantity,
+                        buyPrice     = entity.buyPrice,
+                        currentValue = entity.currentValue,
+                        updatedAt    = entity.updatedAt
+                    )
+                )
+            } else {
+                netWorthDao.insertAsset(entity)
+            }
         }
     }
 
@@ -226,11 +135,142 @@ class BrokerCsvRepository @Inject constructor(
         return prefs.getStringSet(KEY_HASHES, emptySet())?.contains(hash) == true
     }
 
+    /** Stored as a bounded set — once [MAX_TRACKED_HASHES] is exceeded, the oldest-recorded
+     *  hashes (tracked via insertion order in [KEY_ORDER]) are dropped so this can't grow
+     *  unbounded across years of imports. */
     private fun recordImportHash(hash: String) {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        val existing = prefs.getStringSet(KEY_HASHES, emptySet())?.toMutableSet() ?: mutableSetOf()
-        existing.add(hash)
-        prefs.edit().putStringSet(KEY_HASHES, existing).apply()
+        val order = (prefs.getString(KEY_ORDER, null)?.split(",")?.filter { it.isNotBlank() }
+            ?: emptyList()).toMutableList()
+        order.remove(hash)
+        order.add(hash)
+        while (order.size > MAX_TRACKED_HASHES) order.removeAt(0)
+
+        prefs.edit()
+            .putStringSet(KEY_HASHES, order.toSet())
+            .putString(KEY_ORDER, order.joinToString(","))
+            .apply()
+    }
+}
+
+// ─── Parser — pure: no Context, no DAO, no SharedPreferences ──────────────────
+//
+// Takes raw file bytes in, returns parsed entities out. Testable with plain
+// byte arrays and no Android framework types.
+
+private object BrokerCsvParser {
+
+    sealed class ParseOutcome {
+        data class Success(val entities: List<NetWorthAssetEntity>, val skipped: Int) : ParseOutcome()
+        data class Failure(val reason: String) : ParseOutcome()
+    }
+
+    private enum class BrokerFormat {
+        /**
+         * HDFC Securities / Angel / similar
+         * Columns: Stock Name | ISIN | Quantity | Average buy price | Buy value |
+         *          Closing price | Closing value | Unrealised P&L
+         */
+        FORMAT_A,
+
+        /**
+         * Zerodha / Groww / similar
+         * Columns: Instrument | Qty. | Avg. cost | LTP | Invested | Cur. val | P&L | Net chg.
+         */
+        FORMAT_B,
+
+        /**
+         * Vested / Interactive Brokers / similar (US stocks)
+         * Columns: name | quantity | buyPrice | currentValue
+         * buyPrice may be blank — treated as 0.0 (break-even).
+         */
+        FORMAT_C
+    }
+
+    private data class RawRow(val cols: List<String>)
+
+    /**
+     * Maps Vested's full company-name strings (as exported in the `name` column)
+     * to the Yahoo Finance ticker symbol used by NetWorthRepository for live price lookups.
+     * Interactive Brokers already exports tickers, so they pass through unchanged.
+     */
+    private val VESTED_NAME_TO_TICKER = mapOf(
+        "APPLE INC"                          to "AAPL",
+        "ADVANCED MICRO DEVICES INC"         to "AMD",
+        "AMAZON COM INC"                     to "AMZN",
+        "ASML HLDG NV"                       to "ASML",
+        "BANK AMERICA CORP"                  to "BAC",
+        "SALESFORCE INC"                     to "CRM",
+        "DISNEY WALT CO"                     to "DIS",
+        "ALPHABET INC CAP STK CL C"          to "GOOG",
+        "ALPHABET INC CAP STK CL A"          to "GOOGL",
+        "INTUIT"                             to "INTU",
+        "JPMORGAN CHASE & CO"                to "JPM",
+        "MASTERCARD INCORPORATED CL A"       to "MA",
+        "META PLATFORMS INC CL A"            to "META",
+        "MICROSOFT CORP"                     to "MSFT",
+        "NETFLIX INC"                        to "NFLX",
+        "NVIDIA CORPORATION"                 to "NVDA",
+        "QUALCOMM INC"                       to "QCOM",
+        "INVESCO QQQ TR UNIT SER 1"          to "QQQ",
+        "SHOPIFY INC CL A SUB VTG SHS"       to "SHOP",
+        "SPOTIFY TECHNOLOGY S A SHS"         to "SPOT",
+        "TESLA INC"                          to "TSLA",
+        "TAIWAN SEMICONDUCTOR MANUFACT"      to "TSM",
+        "VISA INC COM CL A"                  to "V",
+        "VANGUARD INDEX FDS S&P 500 ETF"     to "VOO",
+        "VANGUARD INDEX FDS SP 500 ETF"      to "VOO",
+        "BROADCOM INC"                       to "AVGO",
+        "COSTCO WHOLESALE CORP"              to "COST",
+        "BERKSHIRE HATHAWAY INC CL B"        to "BRK-B",
+        "BERKSHIRE HATHAWAY INC CL A"        to "BRK-A",
+        "EATON VANCE FLOATING RATE TR"       to "EFT",
+        "DOCUSIGN INC"                       to "DOCU",
+        "PALANTIR TECHNOLOGIES INC"          to "PLTR",
+        "PANW"                               to "PANW",
+        "PALO ALTO NETWORKS INC"             to "PANW"
+    )
+
+    fun parse(fileBytes: ByteArray, isXlsx: Boolean, now: Long): ParseOutcome {
+        val parsed = (if (isXlsx) parseXlsx(fileBytes) else parseCsv(fileBytes.inputStream()))
+            ?: return ParseOutcome.Failure(
+                "The file has no data rows. Make sure you exported the portfolio holdings from your broker."
+            )
+
+        val (header, rows) = parsed
+        val format = detectFormat(header)
+            ?: return ParseOutcome.Failure(
+                "Unrecognised broker format.\n\n" +
+                    "Supported brokers:\n" +
+                    "  HDFC Securities / Angel (columns: Stock Name, ISIN, Quantity, Average buy price...)\n" +
+                    "  Zerodha / Groww (columns: Instrument, Qty., Avg. cost, LTP...)\n" +
+                    "  Vested / Interactive Brokers (columns: name, quantity, buyPrice, currentValue)\n\n" +
+                    "Make sure you're selecting the Holdings / Portfolio export file."
+            )
+
+        var skipped = 0
+        val entities = mutableListOf<NetWorthAssetEntity>()
+
+        for (row in rows) {
+            val entity = when (format) {
+                BrokerFormat.FORMAT_A -> parseFormatA(row.cols, now)
+                BrokerFormat.FORMAT_B -> parseFormatB(row.cols, now)
+                BrokerFormat.FORMAT_C -> parseFormatC(row.cols, now)
+            }
+            if (entity != null) {
+                entities.add(entity)
+            } else {
+                skipped++
+            }
+        }
+
+        if (entities.isEmpty()) {
+            return ParseOutcome.Failure(
+                "No valid holdings found in the file. The file may be empty or the columns could not be parsed."
+            )
+        }
+
+        return ParseOutcome.Success(entities, skipped)
     }
 
     // ── XLSX parser ───────────────────────────────────────────────────────────
@@ -333,7 +373,12 @@ class BrokerCsvRepository @Inject constructor(
                             }
                             XmlPullParser.END_TAG -> when (parser.name) {
                                 "c" -> {
-                                    val colIdx = colRefToIndex(cellRef)
+                                    // Cells with a missing/blank "r" attribute (some exporters
+                                    // omit it) resolve to -1 — fall back to the next sequential
+                                    // column instead of indexing the row array out of bounds.
+                                    val colIdx = colRefToIndex(cellRef).let {
+                                        if (it < 0) currentRow.size else it
+                                    }
                                     val resolved = when (cellType) {
                                         "s" -> cellValue.toIntOrNull()
                                             ?.let { sharedStrings.getOrNull(it) } ?: cellValue

@@ -273,8 +273,14 @@ class WatchlistFragment : Fragment() {
             .setTitle("Delete \"${group.name}\"?")
             .setMessage("All stocks in this watchlist will be removed. This cannot be undone.")
             .setPositiveButton("Delete") { _, _ ->
-                viewModel.deleteWatchlistGroup(group.id)
-                Snackbar.make(binding.root, "\"${group.name}\" deleted", Snackbar.LENGTH_SHORT).show()
+                viewModel.deleteWatchlistGroup(group.id) { deleted ->
+                    val message = if (deleted) {
+                        "\"${group.name}\" deleted"
+                    } else {
+                        "Can't delete your only watchlist"
+                    }
+                    Snackbar.make(binding.root, message, Snackbar.LENGTH_SHORT).show()
+                }
             }
             .setNegativeButton("Cancel", null)
             .show()
@@ -320,18 +326,7 @@ class WatchlistFragment : Fragment() {
             override fun clearView(recyclerView: RecyclerView, viewHolder: RecyclerView.ViewHolder) {
                 super.clearView(recyclerView, viewHolder)
                 recyclerView.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
-                val activeGroupItems = viewModel.activeGroupWatchlist.value ?: return
-                val reordered = adapter.items.mapIndexed { index, stock ->
-                    // Find the original WatchlistEntity to preserve groupId
-                    val original = activeGroupItems.firstOrNull { it.symbol == stock.symbol }
-                    app.trackone.data.database.WatchlistEntity(
-                        symbol = stock.symbol,
-                        displayName = stock.companyName,
-                        position = index,
-                        groupId = original?.groupId ?: (viewModel.activeGroupId.value ?: 1L)
-                    )
-                }
-                viewModel.reorderWatchlist(reordered)
+                viewModel.reorderWatchlist(adapter.items.map { it.symbol })
             }
 
             override fun onSelectedChanged(viewHolder: RecyclerView.ViewHolder?, actionState: Int) {

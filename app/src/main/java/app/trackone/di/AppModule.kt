@@ -2,7 +2,6 @@ package app.trackone.di
 
 import android.content.Context
 import androidx.room.Room
-import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import app.trackone.data.api.YahooFinanceApiService
 import app.trackone.data.database.*
@@ -101,10 +100,6 @@ object AppModule {
     @Provides
     @Singleton
     fun provideNetWorthDao(database: FinanceDatabase): NetWorthDao = database.netWorthDao()
-
-    @Provides
-    @Singleton
-    fun provideFirebaseAuth(): FirebaseAuth = FirebaseAuth.getInstance()
 
     @Provides
     @Singleton
