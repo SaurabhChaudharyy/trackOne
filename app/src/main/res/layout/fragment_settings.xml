@@ -226,14 +226,14 @@
         </LinearLayout>
 
         <!-- ══════════════════════════════════════════════════════════════ -->
-        <!-- ── CLOUD SYNC section (shown when signed IN) ────────────── -->
+        <!-- ── CLOUD BACKUP section (shown when signed IN) ───────────── -->
         <!-- ══════════════════════════════════════════════════════════════ -->
 
         <TextView
-            android:id="@+id/tv_cloud_sync_header"
+            android:id="@+id/tv_cloud_backup_header"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="CLOUD SYNC"
+            android:text="CLOUD BACKUP"
             android:textColor="@color/text_tertiary"
             android:textSize="9sp"
             android:fontFamily="@font/inter_semi_bold"
@@ -242,7 +242,7 @@
             android:visibility="gone"/>
 
         <LinearLayout
-            android:id="@+id/card_cloud_sync"
+            android:id="@+id/card_cloud_backup"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
@@ -291,10 +291,10 @@
                         android:fontFamily="@font/inter_semi_bold"/>
 
                     <TextView
-                        android:id="@+id/tv_last_sync"
+                        android:id="@+id/tv_last_backup"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Never synced"
+                        android:text="Never backed up"
                         android:textColor="@color/text_tertiary"
                         android:textSize="11sp"
                         android:fontFamily="@font/inter"

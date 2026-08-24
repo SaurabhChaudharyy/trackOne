@@ -19,7 +19,8 @@ import javax.inject.Singleton
  */
 @Singleton
 class AuthRepository @Inject constructor(
-    @ApplicationContext private val context: Context
+    @ApplicationContext private val context: Context,
+    private val auth: FirebaseAuth
 ) {
     companion object {
         private const val TAG = "AuthRepository"
@@ -31,8 +32,6 @@ class AuthRepository @Inject constructor(
         private const val DEFAULT_WEB_CLIENT_ID =
             "YOUR_WEB_CLIENT_ID.apps.googleusercontent.com"
     }
-
-    private val auth: FirebaseAuth = FirebaseAuth.getInstance()
 
     val currentUser: FirebaseUser? get() = auth.currentUser
     val isSignedIn: Boolean get() = currentUser != null
