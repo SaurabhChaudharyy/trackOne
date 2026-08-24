@@ -37,13 +37,14 @@ sealed class GoogleSignInUiState {
 
 /**
  * Owns everything about "who is signed in": Google Sign-In, email/password auth, and
- * sign-out. [CloudSyncViewModel] and [CsvImportViewModel] are independent seams that don't
+ * sign-out. [CloudBackupViewModel] and [CsvImportViewModel] are independent seams that don't
  * know this class exists — the Fragment is the only thing that reacts to [authState] changes
  * to trigger effects in those other ViewModels (e.g. refreshing last-sync time on sign-in).
  */
 @HiltViewModel
 class AuthViewModel @Inject constructor(
-    private val authRepository: AuthRepository
+    private val authRepository: AuthRepository,
+    private val firebaseAuth: FirebaseAuth
 ) : ViewModel() {
 
     private val _authState = MutableStateFlow<AuthState>(AuthState.Unknown)
@@ -63,17 +64,17 @@ class AuthViewModel @Inject constructor(
     }
 
     init {
-        FirebaseAuth.getInstance().addAuthStateListener(authListener)
+        firebaseAuth.addAuthStateListener(authListener)
     }
 
     override fun onCleared() {
         super.onCleared()
-        FirebaseAuth.getInstance().removeAuthStateListener(authListener)
+        firebaseAuth.removeAuthStateListener(authListener)
     }
 
     /** Trigger the listener manually by re-reading current state (e.g. Fragment.onResume). */
     fun refreshAuthState() {
-        authListener.onAuthStateChanged(FirebaseAuth.getInstance())
+        authListener.onAuthStateChanged(firebaseAuth)
     }
 
     // ── Google Sign-In ────────────────────────────────────────────────────

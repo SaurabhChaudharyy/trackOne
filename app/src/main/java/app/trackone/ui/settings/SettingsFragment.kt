@@ -35,7 +35,7 @@ import kotlinx.coroutines.launch
 
 /**
  * Thin renderer over three independent seams: [AuthViewModel] (Google + email/password sign-in),
- * [CloudSyncViewModel] (Firestore backup/restore), and [CsvImportViewModel] (broker CSV import).
+ * [CloudBackupViewModel] (Firestore backup/restore), and [CsvImportViewModel] (broker CSV import).
  * None of the three ViewModels know about each other — this Fragment is the only place that
  * wires an effect from one into another (e.g. refreshing last-sync time when auth state changes).
  */
@@ -46,7 +46,7 @@ class SettingsFragment : Fragment() {
     private val binding get() = _binding!!
 
     private val authViewModel: AuthViewModel by viewModels()
-    private val cloudSyncViewModel: CloudSyncViewModel by viewModels()
+    private val cloudBackupViewModel: CloudBackupViewModel by viewModels()
     private val csvImportViewModel: CsvImportViewModel by viewModels()
 
     /** Non-cancelable Activity-level dialog — blocks the entire window (including bottom nav). */
@@ -102,7 +102,7 @@ class SettingsFragment : Fragment() {
         setupClickListeners()
         observeAuthState()
         observeGoogleSignInState()
-        observeCloudSyncState()
+        observeCloudBackupState()
         observeCsvImportState()
     }
 
@@ -328,8 +328,8 @@ class SettingsFragment : Fragment() {
                 authViewModel.authState.collect { authState ->
                     updateAuthUi(authState)
                     when (authState) {
-                        is AuthState.SignedIn -> cloudSyncViewModel.refreshLastSyncTime()
-                        is AuthState.SignedOut -> cloudSyncViewModel.clearLastSyncTime()
+                        is AuthState.SignedIn -> cloudBackupViewModel.refreshLastSyncTime()
+                        is AuthState.SignedOut -> cloudBackupViewModel.clearLastSyncTime()
                         is AuthState.Unknown -> Unit
                     }
                 }
@@ -343,20 +343,20 @@ class SettingsFragment : Fragment() {
                 // Initial state — hide everything until resolved
                 binding.cardSignIn.isVisible = false
                 binding.cardProfile.isVisible = false
-                binding.tvCloudSyncHeader.isVisible = false
-                binding.cardCloudSync.isVisible = false
+                binding.tvCloudBackupHeader.isVisible = false
+                binding.cardCloudBackup.isVisible = false
             }
             is AuthState.SignedOut -> {
                 binding.cardSignIn.isVisible = true
                 binding.cardProfile.isVisible = false
-                binding.tvCloudSyncHeader.isVisible = false
-                binding.cardCloudSync.isVisible = false
+                binding.tvCloudBackupHeader.isVisible = false
+                binding.cardCloudBackup.isVisible = false
             }
             is AuthState.SignedIn -> {
                 binding.cardSignIn.isVisible = false
                 binding.cardProfile.isVisible = true
-                binding.tvCloudSyncHeader.isVisible = true
-                binding.cardCloudSync.isVisible = true
+                binding.tvCloudBackupHeader.isVisible = true
+                binding.cardCloudBackup.isVisible = true
 
                 // User info
                 binding.tvUserName.text = state.displayName ?: "User"
@@ -376,7 +376,7 @@ class SettingsFragment : Fragment() {
 
     private fun updateLastSyncLabel(timestamp: Long?) {
         if (timestamp == null || timestamp == 0L) {
-            binding.tvLastSync.text = "Never synced"
+            binding.tvLastBackup.text = "Never backed up"
         } else {
             val relative = DateUtils.getRelativeTimeSpanString(
                 timestamp,
@@ -384,40 +384,40 @@ class SettingsFragment : Fragment() {
                 DateUtils.MINUTE_IN_MILLIS,
                 DateUtils.FORMAT_ABBREV_RELATIVE
             )
-            binding.tvLastSync.text = "Last backup: $relative"
+            binding.tvLastBackup.text = "Last backup: $relative"
         }
     }
 
-    // ── Observe cloud sync state ────────────────────────────────────────────
+    // ── Observe cloud backup state ────────────────────────────────────────────
 
-    private fun observeCloudSyncState() {
+    private fun observeCloudBackupState() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                cloudSyncViewModel.lastSyncTime.collect { timestamp -> updateLastSyncLabel(timestamp) }
+                cloudBackupViewModel.lastSyncTime.collect { timestamp -> updateLastSyncLabel(timestamp) }
             }
         }
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                cloudSyncViewModel.state.collect { state -> handleCloudSyncState(state) }
+                cloudBackupViewModel.state.collect { state -> handleCloudBackupState(state) }
             }
         }
     }
 
-    private fun handleCloudSyncState(state: CloudSyncUiState) {
+    private fun handleCloudBackupState(state: CloudBackupUiState) {
         when (state) {
-            is CloudSyncUiState.Idle -> dismissBlockingProgress()
-            is CloudSyncUiState.SyncingUp -> showBlockingProgress("Backing up to cloud…")
-            is CloudSyncUiState.SyncingDown -> showBlockingProgress("Restoring from cloud…")
-            is CloudSyncUiState.FetchingPrices -> showBlockingProgress("Fetching live prices…")
-            is CloudSyncUiState.Success -> {
+            is CloudBackupUiState.Idle -> dismissBlockingProgress()
+            is CloudBackupUiState.SyncingUp -> showBlockingProgress("Backing up to cloud…")
+            is CloudBackupUiState.SyncingDown -> showBlockingProgress("Restoring from cloud…")
+            is CloudBackupUiState.FetchingPrices -> showBlockingProgress("Fetching live prices…")
+            is CloudBackupUiState.Success -> {
                 dismissBlockingProgress()
-                cloudSyncViewModel.resetState()
-                showSuccessDialog(title = "Sync complete", message = state.message)
+                cloudBackupViewModel.resetState()
+                showSuccessDialog(title = "Backup complete", message = state.message)
             }
-            is CloudSyncUiState.Error -> {
+            is CloudBackupUiState.Error -> {
                 dismissBlockingProgress()
-                cloudSyncViewModel.resetState()
+                cloudBackupViewModel.resetState()
                 showErrorDialog(state.message)
             }
         }
@@ -548,7 +548,7 @@ class SettingsFragment : Fragment() {
                 "This will upload your current watchlists and investments to your Google account.\n\n" +
                 "Any existing cloud backup will be replaced."
             )
-            .setPositiveButton("Backup") { dlg, _ -> dlg.dismiss(); cloudSyncViewModel.backupToCloud() }
+            .setPositiveButton("Backup") { dlg, _ -> dlg.dismiss(); cloudBackupViewModel.backupToCloud() }
             .setNegativeButton("Cancel") { dlg, _ -> dlg.dismiss() }
             .show()
     }
@@ -562,7 +562,7 @@ class SettingsFragment : Fragment() {
                 "with the cloud backup.\n\n" +
                 "This action cannot be undone. Continue?"
             )
-            .setPositiveButton("Restore") { dlg, _ -> dlg.dismiss(); cloudSyncViewModel.restoreFromCloud() }
+            .setPositiveButton("Restore") { dlg, _ -> dlg.dismiss(); cloudBackupViewModel.restoreFromCloud() }
             .setNegativeButton("Cancel") { dlg, _ -> dlg.dismiss() }
             .show()
     }

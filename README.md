@@ -6,7 +6,7 @@
 
 <p align="center">
   A minimal, dark-mode finance app and home-screen widget to track your<br/>
-  watchlist, net worth, stocks, crypto, and more — all stored locally on your device.
+  watchlist, net worth, stocks, crypto, and more — local-first, with optional cloud backup.
 </p>
 
 <p align="center">
@@ -24,6 +24,11 @@
 </p>
 
 ---
+
+## What's New in v1.3-beta
+
+*   **Optional Sign-In & Cloud Backup**: Sign in with Google or email/password to back up and restore your watchlist and net worth data via Firestore. Entirely opt-in — the app works fully offline without an account, and the local JSON export/import remains available either way.
+*   **Refactored Settings**: Auth, cloud backup, and broker CSV import are now independent view models instead of one monolithic settings screen.
 
 ## What's New in v1.2
 
@@ -53,7 +58,7 @@
 |---|---|
 | **Markets / Watchlist** | Track any stock or crypto symbol. Live prices via Yahoo Finance. Tap any item for a full candlestick / line chart with 1D → 5Y timeframes. |
 | **Net Worth** | Add assets across 7 categories (Indian Stocks, US Stocks, Mutual Funds, Gold, Crypto, Cash, Bank). Collapsible sections. Auto-fetches current price for symbol-based assets. |
-| **Settings** | Export your entire watchlist + net worth to a JSON backup file. Restore from a backup anytime. |
+| **Settings** | Export your entire watchlist + net worth to a JSON backup file, or restore from one — no account needed. Optionally sign in with Google or email/password to back up the same data to the cloud and restore it on another device. |
 | **Home-screen Widget** | Scrollable stock list widget that updates in the background via WorkManager. Tap any row to open the detail screen. |
 
 ---
@@ -72,15 +77,18 @@
 | Image loading | Glide |
 | Charts | MPAndroidChart |
 | Async | Kotlin Coroutines |
+| Optional cloud backup | Firebase Auth + Cloud Firestore |
 
 ---
 
 ## Data & Privacy
 
-- **All data is stored locally** on your device in a Room (SQLite) database.
-- **No account, no cloud sync, no analytics, no ads.**
+- **Local-first by default**: all data is stored locally on your device in a Room (SQLite) database. No account is required to use the app.
+- **No analytics, no ads, no third-party trackers** — ever, whether or not you sign in.
+- **Cloud Backup is entirely opt-in**: sign in with Google or email/password only if you want to back up your watchlist and net worth data to the cloud (Firestore) and restore it on another device. If you never sign in, nothing leaves your device.
 - Stock/crypto prices are fetched from the public Yahoo Finance API — no API key required.
-- You can export all your data to a JSON file at any time via **Settings → Export Data**, and restore it via **Import Data**.
+- You can export all your data to a JSON file at any time via **Settings → Export Data**, and restore it via **Import Data** — independent of any account.
+- Full details: see [PRIVACY.md](PRIVACY.md).
 
 ---
 
@@ -159,7 +167,7 @@ Valid `asset_type` values: `STOCK_IN` · `STOCK_US` · `MF` · `GOLD` · `CRYPTO
 
 - Yahoo Finance's public API is unofficial and may occasionally rate-limit or return stale data.
 - The home-screen widget uses `RemoteViews`, which has strict constraints — complex layouts and custom attributes are not supported inside widget XMLs.
-- No cloud sync currently. Use Export / Import to transfer data between devices.
+- Cloud Backup is manual and one-way in each direction, not continuous background sync — tapping **Restore** replaces local data with whatever's in your last cloud backup. Without signing in, use Export / Import to transfer data between devices.
 
 ---
 

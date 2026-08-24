@@ -1,10 +1,12 @@
 package app.trackone.data.repository
 
+import android.content.Context
 import android.util.Log
 import app.trackone.data.api.YahooFinanceApiService
 import app.trackone.data.database.AssetType
 import app.trackone.data.database.NetWorthDao
 import app.trackone.utils.Resource
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
@@ -13,14 +15,30 @@ import javax.inject.Singleton
 @Singleton
 class NetWorthRepository @Inject constructor(
     private val netWorthDao: NetWorthDao,
-    private val apiService: YahooFinanceApiService
+    private val apiService: YahooFinanceApiService,
+    @ApplicationContext private val context: Context
 ) {
     companion object {
         private const val TAG = "NetWorthRepository"
 
-        /** Used only if a live USD→INR quote can't be fetched. Kept as a single source of
-         *  truth so every conversion in this class degrades to the same fallback rate. */
+        private const val PREFS_NAME = "networth_fx_cache"
+        private const val KEY_LAST_USD_INR_RATE = "last_usd_inr_rate"
+
+        /** Absolute last resort — used only when a live quote fails AND no rate has ever
+         *  been cached (e.g. very first launch with no network). Everything else degrades
+         *  to the last real rate this device actually saw, via [lastKnownUsdInrRate]. */
         private const val FALLBACK_USD_INR_RATE = 83.0
+    }
+
+    private val prefs by lazy { context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE) }
+
+    /** The most recent live USD→INR rate this device successfully fetched, or the hardcoded
+     *  [FALLBACK_USD_INR_RATE] if none has ever been cached. */
+    private fun lastKnownUsdInrRate(): Double =
+        prefs.getFloat(KEY_LAST_USD_INR_RATE, FALLBACK_USD_INR_RATE.toFloat()).toDouble()
+
+    private fun cacheUsdInrRate(rate: Double) {
+        prefs.edit().putFloat(KEY_LAST_USD_INR_RATE, rate.toFloat()).apply()
     }
 
     suspend fun fetchLivePrice(
@@ -72,13 +90,19 @@ class NetWorthRepository @Inject constructor(
         }
 
     /**
-     * Fetches the current USD→INR exchange rate.
-     * Falls back to [FALLBACK_USD_INR_RATE] if the network call fails.
+     * Fetches the current USD→INR exchange rate. On success, caches it so future failures
+     * degrade to this real rate instead of the hardcoded [FALLBACK_USD_INR_RATE].
      */
     suspend fun fetchUsdInrRate(): Double = try {
         val fxResp = apiService.getQuote("USDINR=X")
-        fxResp.body()?.chart?.result?.firstOrNull()?.meta?.regularMarketPrice ?: FALLBACK_USD_INR_RATE
-    } catch (e: Exception) { FALLBACK_USD_INR_RATE }
+        val liveRate = fxResp.body()?.chart?.result?.firstOrNull()?.meta?.regularMarketPrice
+        if (liveRate != null && liveRate > 0) {
+            cacheUsdInrRate(liveRate)
+            liveRate
+        } else {
+            lastKnownUsdInrRate()
+        }
+    } catch (e: Exception) { lastKnownUsdInrRate() }
 
     /**
      * Refreshes live prices for all fetchable assets, best-effort: a failure on one asset

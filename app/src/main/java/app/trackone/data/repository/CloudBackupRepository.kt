@@ -31,7 +31,7 @@ data class RestoreStats(val watchlistGroups: Int, val watchlistItems: Int, val a
  * ```
  */
 @Singleton
-class CloudSyncRepository @Inject constructor(
+class CloudBackupRepository @Inject constructor(
     private val firestore: FirebaseFirestore,
     private val authRepository: AuthRepository,
     private val database: FinanceDatabase,
@@ -40,7 +40,7 @@ class CloudSyncRepository @Inject constructor(
     private val netWorthDao: NetWorthDao
 ) {
     companion object {
-        private const val TAG = "CloudSync"
+        private const val TAG = "CloudBackup"
         private const val COL_USERS = "users"
         private const val COL_WATCHLIST_GROUPS = "watchlist_groups"
         private const val COL_WATCHLIST = "watchlist"
