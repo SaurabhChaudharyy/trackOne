@@ -5,6 +5,9 @@ import android.net.Uri
 import app.trackone.data.database.AssetType
 import app.trackone.data.database.NetWorthAssetEntity
 import app.trackone.data.database.NetWorthDao
+import app.trackone.data.database.NetWorthTransactionDao
+import app.trackone.data.database.NetWorthTransactionEntity
+import app.trackone.data.database.TransactionType
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -15,11 +18,127 @@ import java.util.zip.ZipInputStream
 import javax.inject.Inject
 import javax.inject.Singleton
 
+// ─── Broker guide — single source of truth for "which file do I export?" ─────
+//
+// Read by both the parser (for its "unrecognised format" error) and the
+// Settings UI (for the "Which file should I upload?" help sheet), so the
+// in-app copy can never drift from what the parser actually accepts.
+
+data class BrokerGuideEntry(
+    val broker: String,
+    /** Exact report/menu path to export from, in the broker's own app/site. */
+    val whereToExport: String,
+    /** Why that report and not another (e.g. contract note, tax P&L, PDF statement). */
+    val note: String
+)
+
+object BrokerGuide {
+    val entries = listOf(
+        BrokerGuideEntry(
+            broker = "HDFC Securities",
+            whereToExport = "Web: Profile → Reports → Holding Statement → Excel",
+            note = "Not the contract note or tax P&L report — those don't include live quantity/avg-price columns."
+        ),
+        BrokerGuideEntry(
+            broker = "Angel One",
+            whereToExport = "App: Portfolio → Equity → download icon → Excel",
+            note = "Includes ISIN, quantity, and average price directly."
+        ),
+        BrokerGuideEntry(
+            broker = "Zerodha",
+            whereToExport = "Web: console.zerodha.com → Portfolio → Holdings → download icon → CSV",
+            note = "Not the Kite app itself — Console is the reporting/statement site."
+        ),
+        BrokerGuideEntry(
+            broker = "Groww",
+            whereToExport = "App: Profile → Reports → Holdings/Balance statement → Excel",
+            note = "Choose the holdings statement, not the P&L (tax) statement."
+        ),
+        BrokerGuideEntry(
+            broker = "Vested",
+            whereToExport = "App: Transactions → pick date range → Export → CSV",
+            note = "Vested's default statement is a PDF, which this app can't read — use the CSV export instead."
+        ),
+        BrokerGuideEntry(
+            broker = "Interactive Brokers",
+            whereToExport = "Client Portal: Performance & Reports → Activity Statements → format CSV",
+            note = "Flex Query lets you customize which columns are included if the default is missing any."
+        )
+    )
+
+    fun unrecognisedFormatMessage(): String {
+        val supported = entries.joinToString("\n") { "  ${it.broker} — ${it.whereToExport}" }
+        return "Unrecognised broker format.\n\n" +
+            "Supported brokers:\n$supported\n\n" +
+            "Make sure you're exporting the holdings/portfolio statement above, not a contract note, tax report, or PDF."
+    }
+}
+
 // ─── Result types ──────────────────────────────────────────────────────────────
 
 sealed class CsvImportResult {
     data class Success(val imported: Int, val skipped: Int) : CsvImportResult()
     data class Failure(val reason: String, val cause: Throwable? = null) : CsvImportResult()
+}
+
+// ─── Universal holding — the broker-agnostic canonical shape ──────────────────
+//
+// Every broker export (Indian or US, CSV/XLSX today) is normalized into this
+// one shape before it ever touches persistence. Adding a new broker means
+// writing one row-parser that emits a UniversalHolding — it never needs to
+// know about NetWorthAssetEntity, currency handling, or AssetType mapping.
+// See BrokerGuide (below BrokerCsvParser) for which exact report each broker
+// must export, and why some (e.g. Vested) need a CSV/XLSX export rather than
+// the PDF contract note/statement they show by default.
+
+data class UniversalHolding(
+    /** Tradable ticker (Yahoo Finance symbol) when resolvable — required for live price refresh. */
+    val symbol: String,
+    /** ISIN, when the broker's export includes one (most Indian brokers). Not all US brokers do. */
+    val isin: String? = null,
+    val quantity: Double,
+    val avgBuyPrice: Double,
+    val currentValue: Double,
+    /** ISO 4217, e.g. "INR", "USD". */
+    val currency: String,
+    val assetType: AssetType,
+    /** Which broker/format this row came from, e.g. "Zerodha / Groww". */
+    val brokerSource: String
+) {
+    fun toEntity(now: Long): NetWorthAssetEntity = NetWorthAssetEntity(
+        id = 0,
+        name = symbol,
+        assetType = assetType,
+        quantity = quantity,
+        buyPrice = avgBuyPrice,
+        currentValue = currentValue,
+        currency = currency,
+        notes = "",
+        addedAt = now,
+        updatedAt = now,
+        isin = isin,
+        brokerSource = brokerSource
+    )
+
+    /**
+     * A synthetic "position as of this import" lot — broker holdings statements only report
+     * the current aggregate quantity/avg-price, not individual trade dates, so this is not a
+     * real historical trade record. [assetId] is filled in only after the asset row exists.
+     */
+    fun toTransaction(assetId: Long, now: Long): NetWorthTransactionEntity = NetWorthTransactionEntity(
+        assetId = assetId,
+        symbol = symbol,
+        assetType = assetType,
+        transactionType = TransactionType.BUY,
+        quantity = quantity,
+        price = avgBuyPrice,
+        currency = currency,
+        transactionDate = now,
+        isin = isin,
+        brokerSource = brokerSource,
+        notes = "Snapshot from broker holdings statement, not an individual trade date",
+        createdAt = now
+    )
 }
 
 // ─── Repository — file access, dedup, and persistence ─────────────────────────
@@ -32,7 +151,8 @@ sealed class CsvImportResult {
 @Singleton
 class BrokerCsvRepository @Inject constructor(
     @ApplicationContext private val context: Context,
-    private val netWorthDao: NetWorthDao
+    private val netWorthDao: NetWorthDao,
+    private val netWorthTransactionDao: NetWorthTransactionDao
 ) {
 
     companion object {
@@ -83,13 +203,13 @@ class BrokerCsvRepository @Inject constructor(
                 )
             }
 
-            when (val outcome = BrokerCsvParser.parse(fileBytes, isXlsx, System.currentTimeMillis())) {
+            when (val outcome = BrokerCsvParser.parse(fileBytes, isXlsx)) {
                 is BrokerCsvParser.ParseOutcome.Failure -> CsvImportResult.Failure(outcome.reason)
                 is BrokerCsvParser.ParseOutcome.Success -> {
-                    persist(outcome.entities)
+                    persist(outcome.holdings)
                     // Record hash only after a fully successful import.
                     recordImportHash(fileHash)
-                    CsvImportResult.Success(imported = outcome.entities.size, skipped = outcome.skipped)
+                    CsvImportResult.Success(imported = outcome.holdings.size, skipped = outcome.skipped)
                 }
             }
         } catch (e: Exception) {
@@ -100,25 +220,33 @@ class BrokerCsvRepository @Inject constructor(
     // ── Persist ──────────────────────────────────────────────────────────────
 
     /**
-     * For each parsed entity: update the existing holding if name+type matches,
-     * otherwise insert as a new holding. This prevents duplicate rows on
-     * re-import of an updated broker export.
+     * For each parsed holding: update the existing asset row if name+type matches,
+     * otherwise insert as a new one. This prevents duplicate rows on re-import of
+     * an updated broker export. Each import also records a transaction snapshot
+     * (see [UniversalHolding.toTransaction]) so the holding's history isn't lost
+     * on the next re-import overwriting its current quantity/price.
      */
-    private suspend fun persist(entities: List<NetWorthAssetEntity>) {
-        for (entity in entities) {
+    private suspend fun persist(holdings: List<UniversalHolding>) {
+        val now = System.currentTimeMillis()
+        for (holding in holdings) {
+            val entity = holding.toEntity(now)
             val existing = netWorthDao.findAssetByNameAndType(entity.name, entity.assetType)
-            if (existing != null) {
+            val assetId = if (existing != null) {
                 netWorthDao.updateAsset(
                     existing.copy(
                         quantity     = entity.quantity,
                         buyPrice     = entity.buyPrice,
                         currentValue = entity.currentValue,
-                        updatedAt    = entity.updatedAt
+                        updatedAt    = entity.updatedAt,
+                        isin         = entity.isin,
+                        brokerSource = entity.brokerSource
                     )
                 )
+                existing.id
             } else {
                 netWorthDao.insertAsset(entity)
             }
+            netWorthTransactionDao.insert(holding.toTransaction(assetId, now))
         }
     }
 
@@ -161,26 +289,37 @@ class BrokerCsvRepository @Inject constructor(
 private object BrokerCsvParser {
 
     sealed class ParseOutcome {
-        data class Success(val entities: List<NetWorthAssetEntity>, val skipped: Int) : ParseOutcome()
+        data class Success(val holdings: List<UniversalHolding>, val skipped: Int) : ParseOutcome()
         data class Failure(val reason: String) : ParseOutcome()
     }
 
     private enum class BrokerFormat {
         /**
-         * HDFC Securities / Angel / similar
+         * HDFC Securities / Angel One / similar Indian brokers.
+         * Report to export: the **Holding Statement** (HDFC Securities: Profile →
+         * Reports → Holding Statement, Excel; Angel One: Portfolio → Equity →
+         * download icon) — NOT the contract note or tax P&L report, which don't
+         * carry live quantity/avg-price columns.
          * Columns: Stock Name | ISIN | Quantity | Average buy price | Buy value |
          *          Closing price | Closing value | Unrealised P&L
          */
         FORMAT_A,
 
         /**
-         * Zerodha / Groww / similar
+         * Zerodha / Groww / similar Indian brokers.
+         * Report to export: Zerodha — Console (console.zerodha.com) → Portfolio →
+         * Holdings → download icon → CSV. Groww — Profile → Reports → Groww
+         * Balance/Holdings statement → Excel.
          * Columns: Instrument | Qty. | Avg. cost | LTP | Invested | Cur. val | P&L | Net chg.
          */
         FORMAT_B,
 
         /**
-         * Vested / Interactive Brokers / similar (US stocks)
+         * Vested / Interactive Brokers / similar US brokers.
+         * Report to export: Vested's default in-app statement is a PDF, which this
+         * parser cannot read — from the app, use Transactions → pick date range →
+         * Export → CSV instead. Interactive Brokers — Client Portal → Performance
+         * & Reports → Activity Statements → format CSV (Flex Query for full detail).
          * Columns: name | quantity | buyPrice | currentValue
          * buyPrice may be blank — treated as 0.0 (break-even).
          */
@@ -231,7 +370,7 @@ private object BrokerCsvParser {
         "PALO ALTO NETWORKS INC"             to "PANW"
     )
 
-    fun parse(fileBytes: ByteArray, isXlsx: Boolean, now: Long): ParseOutcome {
+    fun parse(fileBytes: ByteArray, isXlsx: Boolean): ParseOutcome {
         val parsed = (if (isXlsx) parseXlsx(fileBytes) else parseCsv(fileBytes.inputStream()))
             ?: return ParseOutcome.Failure(
                 "The file has no data rows. Make sure you exported the portfolio holdings from your broker."
@@ -240,37 +379,32 @@ private object BrokerCsvParser {
         val (header, rows) = parsed
         val format = detectFormat(header)
             ?: return ParseOutcome.Failure(
-                "Unrecognised broker format.\n\n" +
-                    "Supported brokers:\n" +
-                    "  HDFC Securities / Angel (columns: Stock Name, ISIN, Quantity, Average buy price...)\n" +
-                    "  Zerodha / Groww (columns: Instrument, Qty., Avg. cost, LTP...)\n" +
-                    "  Vested / Interactive Brokers (columns: name, quantity, buyPrice, currentValue)\n\n" +
-                    "Make sure you're selecting the Holdings / Portfolio export file."
+                BrokerGuide.unrecognisedFormatMessage()
             )
 
         var skipped = 0
-        val entities = mutableListOf<NetWorthAssetEntity>()
+        val holdings = mutableListOf<UniversalHolding>()
 
         for (row in rows) {
-            val entity = when (format) {
-                BrokerFormat.FORMAT_A -> parseFormatA(row.cols, now)
-                BrokerFormat.FORMAT_B -> parseFormatB(row.cols, now)
-                BrokerFormat.FORMAT_C -> parseFormatC(row.cols, now)
+            val holding = when (format) {
+                BrokerFormat.FORMAT_A -> parseFormatA(row.cols)
+                BrokerFormat.FORMAT_B -> parseFormatB(row.cols)
+                BrokerFormat.FORMAT_C -> parseFormatC(row.cols)
             }
-            if (entity != null) {
-                entities.add(entity)
+            if (holding != null) {
+                holdings.add(holding)
             } else {
                 skipped++
             }
         }
 
-        if (entities.isEmpty()) {
+        if (holdings.isEmpty()) {
             return ParseOutcome.Failure(
                 "No valid holdings found in the file. The file may be empty or the columns could not be parsed."
             )
         }
 
-        return ParseOutcome.Success(entities, skipped)
+        return ParseOutcome.Success(holdings, skipped)
     }
 
     // ── XLSX parser ───────────────────────────────────────────────────────────
@@ -436,23 +570,34 @@ private object BrokerCsvParser {
     // ── Row parsers ───────────────────────────────────────────────────────────
 
     // Format A: Stock Name | ISIN | Qty | Avg Buy Price | Buy Value | Closing Price | Closing Value | P&L
-    private fun parseFormatA(cols: List<String>, now: Long): NetWorthAssetEntity? {
+    // (HDFC Securities / Angel One "Holding Statement" — see BrokerFormat.FORMAT_A doc.)
+    private fun parseFormatA(cols: List<String>): UniversalHolding? {
         if (cols.size < 7) return null
         val name = cols[0].ifBlank { return null }
+        val isin = cols[1].ifBlank { null }
         val quantity = cols[2].toDoubleOrNull() ?: return null
         val buyPrice = cols[3].toDoubleOrNull() ?: return null
         val curValue = cols[6].toDoubleOrNull() ?: return null
-        return buildEntity(name.trim(), quantity, buyPrice, curValue, "INR", AssetType.STOCK_IN, now)
+        return UniversalHolding(
+            symbol = name.trim(), isin = isin, quantity = quantity, avgBuyPrice = buyPrice,
+            currentValue = curValue, currency = "INR", assetType = AssetType.STOCK_IN,
+            brokerSource = "HDFC Securities / Angel One"
+        )
     }
 
     // Format B: Instrument | Qty. | Avg. cost | LTP | Invested | Cur. val | P&L | Net chg.
-    private fun parseFormatB(cols: List<String>, now: Long): NetWorthAssetEntity? {
+    // (Zerodha Console / Groww "Holdings" export — see BrokerFormat.FORMAT_B doc.)
+    private fun parseFormatB(cols: List<String>): UniversalHolding? {
         if (cols.size < 6) return null
         val symbol = cols[0].ifBlank { return null }
         val quantity = cols[1].toDoubleOrNull() ?: return null
         val buyPrice = cols[2].toDoubleOrNull() ?: return null
         val curValue = cols[5].toDoubleOrNull() ?: return null
-        return buildEntity(symbol.trim().uppercase(), quantity, buyPrice, curValue, "INR", AssetType.STOCK_IN, now)
+        return UniversalHolding(
+            symbol = symbol.trim().uppercase(), quantity = quantity, avgBuyPrice = buyPrice,
+            currentValue = curValue, currency = "INR", assetType = AssetType.STOCK_IN,
+            brokerSource = "Zerodha / Groww"
+        )
     }
 
     // Format C: name | quantity | buyPrice | currentValue  (Vested / Interactive Brokers — US stocks)
@@ -463,7 +608,9 @@ private object BrokerCsvParser {
     //
     // buyPrice may be blank (some IB positions) — stored as 0.0 (break-even).
     // currentValue is in USD and will be overwritten by the next live refresh anyway.
-    private fun parseFormatC(cols: List<String>, now: Long): NetWorthAssetEntity? {
+    // (This needs Vested's CSV transaction export, not its default PDF statement —
+    //  see BrokerFormat.FORMAT_C doc.)
+    private fun parseFormatC(cols: List<String>): UniversalHolding? {
         if (cols.size < 4) return null
         val rawName  = cols[0].ifBlank { return null }.trim()
         val quantity = cols[1].toDoubleOrNull() ?: return null
@@ -472,24 +619,12 @@ private object BrokerCsvParser {
 
         // Use known ticker if this looks like a Vested full-name; otherwise keep as-is.
         val symbol = VESTED_NAME_TO_TICKER[rawName.uppercase()] ?: rawName.uppercase()
-        return buildEntity(symbol, quantity, buyPrice, curValue, "USD", AssetType.STOCK_US, now)
+        return UniversalHolding(
+            symbol = symbol, quantity = quantity, avgBuyPrice = buyPrice,
+            currentValue = curValue, currency = "USD", assetType = AssetType.STOCK_US,
+            brokerSource = "Vested / Interactive Brokers"
+        )
     }
-
-    private fun buildEntity(
-        name: String, quantity: Double, buyPrice: Double, curValue: Double,
-        currency: String, assetType: AssetType, now: Long
-    ) = NetWorthAssetEntity(
-        id = 0,
-        name = name,
-        assetType = assetType,
-        quantity = quantity,
-        buyPrice = buyPrice,
-        currentValue = curValue,
-        currency = currency,
-        notes = "",
-        addedAt = now,
-        updatedAt = now
-    )
 
     // ── Format / delimiter detection ──────────────────────────────────────────
 
