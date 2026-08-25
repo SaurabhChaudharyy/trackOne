@@ -152,6 +152,13 @@ class SettingsFragment : Fragment() {
             importBrokerCsvLauncher.launch(BrokerCsvRepository.IMPORT_MIME_TYPES)
         }
 
+        // "Which file do I upload?" — per-broker export guide, so users don't have
+        // to trial-and-error which report their broker offers actually works.
+        binding.tvWhichFileToUpload.setOnClickListener {
+            it.performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY)
+            showBrokerFileGuideDialog()
+        }
+
         // Contact Us
         binding.cardContactUs.setOnClickListener {
             it.performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY)
@@ -512,6 +519,19 @@ class SettingsFragment : Fragment() {
     }
 
     // ── Confirmation dialogs ──────────────────────────────────────────────
+
+    /** Shows exactly which report to export from each supported broker, and where to find it. */
+    private fun showBrokerFileGuideDialog() {
+        if (!isAdded) return
+        val message = app.trackone.data.repository.BrokerGuide.entries.joinToString("\n\n") { entry ->
+            "${entry.broker}\n${entry.whereToExport}\n${entry.note}"
+        }
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle("Which file do I upload?")
+            .setMessage(message)
+            .setPositiveButton("Got it") { dlg, _ -> dlg.dismiss() }
+            .show()
+    }
 
     private fun showBrokerCsvImportConfirmationDialog(uri: Uri) {
         if (!isAdded) return

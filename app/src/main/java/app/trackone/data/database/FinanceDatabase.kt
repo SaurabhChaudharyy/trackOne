@@ -73,11 +73,36 @@ val MIGRATION_3_4 = object : Migration(3, 4) {
     }
 }
 
+val MIGRATION_4_5 = object : Migration(4, 5) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE networth_assets ADD COLUMN isin TEXT")
+        db.execSQL("ALTER TABLE networth_assets ADD COLUMN brokerSource TEXT")
+        db.execSQL("""
+            CREATE TABLE IF NOT EXISTS networth_transactions (
+                id              INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                assetId         INTEGER NOT NULL,
+                symbol          TEXT    NOT NULL,
+                assetType       TEXT    NOT NULL,
+                transactionType TEXT    NOT NULL,
+                quantity        REAL    NOT NULL,
+                price           REAL    NOT NULL,
+                currency        TEXT    NOT NULL,
+                transactionDate INTEGER NOT NULL,
+                isin            TEXT,
+                brokerSource    TEXT,
+                notes           TEXT    NOT NULL,
+                createdAt       INTEGER NOT NULL
+            )
+        """.trimIndent())
+        db.execSQL("CREATE INDEX IF NOT EXISTS index_networth_transactions_assetId ON networth_transactions(assetId)")
+    }
+}
+
 @TypeConverters(Converters::class)
 @Database(
     entities = [StockEntity::class, WatchlistGroupEntity::class, WatchlistEntity::class,
-                PriceHistoryEntity::class, NetWorthAssetEntity::class],
-    version = 4,
+                PriceHistoryEntity::class, NetWorthAssetEntity::class, NetWorthTransactionEntity::class],
+    version = 5,
     exportSchema = false
 )
 abstract class FinanceDatabase : RoomDatabase() {
@@ -86,4 +111,5 @@ abstract class FinanceDatabase : RoomDatabase() {
     abstract fun watchlistDao(): WatchlistDao
     abstract fun priceHistoryDao(): PriceHistoryDao
     abstract fun netWorthDao(): NetWorthDao
+    abstract fun netWorthTransactionDao(): NetWorthTransactionDao
 }

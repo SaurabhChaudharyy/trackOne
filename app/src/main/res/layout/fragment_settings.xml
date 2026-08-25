@@ -123,7 +123,7 @@
                         android:layout_width="18dp"
                         android:layout_height="18dp"
                         android:src="@drawable/ic_email"
-                        android:tint="@color/text_primary"
+                        android:tint="@color/on_primary"
                         tools:ignore="ContentDescription"/>
                 </LinearLayout>
 
@@ -455,6 +455,20 @@
                     android:tint="@color/text_tertiary"
                     tools:ignore="ContentDescription"/>
             </LinearLayout>
+
+            <TextView
+                android:id="@+id/tv_which_file_to_upload"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:text="Which file do I upload? →"
+                android:textColor="@color/accent_blue"
+                android:textSize="11sp"
+                android:fontFamily="@font/inter_semi_bold"
+                android:clickable="true"
+                android:focusable="true"
+                android:background="?attr/selectableItemBackground"
+                android:padding="2dp"/>
 
         </LinearLayout>
 
