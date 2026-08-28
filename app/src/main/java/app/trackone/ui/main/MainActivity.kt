@@ -25,12 +25,24 @@ class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private val viewModel: MainViewModel by viewModels()
 
-    private val homeFragment      by lazy { HomeFragment() }
-    private val watchlistFragment by lazy { WatchlistFragment() }
-    private val netWorthFragment  by lazy { NetWorthFragment() }
-    private val settingsFragment  by lazy { SettingsFragment() }
+    // On a plain recreate() (e.g. theme switch), the FragmentManager has already restored these
+    // exact fragment instances by tag before onCreate runs, so look them up first instead of
+    // always constructing a fresh instance — otherwise setupFragments() below would add a second,
+    // untracked copy on top of the restored one.
+    private val homeFragment: HomeFragment by lazy {
+        supportFragmentManager.findFragmentByTag(TAG_HOME) as? HomeFragment ?: HomeFragment()
+    }
+    private val watchlistFragment: WatchlistFragment by lazy {
+        supportFragmentManager.findFragmentByTag(TAG_WATCHLIST) as? WatchlistFragment ?: WatchlistFragment()
+    }
+    private val netWorthFragment: NetWorthFragment by lazy {
+        supportFragmentManager.findFragmentByTag(TAG_NETWORTH) as? NetWorthFragment ?: NetWorthFragment()
+    }
+    private val settingsFragment: SettingsFragment by lazy {
+        supportFragmentManager.findFragmentByTag(TAG_SETTINGS) as? SettingsFragment ?: SettingsFragment()
+    }
 
-    private var activeFragment: Fragment = homeFragment
+    private lateinit var activeFragment: Fragment
 
     /** Neon dot views mapped by menu item position. */
     private val dotViews = mutableMapOf<Int, View>()
@@ -46,17 +58,28 @@ class MainActivity : AppCompatActivity() {
         setSupportActionBar(binding.toolbar)
         supportActionBar?.title = ""
 
-        setupFragments()
+        setupFragments(savedInstanceState)
         setupBottomNav()
     }
 
-    private fun setupFragments() {
-        supportFragmentManager.beginTransaction()
-            .add(R.id.fragment_container, netWorthFragment,  "networth").hide(netWorthFragment)
-            .add(R.id.fragment_container, settingsFragment,  "settings").hide(settingsFragment)
-            .add(R.id.fragment_container, watchlistFragment, "watchlist").hide(watchlistFragment)
-            .add(R.id.fragment_container, homeFragment,      "home")
-            .commit()
+    private fun setupFragments(savedInstanceState: Bundle?) {
+        if (savedInstanceState == null) {
+            supportFragmentManager.beginTransaction()
+                .add(R.id.fragment_container, netWorthFragment,  TAG_NETWORTH).hide(netWorthFragment)
+                .add(R.id.fragment_container, settingsFragment,  TAG_SETTINGS).hide(settingsFragment)
+                .add(R.id.fragment_container, watchlistFragment, TAG_WATCHLIST).hide(watchlistFragment)
+                .add(R.id.fragment_container, homeFragment,      TAG_HOME)
+                .commit()
+            activeFragment = homeFragment
+        } else {
+            // Fragments (and each one's hidden/shown flag) are already restored by the
+            // FragmentManager — figure out which tab was actually visible instead of defaulting
+            // back to Home, which used to leave the bottom nav's restored selection (handled
+            // separately by Android's own view-state restore) pointing at a different tab than
+            // the content actually on screen.
+            activeFragment = listOf(homeFragment, watchlistFragment, netWorthFragment, settingsFragment)
+                .firstOrNull { !it.isHidden } ?: homeFragment
+        }
     }
 
     private val navItemIds = listOf(R.id.nav_home, R.id.nav_watchlist, R.id.nav_networth, R.id.nav_settings)
@@ -88,7 +111,12 @@ class MainActivity : AppCompatActivity() {
             updateDotIndicator(item.itemId)
             true
         }
-        binding.bottomNav.selectedItemId = R.id.nav_home
+        binding.bottomNav.selectedItemId = when (activeFragment) {
+            watchlistFragment -> R.id.nav_watchlist
+            netWorthFragment  -> R.id.nav_networth
+            settingsFragment  -> R.id.nav_settings
+            else              -> R.id.nav_home
+        }
     }
 
     /**
@@ -142,4 +170,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onCreateOptionsMenu(menu: android.view.Menu): Boolean = false
+
+    private companion object {
+        const val TAG_HOME = "home"
+        const val TAG_WATCHLIST = "watchlist"
+        const val TAG_NETWORTH = "networth"
+        const val TAG_SETTINGS = "settings"
+    }
 }

@@ -248,9 +248,13 @@ class HomeFragment : Fragment() {
                 setDrawLabels(true)
                 setLabelCount(4, false)
                 axisMinimum      = 0f  // Prevents negative Y-axis values
-                textColor  = Color.parseColor("#A1A1AA")   // zinc-400
+                // @color/text_tertiary / @color/divider_color flip with the theme (unlike a
+                // fixed hex), so the grid stays a faint, legible hairline in both — a literal
+                // zinc-100 grid line was invisible on the light background it was tuned for and
+                // glaring against the near-black dark background.
+                textColor  = requireContext().getColor(R.color.text_tertiary)
                 textSize   = 9f
-                gridColor  = Color.parseColor("#F4F4F5")   // zinc-100
+                gridColor  = requireContext().getColor(R.color.divider_color)
                 gridLineWidth = 0.5f
                 setPosition(com.github.mikephil.charting.components.YAxis.YAxisLabelPosition.INSIDE_CHART)
                 // Format values as ₹XL or ₹XK
@@ -277,7 +281,7 @@ class HomeFragment : Fragment() {
                 setLabelCount(2, true)
                 setAvoidFirstLastClipping(true)  // Prevents months from cutting off at edges
                 position  = com.github.mikephil.charting.components.XAxis.XAxisPosition.BOTTOM
-                textColor = Color.parseColor("#A1A1AA")
+                textColor = requireContext().getColor(R.color.text_tertiary)
                 textSize  = 9f
                 yOffset   = 4f
             }
