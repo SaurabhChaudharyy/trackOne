@@ -19,6 +19,13 @@
         <item name="android:windowSplashScreenAnimatedIcon">@drawable/transparent_splash</item>
         <item name="android:windowSplashScreenBackground">@color/background</item>
 
+        <!-- We ship a real dark theme via values-night, so the system's own automatic
+             "force dark" content adjustment is redundant — and left enabled (its default),
+             it layers on top of our already-correct dark colors/typography and produces
+             double-transformed artifacts, e.g. synthesized bold+italic on custom-font
+             TextViews that don't set an explicit textStyle. -->
+        <item name="android:forceDarkAllowed" tools:targetApi="29">false</item>
+
         <item name="android:fontFamily">@font/inter</item>
         <item name="fontFamily">@font/inter</item>
 
@@ -168,6 +175,7 @@
         <item name="android:navigationBarColor">@color/background</item>
         <item name="android:windowLightStatusBar">true</item>
         <item name="android:windowLightNavigationBar" tools:targetApi="27">true</item>
+        <item name="android:forceDarkAllowed" tools:targetApi="29">false</item>
         <item name="android:windowSplashScreenAnimatedIcon">@drawable/transparent_splash</item>
         <item name="android:windowSplashScreenBackground">@color/background</item>
         <item name="android:fontFamily">@font/inter</item>

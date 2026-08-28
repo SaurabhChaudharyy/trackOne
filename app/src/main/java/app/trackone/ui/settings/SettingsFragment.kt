@@ -616,6 +616,12 @@ class SettingsFragment : Fragment() {
                 val mode = themeModes[which]
                 ThemePrefs.setMode(requireContext(), mode)
                 AppCompatDelegate.setDefaultNightMode(mode)
+                // setDefaultNightMode() only recreates this fragment when the *resolved*
+                // light/dark state actually flips (e.g. Dark -> Light). Picking a mode that
+                // resolves to the same state (e.g. Light -> System default while the system is
+                // already light) leaves this row's label stale otherwise, since nothing else
+                // refreshes it.
+                updateThemeRowLabel()
                 dialog.dismiss()
             }
             .setNegativeButton("Cancel") { dialog, _ -> dialog.dismiss() }
