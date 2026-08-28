@@ -288,8 +288,19 @@ class HomeFragment : Fragment() {
         if (_binding == null || points.size < 2) return
 
         val isGain   = points.last().current >= points.first().current
-        val lineColor = if (isGain) Color.parseColor("#09090B") else Color.parseColor("#E74C3C")
-        val fillStartColor = if (isGain) Color.parseColor("#33F3FE78") else Color.parseColor("#22E74C3C")
+        val isNight = (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
+            android.content.res.Configuration.UI_MODE_NIGHT_YES
+        // Line sits directly on the chart's (flipping) background, so its ink must flip
+        // with the theme too — unlike the gain/loss pills elsewhere, which sit on a
+        // constant-colored fill and use the constant @color/primary instead.
+        val lineColor = if (isGain) requireContext().getColor(R.color.text_primary) else Color.parseColor("#E74C3C")
+        // Neon fill wash needs more alpha in dark mode to still read as a glow instead
+        // of desaturating into a muddy wash against the near-black background.
+        val fillStartColor = if (isGain) {
+            Color.parseColor(if (isNight) "#80F3FE78" else "#33F3FE78")
+        } else {
+            Color.parseColor("#22E74C3C")
+        }
         val fillEndColor   = Color.parseColor("#00F3FE78")  // transparent bottom
 
         val currentEntries = points.mapIndexed { i, p -> Entry(i.toFloat(), p.current.toFloat()) }

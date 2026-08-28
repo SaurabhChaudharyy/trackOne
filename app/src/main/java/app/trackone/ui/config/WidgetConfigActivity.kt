@@ -17,6 +17,8 @@ import app.trackone.R
 import app.trackone.data.database.WatchlistGroupEntity
 import app.trackone.data.repository.StockRepository
 import app.trackone.databinding.ActivityWidgetConfigBinding
+import app.trackone.ui.util.applyBottomContentInset
+import app.trackone.ui.util.applyEdgeToEdge
 import app.trackone.ui.widget.WidgetPrefs
 import app.trackone.utils.Resource
 import dagger.hilt.android.AndroidEntryPoint
@@ -46,6 +48,9 @@ class WidgetConfigActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityWidgetConfigBinding.inflate(layoutInflater)
         setContentView(binding.root)
+
+        applyEdgeToEdge(topInsetView = binding.configToolbar, bottomInsetView = binding.bottomActionBar)
+        applyBottomContentInset(binding.rvSearchResults)
 
         appWidgetId = intent.getIntExtra(
             AppWidgetManager.EXTRA_APPWIDGET_ID,

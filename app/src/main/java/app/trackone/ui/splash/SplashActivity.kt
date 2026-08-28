@@ -12,6 +12,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import app.trackone.databinding.ActivitySplashBinding
 import app.trackone.ui.main.MainActivity
+import app.trackone.ui.util.applyEdgeToEdge
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -27,6 +28,8 @@ class SplashActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivitySplashBinding.inflate(layoutInflater)
         setContentView(binding.root)
+
+        applyEdgeToEdge(topInsetView = null, bottomInsetView = null)
 
         startAnimations()
         awaitReadyAndNavigate()
