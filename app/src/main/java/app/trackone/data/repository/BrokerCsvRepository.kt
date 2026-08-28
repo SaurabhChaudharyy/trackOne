@@ -26,43 +26,62 @@ import javax.inject.Singleton
 
 data class BrokerGuideEntry(
     val broker: String,
-    /** Exact report/menu path to export from, in the broker's own app/site. */
-    val whereToExport: String,
-    /** Why that report and not another (e.g. contract note, tax P&L, PDF statement). */
+    /** Where the export lives: "Web", "App", or "Client Portal". Shown as a small badge. */
+    val source: String,
+    /** Menu path to the report, e.g. "Portfolio → Holdings". No source/format prefix or suffix. */
+    val path: String,
+    /** File format to pick, e.g. "Excel" or "CSV". */
+    val format: String,
+    /** One short line of disambiguation — only what a first-time user would actually get wrong. */
     val note: String
-)
+) {
+    /** Flattened "source: path (format)" form, for plain-text contexts (error messages). */
+    val whereToExport: String get() = "$source: $path ($format)"
+}
 
 object BrokerGuide {
     val entries = listOf(
         BrokerGuideEntry(
             broker = "HDFC Securities",
-            whereToExport = "Web: Profile → Reports → Holding Statement → Excel",
-            note = "Not the contract note or tax P&L report — those don't include live quantity/avg-price columns."
+            source = "Web",
+            path = "Profile → Reports → Holding Statement",
+            format = "Excel",
+            note = "Not the contract note or tax P&L report — those skip quantity/avg price."
         ),
         BrokerGuideEntry(
             broker = "Angel One",
-            whereToExport = "App: Portfolio → Equity → download icon → Excel",
-            note = "Includes ISIN, quantity, and average price directly."
+            source = "App",
+            path = "Portfolio → Equity → download icon",
+            format = "Excel",
+            note = "Already includes ISIN, quantity, and average price."
         ),
         BrokerGuideEntry(
             broker = "Zerodha",
-            whereToExport = "Web: console.zerodha.com → Portfolio → Holdings → download icon → CSV",
-            note = "Not the Kite app itself — Console is the reporting/statement site."
+            source = "Web",
+            path = "console.zerodha.com → Portfolio → Holdings → download icon",
+            format = "CSV",
+            note = "Use Console on the web — the Kite trading app has no export for this."
         ),
         BrokerGuideEntry(
             broker = "Groww",
-            whereToExport = "App: Profile → Reports → Holdings/Balance statement → Excel",
-            note = "Choose the holdings statement, not the P&L (tax) statement."
+            source = "App",
+            path = "Profile → Reports → Holdings statement",
+            format = "Excel",
+            note = "Pick the holdings statement, not the P&L (tax) statement."
         ),
         BrokerGuideEntry(
             broker = "Vested",
-            whereToExport = "App: Transactions → pick date range → Export → CSV",
-            note = "Vested's default statement is a PDF, which this app can't read — use the CSV export instead."
+            source = "App",
+            path = "Transactions → pick date range → Export",
+            format = "Excel",
+            note = "Exports your full transaction history — this app reads the \"Trades\" tab inside it and nets buys/sells into current holdings."
         ),
         BrokerGuideEntry(
             broker = "Interactive Brokers",
-            whereToExport = "Client Portal: Performance & Reports → Activity Statements → format CSV",
-            note = "Flex Query lets you customize which columns are included if the default is missing any."
+            source = "Client Portal",
+            path = "Performance & Reports → Activity Statements",
+            format = "CSV",
+            note = "Export the default Activity Statement — this app reads its \"Open Positions\" section directly."
         )
     )
 
@@ -180,8 +199,14 @@ class BrokerCsvRepository @Inject constructor(
      *
      * A SHA-256 hash of the raw file bytes is stored in SharedPreferences after
      * a successful import. Re-uploading the exact same file is rejected instantly.
+     *
+     * @param onProgress called after each holding is persisted, with (holdings persisted so
+     * far, total holdings) — lets the caller show a percentage during the DB-write phase.
      */
-    suspend fun importFromUri(uri: Uri): CsvImportResult = withContext(Dispatchers.IO) {
+    suspend fun importFromUri(
+        uri: Uri,
+        onProgress: (Int, Int) -> Unit = { _, _ -> }
+    ): CsvImportResult = withContext(Dispatchers.IO) {
         try {
             val mimeType = context.contentResolver.getType(uri) ?: ""
             val fileName = uri.lastPathSegment?.lowercase() ?: ""
@@ -206,7 +231,7 @@ class BrokerCsvRepository @Inject constructor(
             when (val outcome = BrokerCsvParser.parse(fileBytes, isXlsx)) {
                 is BrokerCsvParser.ParseOutcome.Failure -> CsvImportResult.Failure(outcome.reason)
                 is BrokerCsvParser.ParseOutcome.Success -> {
-                    persist(outcome.holdings)
+                    persist(outcome.holdings, onProgress)
                     // Record hash only after a fully successful import.
                     recordImportHash(fileHash)
                     CsvImportResult.Success(imported = outcome.holdings.size, skipped = outcome.skipped)
@@ -226,9 +251,9 @@ class BrokerCsvRepository @Inject constructor(
      * (see [UniversalHolding.toTransaction]) so the holding's history isn't lost
      * on the next re-import overwriting its current quantity/price.
      */
-    private suspend fun persist(holdings: List<UniversalHolding>) {
+    private suspend fun persist(holdings: List<UniversalHolding>, onProgress: (Int, Int) -> Unit) {
         val now = System.currentTimeMillis()
-        for (holding in holdings) {
+        for ((index, holding) in holdings.withIndex()) {
             val entity = holding.toEntity(now)
             val existing = netWorthDao.findAssetByNameAndType(entity.name, entity.assetType)
             val assetId = if (existing != null) {
@@ -247,6 +272,7 @@ class BrokerCsvRepository @Inject constructor(
                 netWorthDao.insertAsset(entity)
             }
             netWorthTransactionDao.insert(holding.toTransaction(assetId, now))
+            onProgress(index + 1, holdings.size)
         }
     }
 
@@ -261,6 +287,15 @@ class BrokerCsvRepository @Inject constructor(
     private fun isAlreadyImported(hash: String): Boolean {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         return prefs.getStringSet(KEY_HASHES, emptySet())?.contains(hash) == true
+    }
+
+    /**
+     * Forgets every previously-imported file hash. Called from [LocalDataRepository] when the
+     * user clears local data — otherwise re-uploading the same broker file after a clear would
+     * still be rejected as "already imported", even though the data it would restore is gone.
+     */
+    fun clearImportHistory() {
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit().clear().apply()
     }
 
     /** Stored as a bounded set — once [MAX_TRACKED_HASHES] is exceeded, the oldest-recorded
@@ -323,7 +358,42 @@ private object BrokerCsvParser {
          * Columns: name | quantity | buyPrice | currentValue
          * buyPrice may be blank — treated as 0.0 (break-even).
          */
-        FORMAT_C
+        FORMAT_C,
+
+        /**
+         * Zerodha Console's actual "Holdings" export (as of 2026). Its header also
+         * contains "isin", so this MUST be detected before the generic Format A
+         * check below, or every row gets misread through Format A's column layout.
+         * Columns: (blank) | Symbol | ISIN | Sector | Quantity Available |
+         *          Quantity Discrepant | Quantity Long Term |
+         *          Quantity Pledged (Margin) | Quantity Pledged (Loan) |
+         *          Average Price | Previous Closing Price | Unrealized P&L |
+         *          Unrealized P&L Pct.
+         * No direct "current value" column — derived as quantity * previous closing price.
+         */
+        FORMAT_ZERODHA,
+
+        /**
+         * Vested's "All Transactions" export (App → Transactions → Export) is a
+         * multi-sheet workbook with no standalone holdings snapshot — the closest
+         * thing is the "Trades" sheet, a per-trade log. This format nets every
+         * buy/sell per ticker into a current quantity + weighted-average cost.
+         * Columns: Date | Time (in UTC) | Name | Ticker | Activity | Order Type |
+         *          Quantity | Price Per Share (in USD) | Cash Amount (in USD) |
+         *          Commission Charges (in USD)
+         */
+        FORMAT_VESTED_TRADES,
+
+        /**
+         * Interactive Brokers' Activity Statement CSV is not one table — it's dozens
+         * of sections concatenated in one file, each row prefixed with its section
+         * name and a Header/Data marker. This format extracts only the
+         * "Open Positions" section.
+         * Columns (after the section-name/marker prefix): DataDiscriminator |
+         *          Asset Category | Currency | Symbol | Quantity | Mult | Cost Price |
+         *          Cost Basis | Close Price | Value | Unrealized P/L | Code
+         */
+        FORMAT_IB_POSITIONS
     }
 
     private data class RawRow(val cols: List<String>)
@@ -370,41 +440,68 @@ private object BrokerCsvParser {
         "PALO ALTO NETWORKS INC"             to "PANW"
     )
 
+    /**
+     * A workbook/file can hold more than one candidate table: an XLSX may have
+     * several sheets (only one of which is actually holdings/trades data — see
+     * Vested's multi-sheet export), and Interactive Brokers packs dozens of
+     * tables into a single CSV (see [parseIbActivityStatement]). Each candidate
+     * is tried in turn; the first one whose header is recognised AND yields at
+     * least one holding wins.
+     */
     fun parse(fileBytes: ByteArray, isXlsx: Boolean): ParseOutcome {
-        val parsed = (if (isXlsx) parseXlsx(fileBytes) else parseCsv(fileBytes.inputStream()))
-            ?: return ParseOutcome.Failure(
+        val candidates: List<Pair<List<String>, List<RawRow>>> = if (isXlsx) {
+            parseXlsxSheets(fileBytes)
+        } else {
+            val raw = fileBytes.toString(Charsets.UTF_8)
+            listOfNotNull(parseIbActivityStatement(raw), parseCsv(fileBytes.inputStream()))
+        }
+
+        if (candidates.isEmpty()) {
+            return ParseOutcome.Failure(
                 "The file has no data rows. Make sure you exported the portfolio holdings from your broker."
             )
+        }
 
-        val (header, rows) = parsed
-        val format = detectFormat(header)
-            ?: return ParseOutcome.Failure(
-                BrokerGuide.unrecognisedFormatMessage()
-            )
+        var anyFormatDetected = false
+        for ((header, rows) in candidates) {
+            val format = detectFormat(header) ?: continue
+            anyFormatDetected = true
 
-        var skipped = 0
-        val holdings = mutableListOf<UniversalHolding>()
-
-        for (row in rows) {
-            val holding = when (format) {
-                BrokerFormat.FORMAT_A -> parseFormatA(row.cols)
-                BrokerFormat.FORMAT_B -> parseFormatB(row.cols)
-                BrokerFormat.FORMAT_C -> parseFormatC(row.cols)
+            val (holdings, skipped) = when (format) {
+                BrokerFormat.FORMAT_A -> parseRows(rows, ::parseFormatA)
+                BrokerFormat.FORMAT_B -> parseRows(rows, ::parseFormatB)
+                BrokerFormat.FORMAT_C -> parseRows(rows, ::parseFormatC)
+                BrokerFormat.FORMAT_ZERODHA -> parseRows(rows) { parseFormatZerodha(header, it) }
+                BrokerFormat.FORMAT_IB_POSITIONS -> parseRows(rows) { parseFormatIbPositions(header, it) }
+                BrokerFormat.FORMAT_VESTED_TRADES -> aggregateVestedTrades(header, rows)
             }
-            if (holding != null) {
-                holdings.add(holding)
-            } else {
-                skipped++
+
+            if (holdings.isNotEmpty()) {
+                return ParseOutcome.Success(holdings, skipped)
             }
         }
 
-        if (holdings.isEmpty()) {
-            return ParseOutcome.Failure(
+        return if (anyFormatDetected) {
+            ParseOutcome.Failure(
                 "No valid holdings found in the file. The file may be empty or the columns could not be parsed."
             )
+        } else {
+            ParseOutcome.Failure(BrokerGuide.unrecognisedFormatMessage())
         }
+    }
 
-        return ParseOutcome.Success(holdings, skipped)
+    /** Runs a per-row parser over every row, returning the parsed holdings plus a skip count. */
+    private inline fun parseRows(
+        rows: List<RawRow>,
+        rowParser: (List<String>) -> UniversalHolding?
+    ): Pair<List<UniversalHolding>, Int> {
+        var skipped = 0
+        val holdings = mutableListOf<UniversalHolding>()
+        for (row in rows) {
+            val holding = rowParser(row.cols)
+            if (holding != null) holdings.add(holding) else skipped++
+        }
+        return holdings to skipped
     }
 
     // ── XLSX parser ───────────────────────────────────────────────────────────
@@ -415,15 +512,21 @@ private object BrokerCsvParser {
     //  xl/sharedStrings.xml  ->  string table; cells of type "s" point here by index
     //  xl/worksheets/sheet1.xml  ->  the actual grid rows/cells
 
-    /** Accepts already-buffered bytes so the caller can hash the file before parsing. */
-    private fun parseXlsx(bytes: ByteArray): Pair<List<String>, List<RawRow>>? {
-
+    /**
+     * Accepts already-buffered bytes so the caller can hash the file before parsing.
+     * Returns one (header, rows) candidate per sheet in the workbook — a workbook
+     * like Vested's "All Transactions" export has several sheets, and only one of
+     * them (Trades) carries data this parser recognises. [parse] tries each in turn.
+     */
+    private fun parseXlsxSheets(bytes: ByteArray): List<Pair<List<String>, List<RawRow>>> {
         val sharedStrings = readSharedStrings(bytes)
-        val rows = readSheetRows(bytes, sharedStrings)
+        return readAllSheetRows(bytes, sharedStrings).mapNotNull { rows -> toHeaderAndRows(rows) }
+    }
 
+    /** The first row with >= 4 non-blank cells is treated as a sheet's header. */
+    private fun toHeaderAndRows(rows: List<List<String>>): Pair<List<String>, List<RawRow>>? {
         if (rows.size < 2) return null
 
-        // The first row with >= 4 non-blank cells is treated as the header.
         val headerIdx = rows.indexOfFirst { cols -> cols.count { it.isNotBlank() } >= 4 }
         if (headerIdx < 0 || headerIdx >= rows.size - 1) return null
 
@@ -471,16 +574,22 @@ private object BrokerCsvParser {
         return result
     }
 
-    /** Parses xl/worksheets/sheet*.xml into a list-of-rows (each row = list of cell strings). */
-    private fun readSheetRows(
+    /**
+     * Parses every xl/worksheets/sheet*.xml into a list-of-rows (each row = list of cell
+     * strings), one entry per sheet. Earlier versions stopped at the first matching sheet
+     * entry — but the first sheet in the zip isn't necessarily the one with useful data
+     * (e.g. Vested's export puts an "My Account" info sheet before "Trades").
+     */
+    private fun readAllSheetRows(
         xlsxBytes: ByteArray,
         sharedStrings: List<String>
-    ): List<List<String>> {
-        val result = mutableListOf<List<String>>()
+    ): List<List<List<String>>> {
+        val sheets = mutableListOf<List<List<String>>>()
         ZipInputStream(xlsxBytes.inputStream()).use { zip ->
             var entry = zip.nextEntry
             while (entry != null) {
                 if (entry.name.matches(Regex("xl/worksheets/sheet\\d+\\.xml"))) {
+                    val result = mutableListOf<List<String>>()
                     val parser = android.util.Xml.newPullParser()
                     parser.setFeature(XmlPullParser.FEATURE_PROCESS_NAMESPACES, false)
                     parser.setInput(zip, "UTF-8")
@@ -534,12 +643,12 @@ private object BrokerCsvParser {
                         }
                         event = parser.next()
                     }
-                    break
+                    sheets.add(result)
                 }
                 entry = zip.nextEntry
             }
         }
-        return result
+        return sheets
     }
 
     /**
@@ -565,6 +674,65 @@ private object BrokerCsvParser {
             RawRow(line.split(delimiter).map { it.trim() })
         }
         return Pair(header, rows)
+    }
+
+    /**
+     * Interactive Brokers' Activity Statement CSV isn't one table — it's dozens of
+     * sections concatenated into one file. Every line is prefixed with its section
+     * name and a "Header"/"Data" marker, e.g.:
+     *   Open Positions,Header,DataDiscriminator,Asset Category,Currency,Symbol,...
+     *   Open Positions,Data,Summary,Stocks,USD,AAPL,...
+     * This extracts just the "Open Positions" section. Returns null for any file
+     * that isn't this format (e.g. a plain single-table CSV), so it's safe to try
+     * unconditionally before falling back to [parseCsv].
+     */
+    private fun parseIbActivityStatement(raw: String): Pair<List<String>, List<RawRow>>? {
+        val lines = raw.lines().map { it.trim().removePrefix("﻿") }.filter { it.isNotBlank() }
+
+        var header: List<String>? = null
+        val rows = mutableListOf<RawRow>()
+        for (line in lines) {
+            val cols = splitCsvLine(line)
+            if (cols.size < 3) continue
+            if (!cols[0].trim().equals("Open Positions", ignoreCase = true)) continue
+
+            val rest = cols.drop(2).map { it.trim() }
+            when (cols[1].trim()) {
+                "Header" -> header = rest.map { it.lowercase() }
+                "Data" -> if (header != null) rows.add(RawRow(rest))
+            }
+        }
+
+        val h = header ?: return null
+        if (rows.isEmpty()) return null
+        return Pair(h, rows)
+    }
+
+    /**
+     * Splits one CSV line on [delimiter], honouring double-quoted fields (which may
+     * contain the delimiter itself, e.g. IB's `"Two Pickwick Plaza, Greenwich, CT 06830"`).
+     * The plain `line.split(delimiter)` used elsewhere in this file is fine for the
+     * simpler broker exports, which never quote fields, but breaks on IB's file.
+     */
+    private fun splitCsvLine(line: String, delimiter: Char = ','): List<String> {
+        val result = mutableListOf<String>()
+        val field = StringBuilder()
+        var inQuotes = false
+        var i = 0
+        while (i < line.length) {
+            val c = line[i]
+            when {
+                c == '"' && inQuotes && i + 1 < line.length && line[i + 1] == '"' -> {
+                    field.append('"'); i++ // escaped quote
+                }
+                c == '"' -> inQuotes = !inQuotes
+                c == delimiter && !inQuotes -> { result.add(field.toString()); field.clear() }
+                else -> field.append(c)
+            }
+            i++
+        }
+        result.add(field.toString())
+        return result
     }
 
     // ── Row parsers ───────────────────────────────────────────────────────────
@@ -626,6 +794,114 @@ private object BrokerCsvParser {
         )
     }
 
+    // Format Zerodha: (blank) | Symbol | ISIN | Sector | Quantity Available | ... |
+    // Average Price | Previous Closing Price | ...  (real Console "Holdings" export —
+    // see BrokerFormat.FORMAT_ZERODHA doc.) Columns are looked up by header name rather
+    // than fixed position, since the leading blank column shifts every index by one.
+    private fun parseFormatZerodha(header: List<String>, cols: List<String>): UniversalHolding? {
+        val symbolIdx = header.indexOf("symbol")
+        val isinIdx = header.indexOf("isin")
+        val qtyIdx = header.indexOf("quantity available")
+        val avgIdx = header.indexOf("average price")
+        val closeIdx = header.indexOf("previous closing price")
+        if (symbolIdx < 0 || qtyIdx < 0 || avgIdx < 0 || closeIdx < 0) return null
+        if (cols.size <= maxOf(symbolIdx, qtyIdx, avgIdx, closeIdx)) return null
+
+        val symbol = cols[symbolIdx].ifBlank { return null }
+        val isin = isinIdx.takeIf { it >= 0 }?.let { cols.getOrNull(it) }?.ifBlank { null }
+        val quantity = cols[qtyIdx].toDoubleOrNull() ?: return null
+        val avgPrice = cols[avgIdx].toDoubleOrNull() ?: return null
+        val closePrice = cols[closeIdx].toDoubleOrNull() ?: return null
+
+        // No direct "current value" column in this export — derive it.
+        return UniversalHolding(
+            symbol = symbol.trim().uppercase(), isin = isin, quantity = quantity, avgBuyPrice = avgPrice,
+            currentValue = quantity * closePrice, currency = "INR", assetType = AssetType.STOCK_IN,
+            brokerSource = "Zerodha"
+        )
+    }
+
+    // Format IB Positions: DataDiscriminator | Asset Category | Currency | Symbol | Quantity |
+    // Mult | Cost Price | Cost Basis | Close Price | Value | Unrealized P/L | Code
+    // (the "Open Positions" section of IB's Activity Statement — see
+    // BrokerFormat.FORMAT_IB_POSITIONS doc and [parseIbActivityStatement].)
+    private fun parseFormatIbPositions(header: List<String>, cols: List<String>): UniversalHolding? {
+        val symbolIdx = header.indexOf("symbol")
+        val qtyIdx = header.indexOf("quantity")
+        val costPriceIdx = header.indexOf("cost price")
+        val valueIdx = header.indexOf("value")
+        val currencyIdx = header.indexOf("currency")
+        if (symbolIdx < 0 || qtyIdx < 0 || costPriceIdx < 0 || valueIdx < 0) return null
+        if (cols.size <= maxOf(symbolIdx, qtyIdx, costPriceIdx, valueIdx)) return null
+
+        val symbol = cols[symbolIdx].ifBlank { return null }
+        val quantity = cols[qtyIdx].toDoubleOrNull() ?: return null
+        val costPrice = cols[costPriceIdx].toDoubleOrNull() ?: return null
+        val value = cols[valueIdx].toDoubleOrNull() ?: return null
+        val currency = currencyIdx.takeIf { it >= 0 }?.let { cols.getOrNull(it) }?.ifBlank { null } ?: "USD"
+
+        return UniversalHolding(
+            symbol = symbol.trim().uppercase(), quantity = quantity, avgBuyPrice = costPrice,
+            currentValue = value, currency = currency, assetType = AssetType.STOCK_US,
+            brokerSource = "Interactive Brokers"
+        )
+    }
+
+    // Format Vested Trades: Date | Time (in UTC) | Name | Ticker | Activity | Order Type |
+    // Quantity | Price Per Share (in USD) | Cash Amount (in USD) | Commission Charges (in USD)
+    // (Vested's "Trades" sheet inside its "All Transactions" export — see
+    // BrokerFormat.FORMAT_VESTED_TRADES doc.)
+    //
+    // Unlike the other formats, this is a per-trade log, not a holdings snapshot — every
+    // buy/sell for a ticker is netted into one current quantity + weighted-average cost.
+    // Fractional-share buys/sells are common in Vested exports and are handled the same
+    // way as whole shares. currentValue is set to quantity * avgBuyPrice (break-even) and
+    // will be overwritten by the next live price refresh, same convention as Format C.
+    private fun aggregateVestedTrades(header: List<String>, rows: List<RawRow>): Pair<List<UniversalHolding>, Int> {
+        val tickerIdx = header.indexOf("ticker")
+        val activityIdx = header.indexOf("activity")
+        val qtyIdx = header.indexOf("quantity")
+        val priceIdx = header.indexOf("price per share (in usd)")
+        if (tickerIdx < 0 || activityIdx < 0 || qtyIdx < 0 || priceIdx < 0) {
+            return emptyList<UniversalHolding>() to rows.size
+        }
+
+        class Position(var quantity: Double = 0.0, var costBasis: Double = 0.0)
+        val byTicker = linkedMapOf<String, Position>()
+        var skipped = 0
+
+        for (row in rows) {
+            val cols = row.cols
+            val ticker = cols.getOrNull(tickerIdx)?.trim()?.uppercase()
+            val activity = cols.getOrNull(activityIdx)?.trim()?.lowercase()
+            val qty = cols.getOrNull(qtyIdx)?.toDoubleOrNull()
+            val price = cols.getOrNull(priceIdx)?.toDoubleOrNull()
+            if (ticker.isNullOrBlank() || activity == null || qty == null || price == null) {
+                skipped++
+                continue
+            }
+            val position = byTicker.getOrPut(ticker) { Position() }
+            when (activity) {
+                "buy" -> { position.quantity += qty; position.costBasis += qty * price }
+                "sell" -> { position.quantity -= qty; position.costBasis -= qty * price }
+                else -> skipped++ // dividends, fees, etc. — not a position change
+            }
+        }
+
+        val holdings = byTicker.mapNotNull { (ticker, position) ->
+            // A fully-exited position (or a rounding artifact) nets to ~0 — drop it
+            // rather than showing a phantom holding.
+            if (position.quantity <= 0.0) return@mapNotNull null
+            val avgPrice = position.costBasis / position.quantity
+            UniversalHolding(
+                symbol = ticker, quantity = position.quantity, avgBuyPrice = avgPrice,
+                currentValue = position.quantity * avgPrice, currency = "USD", assetType = AssetType.STOCK_US,
+                brokerSource = "Vested"
+            )
+        }
+        return holdings to skipped
+    }
+
     // ── Format / delimiter detection ──────────────────────────────────────────
 
     private fun detectCsvDelimiter(headerLine: String): String = when {
@@ -637,6 +913,17 @@ private object BrokerCsvParser {
     private fun detectFormat(headers: List<String>): BrokerFormat? {
         val joined = headers.joinToString("|")
         return when {
+            // These three checks must come first: each header also contains a substring
+            // ("isin", generic "quantity"/"symbol") that the older, looser checks below
+            // would otherwise misclassify — see each FORMAT_* doc comment for the real
+            // header this was reverse-engineered from.
+            joined.contains("quantity available") || joined.contains("previous closing price") ->
+                BrokerFormat.FORMAT_ZERODHA
+            joined.contains("datadiscriminator") && joined.contains("cost basis") ->
+                BrokerFormat.FORMAT_IB_POSITIONS
+            joined.contains("ticker") && joined.contains("order type") ->
+                BrokerFormat.FORMAT_VESTED_TRADES
+
             joined.contains("stock name") || joined.contains("isin") -> BrokerFormat.FORMAT_A
             joined.contains("instrument") || joined.contains("avg. cost") ||
                 joined.contains("cur. val") || joined.contains("qty.") -> BrokerFormat.FORMAT_B

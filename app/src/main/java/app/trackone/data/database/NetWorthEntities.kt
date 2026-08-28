@@ -1,6 +1,7 @@
 package app.trackone.data.database
 
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 
 enum class AssetType {
@@ -45,7 +46,7 @@ enum class TransactionType { BUY, SELL }
  * dates. Real per-trade history requires importing the broker's tradebook/transaction
  * statement instead, which isn't wired up yet.
  */
-@Entity(tableName = "networth_transactions")
+@Entity(tableName = "networth_transactions", indices = [Index(value = ["assetId"])])
 data class NetWorthTransactionEntity(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,

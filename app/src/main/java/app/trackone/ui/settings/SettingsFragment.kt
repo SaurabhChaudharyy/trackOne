@@ -4,6 +4,7 @@ import android.app.Activity
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.os.SystemClock
 import android.text.format.DateUtils
 import android.view.LayoutInflater
 import android.view.View
@@ -51,6 +52,30 @@ class SettingsFragment : Fragment() {
 
     /** Non-cancelable Activity-level dialog — blocks the entire window (including bottom nav). */
     private var blockingDialog: AlertDialog? = null
+    private var blockingProgressBar: ProgressBar? = null
+    private var blockingMessageView: TextView? = null
+
+    /** Tracks whichever confirmation/result dialog is currently on screen, so a second one
+     *  (e.g. from a double-tap firing the triggering click listener twice) can't stack on
+     *  top of it — see [setOnDebouncedClickListener] and its use on [FragmentSettingsBinding.rowClearLocalData]. */
+    private var activeDialog: AlertDialog? = null
+
+    /**
+     * Same as [View.setOnClickListener], but ignores a second tap that lands within
+     * [intervalMs] of the first. Guards against a fast double-tap firing a dialog-opening
+     * listener twice — which can stack two identical confirmation dialogs, where dismissing
+     * the top one (thinking you've cancelled) leaves the second showing underneath.
+     */
+    private fun View.setOnDebouncedClickListener(intervalMs: Long = 700L, action: (View) -> Unit) {
+        var lastClickAt = 0L
+        setOnClickListener { v ->
+            val now = SystemClock.elapsedRealtime()
+            if (now - lastClickAt >= intervalMs) {
+                lastClickAt = now
+                action(v)
+            }
+        }
+    }
 
     // ── Activity Result Launchers ─────────────────────────────────────────
 
@@ -129,21 +154,33 @@ class SettingsFragment : Fragment() {
         }
 
         // Sign Out
-        binding.btnSignOut.setOnClickListener {
+        binding.btnSignOut.setOnDebouncedClickListener {
             it.performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY)
             showSignOutConfirmation()
         }
 
         // Backup to Cloud
-        binding.rowBackup.setOnClickListener {
+        binding.rowBackup.setOnDebouncedClickListener {
             it.performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY)
             showBackupConfirmation()
         }
 
         // Restore from Cloud
-        binding.rowRestore.setOnClickListener {
+        binding.rowRestore.setOnDebouncedClickListener {
             it.performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY)
             showRestoreConfirmation()
+        }
+
+        // Clear Local Data — local-only wipe, available whether signed in or not.
+        //
+        // Debounced: a fast double-tap used to fire this listener twice before the first
+        // confirmation dialog was visible, stacking two identical dialogs. Tapping "Cancel"
+        // only dismissed the top one, leaving the second dialog underneath — a further tap
+        // to dismiss it (in the same screen position) could land on its "Clear" button
+        // instead, wiping local data right after the user thought they'd cancelled.
+        binding.rowClearLocalData.setOnDebouncedClickListener {
+            it.performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY)
+            showClearLocalDataConfirmation()
         }
 
         // Broker CSV Import
@@ -417,10 +454,11 @@ class SettingsFragment : Fragment() {
             is CloudBackupUiState.SyncingUp -> showBlockingProgress("Backing up to cloud…")
             is CloudBackupUiState.SyncingDown -> showBlockingProgress("Restoring from cloud…")
             is CloudBackupUiState.FetchingPrices -> showBlockingProgress("Fetching live prices…")
+            is CloudBackupUiState.Clearing -> showBlockingProgress("Clearing local data…")
             is CloudBackupUiState.Success -> {
                 dismissBlockingProgress()
                 cloudBackupViewModel.resetState()
-                showSuccessDialog(title = "Backup complete", message = state.message)
+                showSuccessDialog(title = state.title, message = state.message)
             }
             is CloudBackupUiState.Error -> {
                 dismissBlockingProgress()
@@ -443,8 +481,8 @@ class SettingsFragment : Fragment() {
     private fun handleCsvImportState(state: CsvImportUiState) {
         when (state) {
             is CsvImportUiState.Idle -> dismissBlockingProgress()
-            is CsvImportUiState.Loading -> showBlockingProgress("Importing…")
-            is CsvImportUiState.FetchingPrices -> showBlockingProgress("Fetching live prices…")
+            is CsvImportUiState.Loading -> showBlockingProgress("Importing…", state.current, state.total)
+            is CsvImportUiState.FetchingPrices -> showBlockingProgress("Fetching live prices…", state.current, state.total)
             is CsvImportUiState.Success -> {
                 dismissBlockingProgress()
                 csvImportViewModel.resetState()
@@ -469,15 +507,31 @@ class SettingsFragment : Fragment() {
      * This covers the bottom navigation bar and all other fragments,
      * preventing any tab switching or back-press while the operation runs.
      *
-     * Calling this again while the dialog is showing just updates the label.
+     * Calling this again while the dialog is showing just updates the label and progress.
+     *
+     * @param current/[total] when [total] > 0, the spinner switches to a determinate progress
+     * bar with a "N%" label — reassurance that a slow step (e.g. importing many holdings, or
+     * fetching live prices one symbol at a time) is actually moving, not stuck. When [total]
+     * is 0 (unknown length), it falls back to an indeterminate spinner.
      */
-    private fun showBlockingProgress(message: String) {
+    private fun showBlockingProgress(message: String, current: Int = 0, total: Int = 0) {
         if (!isAdded) return
 
-        // If already showing, just update the message text
+        val fullMessage = if (total > 0) "$message ${current * 100 / total}%" else message
+
+        // If already showing, just update the message text and progress in place.
         val existing = blockingDialog
         if (existing?.isShowing == true) {
-            existing.findViewById<TextView>(android.R.id.message)?.text = message
+            blockingMessageView?.text = fullMessage
+            blockingProgressBar?.apply {
+                if (total > 0) {
+                    isIndeterminate = false
+                    max = total
+                    progress = current
+                } else {
+                    isIndeterminate = true
+                }
+            }
             return
         }
 
@@ -488,21 +542,29 @@ class SettingsFragment : Fragment() {
             gravity     = android.view.Gravity.CENTER_VERTICAL
             setPadding((24 * dp).toInt(), (24 * dp).toInt(), (24 * dp).toInt(), (24 * dp).toInt())
         }
-        row.addView(ProgressBar(requireContext()).apply {
-            isIndeterminate = true
-            layoutParams    = LinearLayout.LayoutParams((36 * dp).toInt(), (36 * dp).toInt())
-        })
-        row.addView(TextView(requireContext()).apply {
-            id       = android.R.id.message
-            text     = message
+        val progressBar = ProgressBar(
+            requireContext(),
+            null,
+            if (total > 0) android.R.attr.progressBarStyleHorizontal else android.R.attr.progressBarStyle
+        ).apply {
+            isIndeterminate = total <= 0
+            if (total > 0) { max = total; progress = current }
+            layoutParams = LinearLayout.LayoutParams((36 * dp).toInt(), (36 * dp).toInt())
+        }
+        row.addView(progressBar)
+        val messageView = TextView(requireContext()).apply {
+            text     = fullMessage
             textSize = 15f
             setTextColor(requireContext().getColor(android.R.color.darker_gray))
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
             ).also { it.marginStart = (16 * dp).toInt() }
-        })
+        }
+        row.addView(messageView)
 
+        blockingProgressBar = progressBar
+        blockingMessageView = messageView
         blockingDialog = MaterialAlertDialogBuilder(requireActivity())
             .setView(row)
             .setCancelable(false)               // blocks back-press
@@ -516,6 +578,8 @@ class SettingsFragment : Fragment() {
     private fun dismissBlockingProgress() {
         blockingDialog?.dismiss()
         blockingDialog = null
+        blockingProgressBar = null
+        blockingMessageView = null
     }
 
     // ── Confirmation dialogs ──────────────────────────────────────────────
@@ -523,12 +587,17 @@ class SettingsFragment : Fragment() {
     /** Shows exactly which report to export from each supported broker, and where to find it. */
     private fun showBrokerFileGuideDialog() {
         if (!isAdded) return
-        val message = app.trackone.data.repository.BrokerGuide.entries.joinToString("\n\n") { entry ->
-            "${entry.broker}\n${entry.whereToExport}\n${entry.note}"
+        val binding = app.trackone.databinding.DialogBrokerFileGuideBinding.inflate(LayoutInflater.from(requireContext()))
+        val inflater = LayoutInflater.from(requireContext())
+        app.trackone.data.repository.BrokerGuide.entries.forEach { entry ->
+            val row = app.trackone.databinding.ItemBrokerGuideBinding.inflate(inflater, binding.llBrokerRows, true)
+            row.tvBrokerName.text = entry.broker
+            row.tvBrokerSource.text = entry.source
+            row.tvBrokerPath.text = "${entry.path} · ${entry.format}"
+            row.tvBrokerNote.text = entry.note
         }
         MaterialAlertDialogBuilder(requireContext())
-            .setTitle("Which file do I upload?")
-            .setMessage(message)
+            .setView(binding.root)
             .setPositiveButton("Got it") { dlg, _ -> dlg.dismiss() }
             .show()
     }
@@ -584,6 +653,34 @@ class SettingsFragment : Fragment() {
             )
             .setPositiveButton("Restore") { dlg, _ -> dlg.dismiss(); cloudBackupViewModel.restoreFromCloud() }
             .setNegativeButton("Cancel") { dlg, _ -> dlg.dismiss() }
+            .show()
+    }
+
+    /**
+     * The warning adapts to whether a cloud backup actually exists: if it does, this data
+     * is recoverable via Restore, so the copy says so instead of implying total loss.
+     */
+    private fun showClearLocalDataConfirmation() {
+        if (!isAdded) return
+        // Belt-and-braces alongside the debounced click listener: never let a second copy
+        // of this dialog stack on top of one that's already showing.
+        if (activeDialog?.isShowing == true) return
+
+        val hasCloudBackup = cloudBackupViewModel.lastSyncTime.value != null
+        val recoveryLine = if (hasCloudBackup) {
+            "Your cloud backup won't be touched — you can bring this data back anytime with Restore from Cloud."
+        } else {
+            "You don't have a cloud backup, so this data will be gone for good."
+        }
+        activeDialog = MaterialAlertDialogBuilder(requireContext())
+            .setTitle("Clear local data?")
+            .setMessage(
+                "This erases all watchlists and investments stored on this device.\n\n" +
+                "$recoveryLine\n\nThis action cannot be undone. Continue?"
+            )
+            .setPositiveButton("Clear") { dlg, _ -> dlg.dismiss(); cloudBackupViewModel.clearLocalData() }
+            .setNegativeButton("Cancel") { dlg, _ -> dlg.dismiss() }
+            .setOnDismissListener { activeDialog = null }
             .show()
     }
 

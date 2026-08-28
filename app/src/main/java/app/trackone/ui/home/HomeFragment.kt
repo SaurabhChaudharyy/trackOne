@@ -641,7 +641,9 @@ class HomeFragment : Fragment() {
                 val isOpen = MarketUtils.isUsMarketOpen()
                 tvTitle.text  = "NYSE / NASDAQ"
                 tvStatus.text = if (isOpen) "OPEN" else "CLOSED"
-                tvStatus.setTextColor(requireContext().getColor(if (isOpen) R.color.background else R.color.text_primary))
+                // Neon pill (isOpen) needs dark text for contrast — white ("background") is
+                // unreadable on the neon highlight color, so use text_primary for both states.
+                tvStatus.setTextColor(requireContext().getColor(R.color.text_primary))
                 tvStatus.backgroundTintList = android.content.res.ColorStateList.valueOf(
                     requireContext().getColor(if (isOpen) R.color.neon_highlight else R.color.surface_variant)
                 )
@@ -655,7 +657,9 @@ class HomeFragment : Fragment() {
                 val isOpen = MarketUtils.isIndiaMarketOpen()
                 tvTitle.text  = "NSE / BSE"
                 tvStatus.text = if (isOpen) "OPEN" else "CLOSED"
-                tvStatus.setTextColor(requireContext().getColor(if (isOpen) R.color.background else R.color.text_primary))
+                // Neon pill (isOpen) needs dark text for contrast — white ("background") is
+                // unreadable on the neon highlight color, so use text_primary for both states.
+                tvStatus.setTextColor(requireContext().getColor(R.color.text_primary))
                 tvStatus.backgroundTintList = android.content.res.ColorStateList.valueOf(
                     requireContext().getColor(if (isOpen) R.color.neon_highlight else R.color.surface_variant)
                 )

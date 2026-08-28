@@ -25,6 +25,9 @@ interface NetWorthTransactionDao {
     @Query("SELECT * FROM networth_transactions ORDER BY transactionDate DESC")
     fun getAllTransactions(): LiveData<List<NetWorthTransactionEntity>>
 
+    @Query("SELECT * FROM networth_transactions ORDER BY transactionDate DESC")
+    suspend fun getAllTransactionsSync(): List<NetWorthTransactionEntity>
+
     @Query("DELETE FROM networth_transactions WHERE assetId = :assetId")
     suspend fun deleteTransactionsForAsset(assetId: Long)
 

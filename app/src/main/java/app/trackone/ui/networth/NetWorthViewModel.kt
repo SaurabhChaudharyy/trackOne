@@ -19,6 +19,21 @@ class NetWorthViewModel @Inject constructor(
     val allAssets: LiveData<List<NetWorthAssetEntity>> = netWorthDao.getAllAssets()
     val totalNetWorth: LiveData<Double?> = netWorthDao.getTotalNetWorth()
 
+    private val _isRefreshing = MutableLiveData(false)
+    val isRefreshing: LiveData<Boolean> = _isRefreshing
+
+    /**
+     * Pull-to-refresh: re-fetches live prices for every asset. [allAssets]/[totalNetWorth]
+     * update on their own once Room's write lands — this just needs to trigger the fetch
+     * and flip the spinner off when it's done. Always forced, since the user explicitly
+     * asked for it.
+     */
+    fun refresh() = viewModelScope.launch {
+        _isRefreshing.value = true
+        netWorthRepository.refreshNetWorthAssets(force = true)
+        _isRefreshing.value = false
+    }
+
     fun addAsset(asset: NetWorthAssetEntity) = viewModelScope.launch {
         netWorthDao.insertAsset(asset)
     }

@@ -46,7 +46,8 @@ class StockRemoteViewsFactory(
 
     private fun loadData() {
         stocks = runBlocking {
-            repository.getWatchlistSync()
+            val groupId = WidgetPrefs.getGroupId(context, widgetId)
+            repository.getWatchlistStocksSyncByGroup(groupId)
         }
     }
 

@@ -2,15 +2,22 @@ package app.trackone.ui.home
 
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.trackone.data.database.AssetType
+import app.trackone.data.database.NetWorthAssetEntity
 import app.trackone.data.database.NetWorthDao
 import app.trackone.data.database.StockEntity
 import app.trackone.data.repository.NetWorthRepository
 import app.trackone.data.repository.StockRepository
 import app.trackone.utils.Resource
+import app.trackone.utils.SymbolUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -59,6 +66,13 @@ class HomeViewModel @Inject constructor(
     private val netWorthDao: NetWorthDao
 ) : ViewModel() {
 
+    companion object {
+        /** How long to let the Home screen finish its initial layout/animation before the
+         *  passive live-price refresh (which does a network call per asset) starts competing
+         *  for CPU/IO. */
+        private const val STARTUP_REFRESH_DELAY_MS = 1200L
+    }
+
     // ── Market Indexes ──────────────────────────────────────────────────
     private val _nifty   = MutableLiveData<Resource<IndexData>>()
     val nifty: LiveData<Resource<IndexData>> = _nifty
@@ -93,13 +107,36 @@ class HomeViewModel @Inject constructor(
     private val _isLoading = MutableLiveData<Boolean>(false)
     val isLoading: LiveData<Boolean> = _isLoading
 
+    // ── Reactive net worth observer ─────────────────────────────────────
+    // Room invalidates this LiveData on ANY write to networth_assets — a manual edit,
+    // a broker CSV import, or (critically) Settings' Clear Local Data / Restore from
+    // Cloud, which happen on a totally different screen/ViewModel with no direct link
+    // back here. Without this, Home only ever recomputed on init or swipe-to-refresh,
+    // so those actions left it showing stale numbers until the user manually refreshed.
+    private val netWorthAssetsLiveData: LiveData<List<NetWorthAssetEntity>> = netWorthDao.getAllAssets()
+    private val netWorthAssetsObserver = Observer<List<NetWorthAssetEntity>> { assets ->
+        _portfolioSummary.value = buildPortfolioSummary(assets)
+        _portfolioChartData.value = buildPortfolioChartData(assets)
+    }
+
     init {
+        // Recompute the summary/chart whenever the underlying table changes, for as
+        // long as this ViewModel is alive — not just while the Fragment's view exists.
+        netWorthAssetsLiveData.observeForever(netWorthAssetsObserver)
         // 1️⃣ Show cached data immediately (instant — no network)
         viewModelScope.launch { loadCachedPortfolio() }
-        // 2️⃣ Refresh live prices in background; emit banner event if values changed
-        viewModelScope.launch { refreshLivePricesQuietly() }
+        // 2️⃣ Refresh live prices in background; emit banner event if values changed.
+        // Delayed slightly so this doesn't compete with the cached data above for CPU/IO
+        // while the screen is still laying out and animating in — a network refresh landing
+        // mid-launch was the main cause of values visibly changing right after opening the app.
+        viewModelScope.launch { delay(STARTUP_REFRESH_DELAY_MS); refreshLivePricesQuietly() }
         // 3️⃣ Fetch indexes + top movers (also background)
         viewModelScope.launch { fetchIndexes(); fetchTopMovers() }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        netWorthAssetsLiveData.removeObserver(netWorthAssetsObserver)
     }
 
     // ───────────────────────────────────────────────────────────────
@@ -107,14 +144,26 @@ class HomeViewModel @Inject constructor(
     /**
      * Called on swipe-to-refresh. Shows loading indicator, re-fetches everything,
      * and applies the live values directly (no banner — user explicitly requested it).
+     *
+     * The spinner is meant to track real work, not a fixed timer — dismissing it early while
+     * a refresh is still in flight would just bring back the "values change after the spinner
+     * already said done" problem. So instead of shortening how long it shows, this shortens
+     * how long the refresh actually takes: net worth, indexes, and top movers don't depend on
+     * each other's results, so they now run concurrently instead of one after another — the
+     * spinner's total duration becomes the slowest of the three, not their sum.
      */
     fun fetchAll() {
         viewModelScope.launch {
             _isLoading.value = true
-            // Apply live prices to DB first, then recompute
-            netWorthRepository.refreshNetWorthAssets()
-            fetchIndexes()
-            fetchTopMovers()
+            coroutineScope {
+                // Forced — the user explicitly pulled to refresh, so this must actually run
+                // rather than being skipped by the passive-refresh throttle.
+                launch { netWorthRepository.refreshNetWorthAssets(force = true) }
+                launch { fetchIndexes() }
+                launch { fetchTopMovers() }
+            }
+            // Both read the DB values netWorthRepository just wrote above, so these must
+            // wait for the whole coroutineScope block (and therefore all three) to finish.
             computePortfolioSummary()
             computePortfolioChartData()
             _isLoading.value = false
@@ -189,6 +238,10 @@ class HomeViewModel @Inject constructor(
      * Finds up to 3 portfolio holdings with the largest absolute daily % change.
      * Only considers fetchable asset types: Indian stocks, US stocks, crypto, gold, silver.
      * Deduplicates by symbol so we don't double-fetch.
+     *
+     * Fetched concurrently rather than one at a time — sequentially, a large portfolio meant
+     * dozens of network round trips in a row (up to two HTTP calls each) just to populate this
+     * one section, which is most of what "extensive loading" on Home launch actually was.
      */
     private suspend fun fetchTopMovers() {
         val fetchableTypes = setOf(
@@ -204,27 +257,30 @@ class HomeViewModel @Inject constructor(
             return
         }
 
-        val results = mutableListOf<TopMover>()
-
-        for (asset in assets) {
-            val symbol = when (asset.assetType) {
-                AssetType.GOLD   -> "GC=F"
-                AssetType.SILVER -> "SI=F"
-                else             -> asset.name
-            }
-            val result = repository.fetchAndCacheStock(symbol)
-            if (result is Resource.Success) {
-                val stock = result.data
-                val currentVal = stock.currentPrice * asset.quantity
-                val invested   = if (asset.buyPrice > 0.0) asset.buyPrice * asset.quantity else 0.0
-                results.add(TopMover(
-                    stock      = stock,
-                    invested   = invested,
-                    currentVal = currentVal,
-                    qty        = asset.quantity
-                ))
-            }
-        }
+        val results = coroutineScope {
+            assets.map { asset ->
+                async {
+                    val symbol = when (asset.assetType) {
+                        AssetType.GOLD     -> "GC=F"
+                        AssetType.SILVER   -> "SI=F"
+                        // Same NSE-suffix fix as NetWorthRepository — a bare broker-imported
+                        // ticker like "IEX" would otherwise resolve to an unrelated US company.
+                        AssetType.STOCK_IN -> SymbolUtils.normaliseIndianSymbol(asset.name)
+                        else               -> asset.name
+                    }
+                    val result = repository.fetchAndCacheStock(symbol)
+                    if (result is Resource.Success) {
+                        val stock = result.data
+                        TopMover(
+                            stock      = stock,
+                            invested   = if (asset.buyPrice > 0.0) asset.buyPrice * asset.quantity else 0.0,
+                            currentVal = stock.currentPrice * asset.quantity,
+                            qty        = asset.quantity
+                        )
+                    } else null
+                }
+            }.awaitAll()
+        }.filterNotNull()
 
         // Sort by absolute % change descending, take top 5
         val top5 = results.sortedByDescending { kotlin.math.abs(it.stock.changePercent) }.take(5)
@@ -236,8 +292,8 @@ class HomeViewModel @Inject constructor(
      * Assets with buyPrice == 0 are counted as break-even.
      * Returns null if there are no assets.
      */
-    private suspend fun buildPortfolioSummary(): PortfolioSummary? {
-        val assets = netWorthDao.getAllAssetsSync()
+    /** Pure — no DB access — so both the reactive observer and the suspend callers can share it. */
+    private fun buildPortfolioSummary(assets: List<NetWorthAssetEntity>): PortfolioSummary? {
         if (assets.isEmpty()) return null
 
         var totalInvested = 0.0
@@ -261,6 +317,9 @@ class HomeViewModel @Inject constructor(
         )
     }
 
+    private suspend fun buildPortfolioSummary(): PortfolioSummary? =
+        buildPortfolioSummary(netWorthDao.getAllAssetsSync())
+
     private suspend fun computePortfolioSummary() {
         _portfolioSummary.postValue(buildPortfolioSummary())
     }
@@ -271,12 +330,9 @@ class HomeViewModel @Inject constructor(
      * becomes a data point showing cumulative invested + current values up to that day.
      * We append today as the final "live" point using current market values.
      */
-    private suspend fun computePortfolioChartData() {
-        val assets = netWorthDao.getAllAssetsSync()
-        if (assets.size < 2) {
-            _portfolioChartData.postValue(emptyList())
-            return
-        }
+    /** Pure — no DB access — so both the reactive observer and the suspend callers can share it. */
+    private fun buildPortfolioChartData(assets: List<NetWorthAssetEntity>): List<PortfolioChartPoint> {
+        if (assets.size < 2) return emptyList()
 
         // Sort by when each asset was added
         val sorted = assets.sortedBy { it.addedAt }
@@ -311,6 +367,10 @@ class HomeViewModel @Inject constructor(
             )
         }
 
-        _portfolioChartData.postValue(points)
+        return points
+    }
+
+    private suspend fun computePortfolioChartData() {
+        _portfolioChartData.postValue(buildPortfolioChartData(netWorthDao.getAllAssetsSync()))
     }
 }

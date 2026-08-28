@@ -127,6 +127,7 @@ class NetWorthFragment : Fragment() {
         setupAddButtons()
         setupViewAllButtons()
         setupSelectionBar()
+        setupSwipeRefresh()
         observeViewModel()
 
         // Exit selection mode on back press instead of leaving the fragment
@@ -143,6 +144,16 @@ class NetWorthFragment : Fragment() {
                 }
             }
         )
+    }
+
+    /** Pull-to-refresh: re-fetches live prices for every asset (forced — bypasses the
+     *  passive-refresh throttle other screens' automatic refreshes are subject to). */
+    private fun setupSwipeRefresh() {
+        binding.swipeRefreshLayout.setOnRefreshListener { viewModel.refresh() }
+        binding.swipeRefreshLayout.setColorSchemeResources(R.color.primary)
+        viewModel.isRefreshing.observe(viewLifecycleOwner) { isRefreshing ->
+            binding.swipeRefreshLayout.isRefreshing = isRefreshing
+        }
     }
 
     private fun setupRecyclerViews() {

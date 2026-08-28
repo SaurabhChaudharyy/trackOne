@@ -16,6 +16,11 @@ interface StockDao {
     @Query("SELECT * FROM stocks WHERE symbol IN (SELECT symbol FROM watchlist) ORDER BY (SELECT MIN(position) FROM watchlist WHERE watchlist.symbol = stocks.symbol)")
     suspend fun getWatchlistStocksSync(): List<StockEntity>
 
+    // Same shape as [getWatchlistStocksSync], but scoped to one group — used by the home
+    // screen widget, where each widget instance shows exactly one watchlist.
+    @Query("SELECT * FROM stocks WHERE symbol IN (SELECT symbol FROM watchlist WHERE groupId = :groupId) ORDER BY (SELECT position FROM watchlist WHERE watchlist.symbol = stocks.symbol AND watchlist.groupId = :groupId)")
+    suspend fun getWatchlistStocksSyncByGroup(groupId: Long): List<StockEntity>
+
     @Query("SELECT * FROM stocks WHERE symbol = :symbol")
     suspend fun getStock(symbol: String): StockEntity?
 

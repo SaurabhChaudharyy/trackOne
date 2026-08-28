@@ -15,9 +15,10 @@ import javax.inject.Inject
 
 sealed class CsvImportUiState {
     object Idle : CsvImportUiState()
-    object Loading : CsvImportUiState()
-    /** Shown after CSV rows are parsed — while live prices are being fetched. */
-    object FetchingPrices : CsvImportUiState()
+    /** [current]/[total] holdings persisted to the DB so far; 0/0 until the file is parsed. */
+    data class Loading(val current: Int = 0, val total: Int = 0) : CsvImportUiState()
+    /** Shown after CSV rows are parsed — while live prices are being fetched, one asset at a time. */
+    data class FetchingPrices(val current: Int = 0, val total: Int = 0) : CsvImportUiState()
     data class Success(val imported: Int, val skipped: Int) : CsvImportUiState()
     data class Error(val message: String) : CsvImportUiState()
 }
@@ -34,15 +35,25 @@ class CsvImportViewModel @Inject constructor(
 
     fun importBrokerCsv(uri: Uri) {
         viewModelScope.launch {
-            _state.value = CsvImportUiState.Loading
-            when (val result = brokerCsvRepository.importFromUri(uri)) {
+            _state.value = CsvImportUiState.Loading()
+            val result = brokerCsvRepository.importFromUri(uri) { current, total ->
+                _state.value = CsvImportUiState.Loading(current, total)
+            }
+            when (result) {
                 is CsvImportResult.Failure -> {
                     _state.value = CsvImportUiState.Error(result.reason)
                 }
                 is CsvImportResult.Success -> {
-                    // CSV parsed — now fetch live prices and convert USD→INR
-                    _state.value = CsvImportUiState.FetchingPrices
-                    netWorthRepository.refreshNetWorthAssets()
+                    // CSV parsed and persisted — now fetch live prices and convert USD→INR.
+                    // This is a sequential per-asset network call, so it's usually the
+                    // slowest part of a large import — hence its own progress count.
+                    // Forced: the newly-imported holdings have never had a live price yet,
+                    // so this must run now rather than being skipped by the passive-refresh
+                    // throttle.
+                    _state.value = CsvImportUiState.FetchingPrices()
+                    netWorthRepository.refreshNetWorthAssets(force = true) { current, total ->
+                        _state.value = CsvImportUiState.FetchingPrices(current, total)
+                    }
                     _state.value = CsvImportUiState.Success(result.imported, result.skipped)
                 }
             }
