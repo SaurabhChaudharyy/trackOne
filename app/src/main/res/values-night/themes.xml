@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Dark-mode overrides. Only the bits that must flip with the background
+  (status/nav bar icon contrast) live here — everything else is inherited
+  from values/themes.xml and adapts automatically via values-night/colors.xml.
+-->
+<resources>
+
+    <style name="Theme.FinanceWidget" parent="Theme.Material3.DayNight.NoActionBar">
+        <!-- android:statusBarColor is @color/background, which is now dark,
+             so its icons need to be light. The nav bar stays the constant
+             black @color/nav_bar_bg in both themes, so windowLightNavigationBar
+             stays false and needs no override here. -->
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+
+    <style name="Theme.FinanceWidget.Splash" parent="Theme.Material3.DayNight.NoActionBar">
+        <!-- Splash's status AND nav bar both use @color/background, which is
+             dark now, so both need light icons. -->
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
+    </style>
+
+</resources>

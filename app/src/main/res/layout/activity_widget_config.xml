@@ -99,7 +99,7 @@
             android:textColor="@color/on_primary"
             android:insetTop="0dp"
             android:insetBottom="0dp"
-            app:backgroundTint="@color/text_primary"
+            app:backgroundTint="@color/primary"
             app:cornerRadius="8dp"/>
     </LinearLayout>
 

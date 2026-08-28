@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Dark-mode palette. Only surfaces, text, and soft tinted backgrounds flip here —
+  the brand's constant "ink" (primary/on_primary, nav bar, neon/loss accents,
+  category dots) stays the same in both themes by design and is intentionally
+  left out of this file so it inherits from values/colors.xml unchanged.
+-->
+<resources>
+
+    <color name="background">#09090B</color>
+    <color name="background_dark">#09090B</color>
+    <color name="surface_color">#18181B</color>
+    <color name="surface_variant">#27272A</color>
+    <color name="error_background">#2A1414</color>
+
+    <color name="divider_color">#27272A</color>
+    <color name="border_color">#27272A</color>
+
+    <color name="text_primary">#FAFAFA</color>
+    <color name="text_secondary">#A1A1AA</color>
+    <color name="text_tertiary">#71717A</color>
+
+    <color name="loss_red_bg">#2A1414</color>
+
+    <color name="widget_background">#CC18181B</color>
+    <color name="widget_surface">#CC27272A</color>
+
+    <color name="overlay_scrim">#80000000</color>
+</resources>

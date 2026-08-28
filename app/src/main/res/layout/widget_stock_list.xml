@@ -22,7 +22,7 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:text="TrackOne"
-            android:textColor="#09090B"
+            android:textColor="@color/text_primary"
             android:textSize="12sp"
             android:textStyle="bold"
             android:fontFamily="@font/inter_bold"/>
@@ -39,7 +39,7 @@
     <ImageView
         android:layout_width="match_parent"
         android:layout_height="1dp"
-        android:background="#E4E4E7"/>
+        android:background="@color/divider_color"/>
 
     <ListView
         android:id="@+id/widget_list_view"
@@ -64,7 +64,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="No stocks added"
-            android:textColor="#71717A"
+            android:textColor="@color/text_secondary"
             android:textSize="12sp"
             android:fontFamily="@font/inter"/>
 
@@ -73,7 +73,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Tap to add stocks"
-            android:textColor="#A1A1AA"
+            android:textColor="@color/text_tertiary"
             android:textSize="11sp"
             android:layout_marginTop="4dp"
             android:fontFamily="@font/inter"/>

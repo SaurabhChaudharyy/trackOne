@@ -411,7 +411,9 @@ class HomeFragment : Fragment() {
         pill.background = requireContext().getDrawable(
             if (isGain) R.drawable.bg_gain_pill else R.drawable.bg_loss_pill
         )
-        val blackColor = requireContext().getColor(R.color.text_primary)
+        // Pill has a solid neon/red fill in both themes, so its ink stays the
+        // constant near-black @color/primary rather than the flippable text_primary.
+        val blackColor = requireContext().getColor(R.color.primary)
         tvChange.setTextColor(blackColor)
         ivTrend.setImageResource(
             if (isGain) R.drawable.ic_trending_up else R.drawable.ic_trending_down
@@ -502,15 +504,16 @@ class HomeFragment : Fragment() {
         }
         val ivTrend = ImageView(requireContext()).apply {
             setImageResource(if (isGain) R.drawable.ic_trending_up else R.drawable.ic_trending_down)
+            // Ink for the gain/loss pill's solid fill — stays constant across themes.
             imageTintList = android.content.res.ColorStateList.valueOf(
-                requireContext().getColor(R.color.text_primary)
+                requireContext().getColor(R.color.primary)
             )
             layoutParams = LinearLayout.LayoutParams(9.dp, 9.dp).also { it.marginEnd = 2.dp }
         }
         val tvChange = TextView(requireContext()).apply {
             text = FormatUtils.formatChangePercent(stock.changePercent)
             textSize = 10f
-            setTextColor(requireContext().getColor(R.color.text_primary))
+            setTextColor(requireContext().getColor(R.color.primary))
         }
         pill.addView(ivTrend)
         pill.addView(tvChange)
@@ -581,8 +584,9 @@ class HomeFragment : Fragment() {
             val pctStr   = FormatUtils.formatChangePercent(summary.pctChange)
             binding.tvPortfolioPnl.text = "$arrow $absStr ($pctStr)"
 
-            // Highlighter effect: black bold text on neon wash for gain, red on red-tint for loss
-            val textColor = requireContext().getColor(R.color.text_primary)
+            // Highlighter effect: black bold text on neon wash for gain, red on red-tint for loss.
+            // Constant @color/primary, not text_primary — the pill's fill doesn't flip with theme.
+            val textColor = requireContext().getColor(R.color.primary)
 
             binding.tvPortfolioPnl.setTextColor(textColor)
             binding.tvPortfolioPnl.setTypeface(
@@ -642,8 +646,12 @@ class HomeFragment : Fragment() {
                 tvTitle.text  = "NYSE / NASDAQ"
                 tvStatus.text = if (isOpen) "OPEN" else "CLOSED"
                 // Neon pill (isOpen) needs dark text for contrast — white ("background") is
-                // unreadable on the neon highlight color, so use text_primary for both states.
-                tvStatus.setTextColor(requireContext().getColor(R.color.text_primary))
+                // unreadable on the neon highlight color, so use the constant @color/primary
+                // ink there. The closed pill sits on @color/surface_variant, which flips with
+                // the theme, so it needs the flippable text_primary to stay readable.
+                tvStatus.setTextColor(
+                    requireContext().getColor(if (isOpen) R.color.primary else R.color.text_primary)
+                )
                 tvStatus.backgroundTintList = android.content.res.ColorStateList.valueOf(
                     requireContext().getColor(if (isOpen) R.color.neon_highlight else R.color.surface_variant)
                 )
@@ -658,8 +666,12 @@ class HomeFragment : Fragment() {
                 tvTitle.text  = "NSE / BSE"
                 tvStatus.text = if (isOpen) "OPEN" else "CLOSED"
                 // Neon pill (isOpen) needs dark text for contrast — white ("background") is
-                // unreadable on the neon highlight color, so use text_primary for both states.
-                tvStatus.setTextColor(requireContext().getColor(R.color.text_primary))
+                // unreadable on the neon highlight color, so use the constant @color/primary
+                // ink there. The closed pill sits on @color/surface_variant, which flips with
+                // the theme, so it needs the flippable text_primary to stay readable.
+                tvStatus.setTextColor(
+                    requireContext().getColor(if (isOpen) R.color.primary else R.color.text_primary)
+                )
                 tvStatus.backgroundTintList = android.content.res.ColorStateList.valueOf(
                     requireContext().getColor(if (isOpen) R.color.neon_highlight else R.color.surface_variant)
                 )

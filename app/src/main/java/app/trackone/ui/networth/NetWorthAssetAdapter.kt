@@ -98,7 +98,8 @@ class NetWorthAssetAdapter(
                 binding.tvAssetPl.text = "%s %s (%+.2f%%)".format(
                     arrow, fmt.format(gain), gainPct
                 )
-                binding.tvAssetPl.setTextColor(ctx.getColor(R.color.text_primary))
+                // Pill's fill is constant across themes, so its ink stays @color/primary.
+                binding.tvAssetPl.setTextColor(ctx.getColor(R.color.primary))
                 val bgRes = if (isGain) R.drawable.bg_gain_pill else R.drawable.bg_loss_pill
                 binding.tvAssetPl.background = ctx.getDrawable(bgRes)
                 binding.tvAssetPl.visibility = View.VISIBLE

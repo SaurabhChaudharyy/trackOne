@@ -92,7 +92,7 @@ class SearchResultAdapter(
                 binding.ivSelected.visibility = View.GONE
                 binding.btnAdd.text = "Add"
                 binding.btnAdd.backgroundTintList =
-                    ColorStateList.valueOf(ContextCompat.getColor(ctx, R.color.text_primary))
+                    ColorStateList.valueOf(ContextCompat.getColor(ctx, R.color.primary))
                 binding.btnAdd.setTextColor(ContextCompat.getColor(ctx, R.color.on_primary))
                 binding.root.alpha = 1f
             }
