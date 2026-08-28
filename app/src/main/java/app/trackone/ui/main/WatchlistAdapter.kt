@@ -68,7 +68,8 @@ class WatchlistAdapter(
             binding.tvChange.text = FormatUtils.formatChange(stock.change)
             binding.tvChangePercent.text = FormatUtils.formatChangePercent(stock.changePercent)
 
-            val primaryColor = ContextCompat.getColor(ctx, R.color.text_primary)
+            // Pill's fill is constant across themes, so its ink stays @color/primary.
+            val primaryColor = ContextCompat.getColor(ctx, R.color.primary)
 
             binding.tvChange.setTextColor(primaryColor)
             binding.tvChangePercent.setTextColor(primaryColor)

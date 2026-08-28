@@ -314,7 +314,8 @@ class NetWorthFragment : Fragment() {
             val isGain = absChange >= 0
             val arrow = if (isGain) "↗" else "↘"
             val sign = if (isGain) "+" else "-"
-            val textColor = requireContext().getColor(R.color.text_primary)
+            // Chip's fill is constant across themes, so its ink stays @color/primary.
+            val textColor = requireContext().getColor(R.color.primary)
             chip.text = "$arrow $sign${inrFormat.format(kotlin.math.abs(absChange))} (${"%.2f".format(kotlin.math.abs(pct))}%)"
             chip.setTextColor(textColor)
             chip.setTypeface(

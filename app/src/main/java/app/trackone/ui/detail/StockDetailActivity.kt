@@ -196,7 +196,9 @@ class StockDetailActivity : AppCompatActivity() {
                             intArrayOf()
                         ),
                         intArrayOf(
-                            getColor(R.color.text_primary),
+                            // Checked chip's fill is the constant neonColor, so its ink
+                            // stays the constant @color/primary, not the flippable text_primary.
+                            getColor(R.color.primary),
                             getColor(R.color.text_tertiary)
                         )
                     )
@@ -264,8 +266,9 @@ class StockDetailActivity : AppCompatActivity() {
         val arrow = if (stock.isPositive) "↗" else "↘"
         binding.tvDetailChange.text = "$arrow ${FormatUtils.formatChange(stock.change)} · ${FormatUtils.formatChangePercent(stock.changePercent)}"
 
-        // Neon for positive, red for negative
-        val primaryColor = getColor(R.color.text_primary)
+        // Neon for positive, red for negative — the pill's fill is constant across
+        // themes, so its ink is the constant @color/primary, not the flippable text_primary.
+        val primaryColor = getColor(R.color.primary)
         binding.tvDetailChange.setTextColor(primaryColor)
         binding.tvDetailChange.setBackgroundResource(
             if (stock.isPositive) R.drawable.bg_gain_pill else R.drawable.bg_loss_pill

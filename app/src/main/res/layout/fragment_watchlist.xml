@@ -111,7 +111,7 @@
                     android:textSize="13sp"
                     android:textColor="@color/on_primary"
                     android:paddingHorizontal="20dp"
-                    app:backgroundTint="@color/text_primary"
+                    app:backgroundTint="@color/primary"
                     app:cornerRadius="8dp"/>
             </LinearLayout>
 
@@ -145,8 +145,8 @@
                 android:layout_margin="24dp"
                 android:src="@drawable/ic_add"
                 android:contentDescription="Add stock"
-                app:backgroundTint="@color/text_primary"
-                app:tint="@color/background"
+                app:backgroundTint="@color/primary"
+                app:tint="@color/on_primary"
                 app:elevation="4dp"/>
 
         </FrameLayout>
