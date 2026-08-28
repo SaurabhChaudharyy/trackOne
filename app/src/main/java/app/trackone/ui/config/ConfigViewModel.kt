@@ -2,6 +2,7 @@ package app.trackone.ui.config
 
 import androidx.lifecycle.*
 import app.trackone.data.database.WatchlistEntity
+import app.trackone.data.database.WatchlistGroupEntity
 import app.trackone.data.model.YahooSearchResult
 import app.trackone.data.repository.StockRepository
 import app.trackone.utils.Resource
@@ -56,7 +57,11 @@ class ConfigViewModel @Inject constructor(
         repository.addToWatchlist(symbol, displayName, groupId)
     }
 
-    suspend fun hasAnyStocks(): Boolean = repository.getWatchlistSync().isNotEmpty()
+    suspend fun hasAnyStocks(groupId: Long): Boolean =
+        repository.getWatchlistSyncByGroup(groupId).isNotEmpty()
+
+    suspend fun getWatchlistGroupsSync(): List<WatchlistGroupEntity> =
+        repository.getWatchlistGroupsSync()
 
     fun removeFromWatchlist(symbol: String, groupId: Long = StockRepository.DEFAULT_GROUP_ID) {
         viewModelScope.launch {

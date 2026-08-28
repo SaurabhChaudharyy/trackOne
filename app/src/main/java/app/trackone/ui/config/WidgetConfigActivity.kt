@@ -11,9 +11,13 @@ import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.Snackbar
 import app.trackone.R
+import app.trackone.data.database.WatchlistGroupEntity
+import app.trackone.data.repository.StockRepository
 import app.trackone.databinding.ActivityWidgetConfigBinding
+import app.trackone.ui.widget.WidgetPrefs
 import app.trackone.utils.Resource
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
@@ -47,21 +51,57 @@ class WidgetConfigActivity : AppCompatActivity() {
             AppWidgetManager.EXTRA_APPWIDGET_ID,
             AppWidgetManager.INVALID_APPWIDGET_ID
         )
-        activeGroupId = intent.getLongExtra(EXTRA_GROUP_ID, 1L)
         setResult(RESULT_CANCELED)
 
         if (appWidgetId != AppWidgetManager.INVALID_APPWIDGET_ID) {
+            // Real widget placement, or a reconfigure (long-press → Edit) — this widget
+            // instance needs its own watchlist assignment, distinct from any other widget.
             lifecycleScope.launch {
-                val hasStocks = viewModel.hasAnyStocks()
-                if (hasStocks) {
-                    finishConfiguration()
-                    return@launch
-                }
+                val groups = viewModel.getWatchlistGroupsSync()
+                activeGroupId = WidgetPrefs.getGroupId(this@WidgetConfigActivity, appWidgetId)
 
-                showAddUi()
+                if (groups.size > 1) {
+                    showGroupPicker(groups)
+                } else {
+                    activeGroupId = groups.firstOrNull()?.id ?: StockRepository.DEFAULT_GROUP_ID
+                    proceedWithChosenGroup()
+                }
             }
         } else {
+            // Launched from the in-app "Add stock" buttons on a specific watchlist tab —
+            // the group is already known from that tab, no widget instance involved.
+            activeGroupId = intent.getLongExtra(EXTRA_GROUP_ID, StockRepository.DEFAULT_GROUP_ID)
+            showAddUi()
+        }
+    }
 
+    /** Lets the user pick which watchlist this specific widget instance should show. Shown
+     *  both on first placement and on every reconfigure, since a reconfigure's whole point
+     *  is to let the user change that choice. */
+    private fun showGroupPicker(groups: List<WatchlistGroupEntity>) {
+        val names = groups.map { it.name }.toTypedArray()
+        var selectedIndex = groups.indexOfFirst { it.id == activeGroupId }.coerceAtLeast(0)
+
+        MaterialAlertDialogBuilder(this)
+            .setTitle("Which watchlist should this widget show?")
+            .setSingleChoiceItems(names, selectedIndex) { _, which -> selectedIndex = which }
+            .setPositiveButton("Continue") { dialog, _ ->
+                activeGroupId = groups[selectedIndex].id
+                dialog.dismiss()
+                proceedWithChosenGroup()
+            }
+            .setOnCancelListener { finish() } // back/outside-tap on a fresh placement — abandon it
+            .show()
+    }
+
+    private fun proceedWithChosenGroup() {
+        WidgetPrefs.setGroupId(this, appWidgetId, activeGroupId)
+        lifecycleScope.launch {
+            val hasStocks = viewModel.hasAnyStocks(activeGroupId)
+            if (hasStocks) {
+                finishConfiguration()
+                return@launch
+            }
             showAddUi()
         }
     }

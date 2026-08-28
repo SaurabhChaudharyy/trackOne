@@ -24,7 +24,10 @@ class StockUpdateWorker @AssistedInject constructor(
     override suspend fun doWork(): Result {
         return try {
             repository.refreshWatchlistStocks()
-            netWorthRepository.refreshNetWorthAssets()
+            // Forced: this worker IS the interval (WorkManager's own periodic schedule),
+            // so its refresh should always actually run rather than be skipped by the
+            // passive-refresh throttle other callers are subject to.
+            netWorthRepository.refreshNetWorthAssets(force = true)
 
             val appWidgetManager = AppWidgetManager.getInstance(applicationContext)
             val componentName = ComponentName(applicationContext, StockWidgetProvider::class.java)

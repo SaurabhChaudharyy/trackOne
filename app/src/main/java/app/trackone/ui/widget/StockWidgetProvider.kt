@@ -31,8 +31,16 @@ class StockWidgetProvider : AppWidgetProvider() {
 
     override fun onUpdate(context: Context, appWidgetManager: AppWidgetManager, appWidgetIds: IntArray) {
         appWidgetIds.forEach { widgetId ->
-            updateWidget(context, appWidgetManager, widgetId)
+            CoroutineScope(Dispatchers.IO).launch {
+                updateWidget(context, appWidgetManager, widgetId)
+            }
         }
+    }
+
+    override fun onDeleted(context: Context, appWidgetIds: IntArray) {
+        super.onDeleted(context, appWidgetIds)
+        // Otherwise this map would keep growing with entries for widgets that no longer exist.
+        appWidgetIds.forEach { WidgetPrefs.removeWidget(context, it) }
     }
 
     override fun onEnabled(context: Context) {
@@ -70,8 +78,14 @@ class StockWidgetProvider : AppWidgetProvider() {
         }
     }
 
-    private fun updateWidget(context: Context, appWidgetManager: AppWidgetManager, widgetId: Int) {
+    private suspend fun updateWidget(context: Context, appWidgetManager: AppWidgetManager, widgetId: Int) {
         val views = RemoteViews(context.packageName, R.layout.widget_stock_list)
+
+        // Label the widget with the watchlist it's actually showing — otherwise two widgets
+        // side by side, each scoped to a different watchlist, would be indistinguishable.
+        val groupId = WidgetPrefs.getGroupId(context, widgetId)
+        val groupName = repository.getWatchlistGroupsSync().firstOrNull { it.id == groupId }?.name
+        views.setTextViewText(R.id.widget_header_title, groupName ?: "TrackOne")
 
         val serviceIntent = Intent(context, StockWidgetService::class.java).apply {
             putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId)
@@ -110,9 +124,12 @@ class StockWidgetProvider : AppWidgetProvider() {
         )
         views.setOnClickPendingIntent(R.id.widget_header, openAppPendingIntent)
 
-        // Empty state → open WidgetConfigActivity so users can add stocks
+        // Empty state → open WidgetConfigActivity so users can add stocks. Passing this
+        // widget's id (not just launching bare) is what lets it resolve to *this* widget's
+        // assigned watchlist rather than defaulting to the first one.
         val addStocksIntent = Intent(context, app.trackone.ui.config.WidgetConfigActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId)
         }
         val addStocksPendingIntent = PendingIntent.getActivity(
             context, widgetId + 3000,

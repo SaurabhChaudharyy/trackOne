@@ -66,7 +66,7 @@ class MainViewModel @Inject constructor(
     init {
         viewModelScope.launch {
             repository.ensureDefaultGroup()
-            refresh()
+            refresh(force = false)
         }
     }
 
@@ -104,13 +104,19 @@ class MainViewModel @Inject constructor(
 
     // ── Stock operations ──────────────────────────────────────────────────────
 
-    fun refresh() {
+    /**
+     * @param force true for a refresh the user explicitly asked for (pull-to-refresh) — always
+     * runs. false (the default, used on initial load) is subject to [NetWorthRepository]'s
+     * passive-refresh throttle, so a fresh app launch doesn't run this net-worth pass at the
+     * same time as another screen's (e.g. Home's) own passive refresh.
+     */
+    fun refresh(force: Boolean = true) {
         viewModelScope.launch {
             _isRefreshing.value = true
             _refreshState.value = Resource.Loading()
 
             val watchlistJob = async { repository.refreshWatchlistStocks() }
-            val netWorthJob  = launch { netWorthRepository.refreshNetWorthAssets() }
+            val netWorthJob  = launch { netWorthRepository.refreshNetWorthAssets(force = force) }
 
             val result = watchlistJob.await()
             netWorthJob.join()

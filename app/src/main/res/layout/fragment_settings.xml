@@ -291,6 +291,15 @@
                         android:fontFamily="@font/inter_semi_bold"/>
 
                     <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Save a copy of this device's data to your account"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="11sp"
+                        android:fontFamily="@font/inter"
+                        android:layout_marginTop="2dp"/>
+
+                    <TextView
                         android:id="@+id/tv_last_backup"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
@@ -360,8 +369,8 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Replace local data with cloud backup"
-                        android:textColor="@color/text_tertiary"
+                        android:text="Overwrite this device with your last backup"
+                        android:textColor="@color/text_secondary"
                         android:textSize="11sp"
                         android:fontFamily="@font/inter"
                         android:layout_marginTop="2dp"/>
@@ -377,6 +386,79 @@
 
         </LinearLayout>
 
+        <!-- ══════════════════════════════════════════════════════════════ -->
+        <!-- ── RESET section (always visible, signed in or not — this is  -->
+        <!-- ── purely local and never touches Firestore)                 -->
+        <!-- ══════════════════════════════════════════════════════════════ -->
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="RESET"
+            android:textColor="@color/text_tertiary"
+            android:textSize="9sp"
+            android:fontFamily="@font/inter_semi_bold"
+            android:letterSpacing="0.16"
+            android:layout_marginBottom="10dp"/>
+
+        <LinearLayout
+            android:id="@+id/row_clear_local_data"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:background="@drawable/bg_settings_card"
+            android:padding="16dp"
+            android:layout_marginBottom="24dp"
+            android:clickable="true"
+            android:focusable="true">
+
+            <LinearLayout
+                android:layout_width="38dp"
+                android:layout_height="38dp"
+                android:background="@drawable/bg_settings_icon_danger"
+                android:gravity="center"
+                android:layout_marginEnd="14dp">
+
+                <ImageView
+                    android:layout_width="18dp"
+                    android:layout_height="18dp"
+                    android:src="@drawable/ic_delete"
+                    android:tint="@color/loss_red"
+                    tools:ignore="ContentDescription"/>
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Clear Local Data"
+                    android:textColor="@color/loss_red"
+                    android:textSize="14sp"
+                    android:fontFamily="@font/inter_semi_bold"/>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Erase watchlists &amp; investments from this device"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="11sp"
+                    android:fontFamily="@font/inter"
+                    android:layout_marginTop="2dp"/>
+            </LinearLayout>
+
+            <ImageView
+                android:layout_width="16dp"
+                android:layout_height="16dp"
+                android:src="@drawable/ic_chevron_right"
+                android:tint="@color/text_tertiary"
+                tools:ignore="ContentDescription"/>
+        </LinearLayout>
 
         <!-- ══════════════════════════════════════════════════════════════ -->
         <!-- ── STOCKS & INVESTMENTS section ─────────────────────────── -->
@@ -462,7 +544,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="10dp"
                 android:text="Which file do I upload? →"
-                android:textColor="@color/accent_blue"
+                android:textColor="@color/text_primary"
                 android:textSize="11sp"
                 android:fontFamily="@font/inter_semi_bold"
                 android:clickable="true"

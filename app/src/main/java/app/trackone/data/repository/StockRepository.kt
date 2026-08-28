@@ -33,6 +33,9 @@ class StockRepository @Inject constructor(
     fun getWatchlistGroups(): LiveData<List<WatchlistGroupEntity>> =
         watchlistGroupDao.getAllGroups()
 
+    suspend fun getWatchlistGroupsSync(): List<WatchlistGroupEntity> =
+        withContext(Dispatchers.IO) { watchlistGroupDao.getAllGroupsSync() }
+
     /**
      * Ensures the default group exists. Call this once on first launch
      * (idempotent via REPLACE; position 0 so it always sorts first).
@@ -79,6 +82,11 @@ class StockRepository @Inject constructor(
     /** Fetches all symbols for a given group (for live-price refreshes). */
     suspend fun getWatchlistSyncByGroup(groupId: Long): List<WatchlistEntity> =
         withContext(Dispatchers.IO) { watchlistDao.getWatchlistSyncByGroup(groupId) }
+
+    /** Stock data for one group's watchlist only — what the home-screen widget shows,
+     *  since each widget instance is scoped to a single watchlist. */
+    suspend fun getWatchlistStocksSyncByGroup(groupId: Long): List<StockEntity> =
+        withContext(Dispatchers.IO) { stockDao.getWatchlistStocksSyncByGroup(groupId) }
 
     suspend fun refreshWatchlistStocks(): Resource<Unit> = withContext(Dispatchers.IO) {
         try {
