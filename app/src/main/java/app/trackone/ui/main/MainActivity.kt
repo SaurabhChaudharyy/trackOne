@@ -15,6 +15,8 @@ import app.trackone.databinding.ActivityMainBinding
 import app.trackone.ui.home.HomeFragment
 import app.trackone.ui.networth.NetWorthFragment
 import app.trackone.ui.settings.SettingsFragment
+import app.trackone.ui.util.applyBottomContentInset
+import app.trackone.ui.util.applyEdgeToEdge
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
@@ -37,6 +39,9 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
+
+        applyEdgeToEdge(topInsetView = binding.appBar, bottomInsetView = binding.bottomNav, navBarIsConstantDark = true)
+        applyBottomContentInset(binding.fragmentContainer)
 
         setSupportActionBar(binding.toolbar)
         supportActionBar?.title = ""

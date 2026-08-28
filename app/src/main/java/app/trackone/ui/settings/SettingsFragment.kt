@@ -15,6 +15,7 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
@@ -125,6 +126,7 @@ class SettingsFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         setupClickListeners()
+        updateThemeRowLabel()
         observeAuthState()
         observeGoogleSignInState()
         observeCloudBackupState()
@@ -194,6 +196,12 @@ class SettingsFragment : Fragment() {
         binding.tvWhichFileToUpload.setOnClickListener {
             it.performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY)
             showBrokerFileGuideDialog()
+        }
+
+        // Theme (Light / Dark / System)
+        binding.cardTheme.setOnClickListener {
+            it.performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY)
+            showThemePickerDialog()
         }
 
         // Contact Us
@@ -585,6 +593,35 @@ class SettingsFragment : Fragment() {
     // ── Confirmation dialogs ──────────────────────────────────────────────
 
     /** Shows exactly which report to export from each supported broker, and where to find it. */
+    // ── Theme ────────────────────────────────────────────────────────────
+
+    private val themeModes = intArrayOf(
+        AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM,
+        AppCompatDelegate.MODE_NIGHT_NO,
+        AppCompatDelegate.MODE_NIGHT_YES
+    )
+    private val themeLabels = arrayOf("System default", "Light", "Dark")
+
+    private fun updateThemeRowLabel() {
+        val index = themeModes.indexOf(ThemePrefs.getMode(requireContext())).let { if (it < 0) 0 else it }
+        binding.tvThemeValue.text = themeLabels[index]
+    }
+
+    private fun showThemePickerDialog() {
+        if (!isAdded) return
+        val current = themeModes.indexOf(ThemePrefs.getMode(requireContext())).let { if (it < 0) 0 else it }
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle("Theme")
+            .setSingleChoiceItems(themeLabels, current) { dialog, which ->
+                val mode = themeModes[which]
+                ThemePrefs.setMode(requireContext(), mode)
+                AppCompatDelegate.setDefaultNightMode(mode)
+                dialog.dismiss()
+            }
+            .setNegativeButton("Cancel") { dialog, _ -> dialog.dismiss() }
+            .show()
+    }
+
     private fun showBrokerFileGuideDialog() {
         if (!isAdded) return
         val binding = app.trackone.databinding.DialogBrokerFileGuideBinding.inflate(LayoutInflater.from(requireContext()))

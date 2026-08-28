@@ -22,6 +22,7 @@ import app.trackone.databinding.ActivityStockDetailBinding
 import app.trackone.utils.AnimationUtils.animateNumberFromZero
 import app.trackone.utils.FormatUtils
 import app.trackone.utils.Resource
+import app.trackone.ui.util.applyEdgeToEdge
 import dagger.hilt.android.AndroidEntryPoint
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -51,6 +52,8 @@ class StockDetailActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityStockDetailBinding.inflate(layoutInflater)
         setContentView(binding.root)
+
+        applyEdgeToEdge(topInsetView = binding.toolbar, bottomInsetView = null)
 
         val symbol = intent.getStringExtra(EXTRA_SYMBOL) ?: run {
             finish()
@@ -138,8 +141,9 @@ class StockDetailActivity : AppCompatActivity() {
         val points = history.map { it.close.toFloat() }
         chartTimestamps = history.map { it.timestamp }
 
-        // Clean black line — like the Coinbase screenshot
-        val lineColor = Color.parseColor("#09090B")
+        // Clean line — like the Coinbase screenshot. Sits directly on the chart's
+        // (flipping) background, so its ink must flip with the theme too.
+        val lineColor = getColor(R.color.text_primary)
 
         val entries = points.mapIndexed { i, y -> Entry(i.toFloat(), y) }
 
