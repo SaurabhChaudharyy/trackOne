@@ -4,6 +4,7 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.distinctUntilChanged
 import androidx.lifecycle.viewModelScope
 import app.trackone.data.database.AssetType
 import app.trackone.data.database.NetWorthAssetEntity
@@ -92,11 +93,17 @@ class HomeViewModel @Inject constructor(
 
     // ── Portfolio Summary ───────────────────────────────────────────────
     private val _portfolioSummary = MutableLiveData<PortfolioSummary?>()
-    val portfolioSummary: LiveData<PortfolioSummary?> = _portfolioSummary
+    // distinctUntilChanged — cold start can fire the reactive net-worth observer below more than
+    // once in quick succession (Home's own passive refresh plus another screen's, e.g. NetWorth's,
+    // both writing to the same table while the app is still loading). Each write is its own single
+    // recompute, but without this the Fragment still re-renders (and re-animates the chart) once
+    // per recompute even when the recomputed value is byte-for-byte the same as what's on screen —
+    // which is what looked like the chart "reloading" repeatedly instead of settling once.
+    val portfolioSummary: LiveData<PortfolioSummary?> = _portfolioSummary.distinctUntilChanged()
 
     // ── Portfolio Chart data ────────────────────────────────────────────
     private val _portfolioChartData = MutableLiveData<List<PortfolioChartPoint>>(emptyList())
-    val portfolioChartData: LiveData<List<PortfolioChartPoint>> = _portfolioChartData
+    val portfolioChartData: LiveData<List<PortfolioChartPoint>> = _portfolioChartData.distinctUntilChanged()
 
     // ── Portfolio refresh event (fires when live data differs from cached) ─────
     /** Carries the fresh PortfolioSummary so the Fragment can show a "Updated" banner. */

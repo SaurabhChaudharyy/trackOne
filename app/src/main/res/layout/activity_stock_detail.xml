@@ -102,10 +102,9 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:textColor="@color/text_primary"
-                    android:textSize="40sp"
-                    android:fontFamily="@font/geist_mono_bold"
-                    android:textStyle="bold"
-                    android:letterSpacing="-0.03"
+                    android:textSize="36sp"
+                    android:fontFamily="@font/geist_pixel_square"
+                    android:letterSpacing="0.01"
                     android:includeFontPadding="false"
                     tools:text="$187.62"/>
 
