@@ -25,6 +25,9 @@ import androidx.lifecycle.repeatOnLifecycle
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.resource.bitmap.CircleCrop
 import android.util.Patterns
+import androidx.biometric.BiometricManager
+import androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_STRONG
+import androidx.biometric.BiometricManager.Authenticators.DEVICE_CREDENTIAL
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.common.api.ApiException
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -32,8 +35,10 @@ import app.trackone.R
 import app.trackone.data.repository.BrokerCsvRepository
 import app.trackone.databinding.DialogEmailAuthBinding
 import app.trackone.databinding.FragmentSettingsBinding
+import app.trackone.security.AppLockPrefs
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 /**
  * Thin renderer over three independent seams: [AuthViewModel] (Google + email/password sign-in),
@@ -50,6 +55,9 @@ class SettingsFragment : Fragment() {
     private val authViewModel: AuthViewModel by viewModels()
     private val cloudBackupViewModel: CloudBackupViewModel by viewModels()
     private val csvImportViewModel: CsvImportViewModel by viewModels()
+
+    @Inject
+    lateinit var appLockPrefs: AppLockPrefs
 
     /** Non-cancelable Activity-level dialog — blocks the entire window (including bottom nav). */
     private var blockingDialog: AlertDialog? = null
@@ -127,6 +135,7 @@ class SettingsFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         setupClickListeners()
         updateThemeRowLabel()
+        updateFingerprintLockRow()
         observeAuthState()
         observeGoogleSignInState()
         observeCloudBackupState()
@@ -202,6 +211,13 @@ class SettingsFragment : Fragment() {
         binding.cardTheme.setOnClickListener {
             it.performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY)
             showThemePickerDialog()
+        }
+
+        // Fingerprint Lock — the switch itself ignores touches (see layout); this row-level
+        // listener is the single source of truth, same pattern as the other toggleable rows.
+        binding.rowFingerprintLock.setOnDebouncedClickListener {
+            it.performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY)
+            toggleFingerprintLock()
         }
 
         // Contact Us
@@ -626,6 +642,36 @@ class SettingsFragment : Fragment() {
             }
             .setNegativeButton("Cancel") { dialog, _ -> dialog.dismiss() }
             .show()
+    }
+
+    // ── Fingerprint Lock ─────────────────────────────────────────────────
+
+    private fun updateFingerprintLockRow() {
+        binding.switchFingerprintLock.isChecked = appLockPrefs.isLockEnabled
+    }
+
+    private fun toggleFingerprintLock() {
+        if (!isAdded) return
+
+        if (appLockPrefs.isLockEnabled) {
+            appLockPrefs.isLockEnabled = false
+            updateFingerprintLockRow()
+            return
+        }
+
+        val canAuthenticate = BiometricManager.from(requireContext())
+            .canAuthenticate(BIOMETRIC_STRONG or DEVICE_CREDENTIAL)
+        if (canAuthenticate != BiometricManager.BIOMETRIC_SUCCESS) {
+            Toast.makeText(
+                requireContext(),
+                "Set up a fingerprint or screen lock in your device settings first.",
+                Toast.LENGTH_LONG
+            ).show()
+            return
+        }
+
+        appLockPrefs.isLockEnabled = true
+        updateFingerprintLockRow()
     }
 
     private fun showBrokerFileGuideDialog() {

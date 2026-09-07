@@ -19,6 +19,7 @@ gson = "2.11.0"
 swiperefresh = "1.1.0"
 splashscreen = "1.0.1"
 mpandroidchart = "v3.1.0"
+biometric = "1.1.0"
 junit = "4.13.2"
 junitAndroid = "1.2.1"
 espresso = "3.6.1"
@@ -82,6 +83,9 @@ glide-compiler = { group = "com.github.bumptech.glide", name = "compiler", versi
 
 # Charts
 mpandroidchart = { group = "com.github.PhilJay", name = "MPAndroidChart", version.ref = "mpandroidchart" }
+
+# Security
+androidx-biometric = { group = "androidx.biometric", name = "biometric", version.ref = "biometric" }
 
 # Testing
 junit = { group = "junit", name = "junit", version.ref = "junit" }
