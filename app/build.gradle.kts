@@ -112,6 +112,9 @@ dependencies {
     // Charts
     implementation(libs.mpandroidchart)
 
+    // Security
+    implementation(libs.androidx.biometric)
+
     // Firebase
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.auth)

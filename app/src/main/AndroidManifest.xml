@@ -37,6 +37,14 @@
             android:windowSoftInputMode="adjustResize"
             android:theme="@style/Theme.FinanceWidget"/>
 
+        <!-- Fingerprint/device-credential lock gate — launched on top of whichever Activity
+             is in front whenever AppLockManager says the app is locked. -->
+        <activity
+            android:name=".ui.lock.LockActivity"
+            android:exported="false"
+            android:launchMode="singleTask"
+            android:theme="@style/Theme.FinanceWidget"/>
+
         <activity
             android:name=".ui.detail.StockDetailActivity"
             android:exported="false"
