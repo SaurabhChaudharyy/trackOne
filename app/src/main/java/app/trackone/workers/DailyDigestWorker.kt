@@ -3,17 +3,44 @@ package app.trackone.workers
 import android.content.Context
 import androidx.hilt.work.HiltWorker
 import androidx.work.*
+import app.trackone.data.database.NetWorthAssetEntity
 import app.trackone.data.database.NetWorthDao
 import app.trackone.notifications.NotificationHelper
+import app.trackone.utils.GainLoss
 import app.trackone.utils.PortfolioGainLoss
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
-import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.ZoneId
 import java.time.temporal.ChronoUnit
 import java.util.concurrent.TimeUnit
+
+/** What the digest notification says — pulled out of [DailyDigestWorker.doWork] so the
+ *  best/worst-picking logic is testable without an Android Worker/Context. */
+internal data class DigestContent(
+    val portfolioPctChange: Double,
+    val best: Pair<String, GainLoss>?,
+    val worst: Pair<String, GainLoss>?
+)
+
+/**
+ * Ranks [assets] by cumulative per-asset gain/loss to pick a best and worst performer.
+ * Assets with a blank name are excluded (nothing meaningful to display). When there's only
+ * one rankable asset, [DigestContent.worst] is null rather than repeating the same holding
+ * as both best and worst.
+ */
+internal fun computeDigestContent(assets: List<NetWorthAssetEntity>): DigestContent {
+    val portfolioPctChange = PortfolioGainLoss.compute(assets).pctChange
+
+    val ranked = assets
+        .filter { it.name.isNotBlank() }
+        .map { it.name to PortfolioGainLoss.computePerAsset(it) }
+    val best = ranked.maxByOrNull { it.second.pctChange }
+    val worst = if (ranked.size > 1) ranked.minByOrNull { it.second.pctChange } else null
+
+    return DigestContent(portfolioPctChange, best, worst)
+}
 
 /**
  * Posts a once-daily notification summarizing the portfolio's best/worst performing holdings
@@ -35,16 +62,8 @@ class DailyDigestWorker @AssistedInject constructor(
             val assets = netWorthDao.getAllAssetsSync()
             if (assets.isEmpty()) return Result.success()
 
-            val portfolioPctChange = PortfolioGainLoss.compute(assets).pctChange
-
-            val ranked = assets
-                .filter { it.name.isNotBlank() }
-                .map { it.name to PortfolioGainLoss.computePerAsset(it) }
-            val best = ranked.maxByOrNull { it.second.pctChange }
-            // Don't show the same single holding as both best and worst.
-            val worst = if (ranked.size > 1) ranked.minByOrNull { it.second.pctChange } else null
-
-            NotificationHelper.notifyDigest(applicationContext, portfolioPctChange, best, worst)
+            val content = computeDigestContent(assets)
+            NotificationHelper.notifyDigest(applicationContext, content.portfolioPctChange, content.best, content.worst)
             Result.success()
         } catch (e: Exception) {
             if (runAttemptCount < 3) Result.retry() else Result.failure()
@@ -80,10 +99,9 @@ class DailyDigestWorker @AssistedInject constructor(
             WorkManager.getInstance(context).cancelUniqueWork(WORK_NAME)
         }
 
-        private fun millisUntilNextDigestTime(): Long {
-            val zone = ZoneId.systemDefault()
-            val now = LocalDateTime.now(zone)
-            var next = LocalDateTime.of(LocalDate.now(zone), LocalTime.of(DIGEST_HOUR, DIGEST_MINUTE))
+        /** [now] is overridable so this is testable without depending on when the test runs. */
+        internal fun millisUntilNextDigestTime(now: LocalDateTime = LocalDateTime.now(ZoneId.systemDefault())): Long {
+            var next = LocalDateTime.of(now.toLocalDate(), LocalTime.of(DIGEST_HOUR, DIGEST_MINUTE))
             if (!next.isAfter(now)) next = next.plusDays(1)
             return ChronoUnit.MILLIS.between(now, next)
         }

@@ -72,18 +72,17 @@ class PortfolioReminderWorker @AssistedInject constructor(
             WorkManager.getInstance(context).cancelUniqueWork(WORK_NAME)
         }
 
-        private fun millisUntilNextReminderTime(): Long {
-            val zone = ZoneId.systemDefault()
-            val now = LocalDateTime.now(zone)
-            var next = nextReminderDateTimeOnOrAfter(LocalDate.now(zone))
+        /** [now] is overridable so this is testable without depending on when the test runs. */
+        internal fun millisUntilNextReminderTime(now: LocalDateTime = LocalDateTime.now(ZoneId.systemDefault())): Long {
+            var next = nextReminderDateTimeOnOrAfter(now.toLocalDate())
             if (!next.isAfter(now)) {
-                next = nextReminderDateTimeOnOrAfter(LocalDate.now(zone).plusDays(1))
+                next = nextReminderDateTimeOnOrAfter(now.toLocalDate().plusDays(1))
             }
             return ChronoUnit.MILLIS.between(now, next)
         }
 
         /** The earliest 1st-or-15th-at-REMINDER_HOUR:REMINDER_MINUTE on or after [fromDate]. */
-        private fun nextReminderDateTimeOnOrAfter(fromDate: LocalDate): LocalDateTime {
+        internal fun nextReminderDateTimeOnOrAfter(fromDate: LocalDate): LocalDateTime {
             var month = YearMonth.from(fromDate)
             while (true) {
                 val candidateDay = REMINDER_DAYS_OF_MONTH.firstOrNull { day ->
