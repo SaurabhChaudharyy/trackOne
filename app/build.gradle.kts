@@ -5,6 +5,7 @@ plugins {
     alias(libs.plugins.kotlin.parcelize)
     alias(libs.plugins.hilt)
     alias(libs.plugins.google.services)
+    alias(libs.plugins.crashlytics)
 }
 
 android {
@@ -119,6 +120,7 @@ dependencies {
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.auth)
     implementation(libs.firebase.firestore)
+    implementation(libs.firebase.crashlytics)
 
     // Google Sign-In
     implementation(libs.play.services.auth)

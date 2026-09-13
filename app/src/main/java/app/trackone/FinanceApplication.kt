@@ -10,6 +10,7 @@ import androidx.work.Configuration
 import app.trackone.security.AppLockManager
 import app.trackone.ui.lock.LockActivity
 import app.trackone.ui.settings.ThemePrefs
+import com.google.firebase.crashlytics.FirebaseCrashlytics
 import dagger.hilt.android.HiltAndroidApp
 import javax.inject.Inject
 
@@ -29,6 +30,7 @@ class FinanceApplication : Application(), Configuration.Provider {
 
     override fun onCreate() {
         super.onCreate()
+        FirebaseCrashlytics.getInstance().setCrashlyticsCollectionEnabled(true)
         // Applied before any Activity is created, so the user's chosen theme (rather than
         // just the system default) is already in effect on cold start.
         AppCompatDelegate.setDefaultNightMode(ThemePrefs.getMode(this))
