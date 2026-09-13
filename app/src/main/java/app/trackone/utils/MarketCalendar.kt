@@ -88,11 +88,16 @@ object MarketCalendar {
     /**
      * Returns all market events for today's date.
      * Call on the main thread — pure computation, no I/O.
+     *
+     * [istCal]/[etCal] default to the real current time; overridable so this is deterministic
+     * in tests instead of only ever describing whatever day the test happens to run on.
      */
-    fun getTodayEvents(): List<MarketEvent> {
+    fun getTodayEvents(
+        istCal: Calendar = Calendar.getInstance(TimeZone.getTimeZone("Asia/Kolkata")),
+        etCal: Calendar = Calendar.getInstance(TimeZone.getTimeZone("America/New_York"))
+    ): List<MarketEvent> {
         val events = mutableListOf<MarketEvent>()
 
-        val istCal = Calendar.getInstance(TimeZone.getTimeZone("Asia/Kolkata"))
         val y = istCal.get(Calendar.YEAR)
         val m = istCal.get(Calendar.MONTH) + 1  // 1-based
         val d = istCal.get(Calendar.DAY_OF_MONTH)
@@ -121,7 +126,6 @@ object MarketCalendar {
 
         // ── NYSE holiday ─────────────────────────────────────────────────────
         // Use US Eastern time for NYSE holiday check
-        val etCal = Calendar.getInstance(TimeZone.getTimeZone("America/New_York"))
         val ey = etCal.get(Calendar.YEAR)
         val em = etCal.get(Calendar.MONTH) + 1
         val ed = etCal.get(Calendar.DAY_OF_MONTH)

@@ -8,6 +8,7 @@ import app.trackone.data.database.AssetType
 import app.trackone.data.database.FinanceDatabase
 import app.trackone.data.database.NetWorthAssetEntity
 import app.trackone.data.database.NetWorthDao
+import app.trackone.utils.CurrencyConversion
 import app.trackone.utils.Resource
 import app.trackone.utils.SymbolUtils
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -94,13 +95,13 @@ class NetWorthRepository @Inject constructor(
                     // Reuse a batch-level rate when the caller already fetched one, instead
                     // of issuing a fresh USDINR=X call per asset.
                     val usdInr = usdInrRate ?: fetchUsdInrRate()
-                    priceInNativeCurrency * usdInr
+                    CurrencyConversion.toInr(priceInNativeCurrency, currency, usdInr)
                 } else {
                     priceInNativeCurrency
                 }
 
                 val finalPrice = when (assetType) {
-                    AssetType.GOLD, AssetType.SILVER -> priceInr / 31.1035
+                    AssetType.GOLD, AssetType.SILVER -> CurrencyConversion.troyOunceToGramPrice(priceInr)
                     else                             -> priceInr
                 }
 
@@ -184,7 +185,9 @@ class NetWorthRepository @Inject constructor(
                     // If the asset's buyPrice is still in USD (first refresh after import),
                     // convert it to INR and flip currency to "INR" so P&L is apples-to-apples.
                     val (updatedBuyPrice, updatedCurrency) = if (asset.currency == "USD") {
-                        val buyPriceInr = if (asset.buyPrice > 0) asset.buyPrice * usdInrRate else 0.0
+                        val buyPriceInr = if (asset.buyPrice > 0) {
+                            CurrencyConversion.toInr(asset.buyPrice, asset.currency, usdInrRate)
+                        } else 0.0
                         Pair(buyPriceInr, "INR")
                     } else {
                         Pair(asset.buyPrice, asset.currency)

@@ -98,11 +98,29 @@ val MIGRATION_4_5 = object : Migration(4, 5) {
     }
 }
 
+val MIGRATION_5_6 = object : Migration(5, 6) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("""
+            CREATE TABLE IF NOT EXISTS expense_transactions (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                date        INTEGER NOT NULL,
+                amount      REAL    NOT NULL,
+                description TEXT    NOT NULL,
+                category    TEXT    NOT NULL,
+                account     TEXT    NOT NULL,
+                currency    TEXT    NOT NULL,
+                createdAt   INTEGER NOT NULL
+            )
+        """.trimIndent())
+    }
+}
+
 @TypeConverters(Converters::class)
 @Database(
     entities = [StockEntity::class, WatchlistGroupEntity::class, WatchlistEntity::class,
-                PriceHistoryEntity::class, NetWorthAssetEntity::class, NetWorthTransactionEntity::class],
-    version = 5,
+                PriceHistoryEntity::class, NetWorthAssetEntity::class, NetWorthTransactionEntity::class,
+                ExpenseTransactionEntity::class],
+    version = 6,
     exportSchema = false
 )
 abstract class FinanceDatabase : RoomDatabase() {
@@ -112,4 +130,5 @@ abstract class FinanceDatabase : RoomDatabase() {
     abstract fun priceHistoryDao(): PriceHistoryDao
     abstract fun netWorthDao(): NetWorthDao
     abstract fun netWorthTransactionDao(): NetWorthTransactionDao
+    abstract fun expenseDao(): ExpenseDao
 }

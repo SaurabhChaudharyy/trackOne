@@ -77,7 +77,7 @@ object AppModule {
             FinanceDatabase::class.java,
             "finance_widget_db"
         )
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
             .fallbackToDestructiveMigration()
             .build()
     }
@@ -106,6 +106,10 @@ object AppModule {
     @Singleton
     fun provideNetWorthTransactionDao(database: FinanceDatabase): NetWorthTransactionDao =
         database.netWorthTransactionDao()
+
+    @Provides
+    @Singleton
+    fun provideExpenseDao(database: FinanceDatabase): ExpenseDao = database.expenseDao()
 
     @Provides
     @Singleton

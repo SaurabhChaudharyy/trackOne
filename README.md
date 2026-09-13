@@ -27,8 +27,11 @@
 
 ## What's New in v1.3-beta
 
-*   **Optional Sign-In & Cloud Backup**: Sign in with Google or email/password to back up and restore your watchlist and net worth data via Firestore. Entirely opt-in — the app works fully offline without an account, and the local JSON export/import remains available either way.
+*   **Optional Sign-In & Cloud Backup**: Sign in with Google or email/password to back up and restore your watchlist and net worth data via Firestore. Entirely opt-in — the app works fully offline without an account.
 *   **Refactored Settings**: Auth, cloud backup, and broker CSV import are now independent view models instead of one monolithic settings screen.
+*   **Dark Mode**: In-app theme toggle (System default / Light / Dark), independent of the device's own setting.
+*   **Optional Biometric App Lock**: Require fingerprint or device unlock to open the app.
+*   **Daily Digest**: An optional once-a-day notification summarizing your best/worst performing holdings and overall portfolio P&L.
 
 ## What's New in v1.2
 
@@ -58,7 +61,7 @@
 |---|---|
 | **Markets / Watchlist** | Track any stock or crypto symbol. Live prices via Yahoo Finance. Tap any item for a full candlestick / line chart with 1D → 5Y timeframes. |
 | **Net Worth** | Add assets across 7 categories (Indian Stocks, US Stocks, Mutual Funds, Gold, Crypto, Cash, Bank). Collapsible sections. Auto-fetches current price for symbol-based assets. |
-| **Settings** | Export your entire watchlist + net worth to a JSON backup file, or restore from one — no account needed. Optionally sign in with Google or email/password to back up the same data to the cloud and restore it on another device. |
+| **Settings** | Import holdings directly from your broker's CSV/XLSX export (HDFC Securities, Angel One, Zerodha, Groww, Vested, Interactive Brokers). Optionally sign in with Google or email/password to back up your watchlist + net worth data to the cloud and restore it on another device. Toggle theme, biometric app lock, and the daily digest notification. |
 | **Home-screen Widget** | Scrollable stock list widget that updates in the background via WorkManager. Tap any row to open the detail screen. |
 
 ---
@@ -78,16 +81,17 @@
 | Charts | MPAndroidChart |
 | Async | Kotlin Coroutines |
 | Optional cloud backup | Firebase Auth + Cloud Firestore |
+| Crash reporting | Firebase Crashlytics |
 
 ---
 
 ## Data & Privacy
 
 - **Local-first by default**: all data is stored locally on your device in a Room (SQLite) database. No account is required to use the app.
-- **No analytics, no ads, no third-party trackers** — ever, whether or not you sign in.
+- **No ads, no third-party trackers** — ever, whether or not you sign in.
 - **Cloud Backup is entirely opt-in**: sign in with Google or email/password only if you want to back up your watchlist and net worth data to the cloud (Firestore) and restore it on another device. If you never sign in, nothing leaves your device.
 - Stock/crypto prices are fetched from the public Yahoo Finance API — no API key required.
-- You can export all your data to a JSON file at any time via **Settings → Export Data**, and restore it via **Import Data** — independent of any account.
+- **Crash reporting**: Firebase Crashlytics collects crash logs and basic device info (model, OS version, app version) to help fix bugs — this runs regardless of sign-in status, but never includes your portfolio data.
 - Full details: see [PRIVACY.md](PRIVACY.md).
 
 ---
@@ -126,40 +130,20 @@ app/src/main/
 │   ├── api/            # Retrofit service (Yahoo Finance)
 │   ├── database/       # Room entities, DAOs, database class
 │   ├── model/          # API response models
-│   └── repository/     # StockRepository, BackupRepository
+│   └── repository/     # StockRepository, NetWorthRepository, BrokerCsvRepository, CloudBackupRepository, AuthRepository
 ├── di/                 # Hilt AppModule
+├── notifications/      # NotificationHelper (channels + builders)
 ├── ui/
 │   ├── config/         # Widget configuration activity
 │   ├── detail/         # Stock detail screen + chart
+│   ├── lock/           # Biometric app-lock gate
 │   ├── main/           # MainActivity, Watchlist fragment + adapter
 │   ├── networth/       # Net Worth fragment + adapter + ViewModel
 │   ├── settings/       # Settings fragment + ViewModel
 │   └── widget/         # AppWidgetProvider + RemoteViews service
-├── utils/              # FormatUtils, Resource wrapper
-└── workers/            # StockUpdateWorker (WorkManager)
+├── utils/              # FormatUtils, Resource wrapper, PortfolioGainLoss, CurrencyConversion, SymbolUtils
+└── workers/            # StockUpdateWorker, DailyDigestWorker (WorkManager)
 ```
-
----
-
-## Backup Format
-
-Backups are plain JSON files (`trackone_backup_YYYYMMDD_HHmmss.json`):
-
-```json
-{
-  "schema_version": 1,
-  "exported_at_ms": 1741181454000,
-  "app_package": "app.trackone",
-  "watchlist": [
-    { "symbol": "RELIANCE.NS", "display_name": "Reliance Industries Limited", "position": 0, "added_at_ms": 1740000000000 }
-  ],
-  "networth_assets": [
-    { "name": "Bitcoin", "asset_type": "CRYPTO", "quantity": 0.05, "buy_price": 3500000.0, "current_value": 420000.0, "currency": "INR", "notes": "", "added_at_ms": 1740050000000, "updated_at_ms": 1741181454000 }
-  ]
-}
-```
-
-Valid `asset_type` values: `STOCK_IN` · `STOCK_US` · `MF` · `GOLD` · `CRYPTO` · `CASH` · `BANK`
 
 ---
 
@@ -167,7 +151,8 @@ Valid `asset_type` values: `STOCK_IN` · `STOCK_US` · `MF` · `GOLD` · `CRYPTO
 
 - Yahoo Finance's public API is unofficial and may occasionally rate-limit or return stale data.
 - The home-screen widget uses `RemoteViews`, which has strict constraints — complex layouts and custom attributes are not supported inside widget XMLs.
-- Cloud Backup is manual and one-way in each direction, not continuous background sync — tapping **Restore** replaces local data with whatever's in your last cloud backup. Without signing in, use Export / Import to transfer data between devices.
+- Cloud Backup is manual and one-way in each direction, not continuous background sync — tapping **Restore** replaces local data with whatever's in your last cloud backup. Without signing in, there is currently no way to move data between devices other than re-importing your broker CSV/XLSX on the new device.
+- The Daily Digest's "best/worst performing holding" is cumulative gain/loss since purchase, not today's price movement — it can repeat the same 1-2 holdings on consecutive days.
 
 ---
 

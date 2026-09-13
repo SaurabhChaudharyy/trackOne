@@ -5,6 +5,7 @@ import app.trackone.data.database.AssetType
 import app.trackone.data.database.NetWorthAssetEntity
 import app.trackone.data.database.NetWorthDao
 import app.trackone.data.repository.NetWorthRepository
+import app.trackone.utils.PortfolioGainLoss
 import app.trackone.utils.Resource
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
@@ -83,27 +84,10 @@ class NetWorthViewModel @Inject constructor(
             .mapValues { (_, list) -> list.sumOf { it.currentValue } }
     }
 
-    /** Pair<absolutePnL, percentPnL>.
-     *  For assets where buyPrice > 0: pnl = currentValue - buyPrice*quantity
-     *  For assets where buyPrice == 0: invested = currentValue, pnl = 0
-     */
+    /** Pair<absolutePnL, percentPnL>. See [PortfolioGainLoss] for the underlying formula. */
     val totalPnL: LiveData<Pair<Double, Double>> = allAssets.map { assets ->
-        var totalInvested = 0.0
-        var totalCurrent  = 0.0
-        for (asset in assets) {
-            if (asset.buyPrice > 0.0) {
-                val cost = asset.buyPrice * asset.quantity
-                totalInvested += cost
-                totalCurrent  += asset.currentValue
-            } else {
-                // No buy price known — treat as break-even
-                totalInvested += asset.currentValue
-                totalCurrent  += asset.currentValue
-            }
-        }
-        val absChange = totalCurrent - totalInvested
-        val pct = if (totalInvested > 0.0) (absChange / totalInvested) * 100.0 else 0.0
-        Pair(absChange, pct)
+        val gainLoss = PortfolioGainLoss.compute(assets)
+        Pair(gainLoss.absChange, gainLoss.pctChange)
     }
 
     suspend fun fetchLivePrice(symbol: String, assetType: AssetType): Resource<Double> =

@@ -5,6 +5,7 @@ plugins {
     alias(libs.plugins.kotlin.parcelize)
     alias(libs.plugins.hilt)
     alias(libs.plugins.google.services)
+    alias(libs.plugins.crashlytics)
 }
 
 android {
@@ -15,8 +16,8 @@ android {
         applicationId = "app.trackone"
         minSdk = 26
         targetSdk = 34
-        versionCode = 2
-        versionName = "1.3-beta"
+        versionCode = 3
+        versionName = "1.4"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -62,6 +63,13 @@ android {
     buildFeatures {
         viewBinding = true
         buildConfig = true
+    }
+
+    lint {
+        // Pins today's pre-existing lint errors (deprecated splash-screen attrs,
+        // android:tint vs app:tint, a stray BOM) so CI's lintDebug only fails on new
+        // regressions, not this backlog — see the CI workflow (ci.yml) for where this runs.
+        baseline = file("lint-baseline.xml")
     }
 }
 
@@ -119,12 +127,15 @@ dependencies {
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.auth)
     implementation(libs.firebase.firestore)
+    implementation(libs.firebase.crashlytics)
 
     // Google Sign-In
     implementation(libs.play.services.auth)
 
     // Testing
     testImplementation(libs.junit)
+    testImplementation(libs.mockk)
+    testImplementation(libs.kotlinx.coroutines.test)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso)
 }
