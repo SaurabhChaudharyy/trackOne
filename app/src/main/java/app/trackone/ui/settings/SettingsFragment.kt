@@ -41,6 +41,7 @@ import app.trackone.databinding.DialogEmailAuthBinding
 import app.trackone.databinding.FragmentSettingsBinding
 import app.trackone.security.AppLockPrefs
 import app.trackone.workers.DailyDigestWorker
+import app.trackone.workers.PortfolioReminderWorker
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -99,20 +100,24 @@ class SettingsFragment : Fragment() {
         if (uri != null) showBrokerCsvImportConfirmationDialog(uri)
     }
 
+    /** Set right before [requestNotificationPermissionLauncher] launches; runs only on grant. */
+    private var pendingNotificationPermissionAction: (() -> Unit)? = null
+
     private val requestNotificationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
         if (granted) {
-            DigestPrefs.setEnabled(requireContext(), true)
-            DailyDigestWorker.schedule(requireContext())
+            pendingNotificationPermissionAction?.invoke()
         } else {
             Toast.makeText(
                 requireContext(),
-                "Daily digest needs notification permission to work.",
+                "This needs notification permission to work.",
                 Toast.LENGTH_LONG
             ).show()
         }
+        pendingNotificationPermissionAction = null
         updateDailyDigestRow()
+        updatePortfolioReminderRow()
     }
 
     private val googleSignInLauncher = registerForActivityResult(
@@ -158,6 +163,7 @@ class SettingsFragment : Fragment() {
         updateThemeRowLabel()
         updateFingerprintLockRow()
         updateDailyDigestRow()
+        updatePortfolioReminderRow()
         observeAuthState()
         observeGoogleSignInState()
         observeCloudBackupState()
@@ -246,6 +252,12 @@ class SettingsFragment : Fragment() {
         binding.rowDailyDigest.setOnDebouncedClickListener {
             it.performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY)
             toggleDailyDigest()
+        }
+
+        // Portfolio Update Reminder — same pattern again.
+        binding.rowPortfolioReminder.setOnDebouncedClickListener {
+            it.performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY)
+            togglePortfolioReminder()
         }
 
         // Contact Us
@@ -702,6 +714,27 @@ class SettingsFragment : Fragment() {
         updateFingerprintLockRow()
     }
 
+    // ── Notification permission (shared by Daily Digest and Portfolio Reminder) ─────
+
+    /**
+     * Runs [onGranted] immediately if POST_NOTIFICATIONS is already granted (or isn't a runtime
+     * permission below API 33); otherwise requests it and defers [onGranted] to the launcher's
+     * callback. Either way, denial just leaves the toggle off — the caller doesn't need an
+     * explicit else-branch.
+     */
+    private fun runWithNotificationPermission(onGranted: () -> Unit) {
+        val needsRuntimePermission = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.POST_NOTIFICATIONS) !=
+                PackageManager.PERMISSION_GRANTED
+
+        if (needsRuntimePermission) {
+            pendingNotificationPermissionAction = onGranted
+            requestNotificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        } else {
+            onGranted()
+        }
+    }
+
     // ── Daily Digest ─────────────────────────────────────────────────────
 
     private fun updateDailyDigestRow() {
@@ -718,18 +751,33 @@ class SettingsFragment : Fragment() {
             return
         }
 
-        // POST_NOTIFICATIONS is a runtime permission only from API 33 onward — below that,
-        // notifications just require the (already-granted) manifest permission.
-        val needsRuntimePermission = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-            ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.POST_NOTIFICATIONS) !=
-                PackageManager.PERMISSION_GRANTED
-
-        if (needsRuntimePermission) {
-            requestNotificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-        } else {
+        runWithNotificationPermission {
             DigestPrefs.setEnabled(requireContext(), true)
             DailyDigestWorker.schedule(requireContext())
             updateDailyDigestRow()
+        }
+    }
+
+    // ── Portfolio Update Reminder ────────────────────────────────────────
+
+    private fun updatePortfolioReminderRow() {
+        binding.switchPortfolioReminder.isChecked = ReminderPrefs.isEnabled(requireContext())
+    }
+
+    private fun togglePortfolioReminder() {
+        if (!isAdded) return
+
+        if (ReminderPrefs.isEnabled(requireContext())) {
+            ReminderPrefs.setEnabled(requireContext(), false)
+            PortfolioReminderWorker.cancel(requireContext())
+            updatePortfolioReminderRow()
+            return
+        }
+
+        runWithNotificationPermission {
+            ReminderPrefs.setEnabled(requireContext(), true)
+            PortfolioReminderWorker.schedule(requireContext())
+            updatePortfolioReminderRow()
         }
     }
 
