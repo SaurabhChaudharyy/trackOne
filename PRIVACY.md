@@ -1,6 +1,6 @@
 # Privacy Policy — trackOne
 
-_Last updated: 2026-08-24_
+_Last updated: 2026-09-13_
 
 trackOne is a local-first portfolio tracker. This page explains exactly what data the app touches, and when.
 
@@ -21,15 +21,17 @@ No other personal data (name, photo, contacts, location, etc.) is collected, eve
 
 - **Yahoo Finance** (public, unofficial endpoint): stock/crypto symbols you track or search for are sent to Yahoo Finance to fetch prices and charts. No account identifiers are attached to these requests.
 
+## Crash reporting
+
+- **Firebase Crashlytics** collects crash logs, stack traces, and basic device/app info (device model, OS version, app version, and a Firebase-generated installation ID) whenever the app crashes or encounters a handled error. This runs regardless of whether you're signed in, and never includes your watchlist, net worth, or other portfolio data.
+
 ## What we don't do
 
-- No analytics or crash-reporting SDKs.
 - No advertising or ad SDKs.
 - No selling or sharing of your data with third parties beyond the Firebase infrastructure described above.
 
 ## Your data, your control
 
-- Export your local data to a JSON file at any time (Settings → Export Data), independent of any account.
 - Delete your account's cloud backup by signing in and simply not maintaining it — cloud data only exists for accounts that have tapped **Backup**.
 - Uninstalling the app removes all local data. It does not delete a Firestore backup — sign in and contact the maintainer if you want your cloud backup deleted.
 

@@ -98,7 +98,8 @@ jobs:
             - **Watchlist** — Live stock & crypto prices via Yahoo Finance
             - **Net Worth** — Track Indian Stocks, US Stocks, Mutual Funds, Gold, Silver, Crypto, Cash & Bank Balance
             - **Home Screen Widget** — Scrollable stock widget, updates in the background
-            - **Backup & Restore** — Export/import your data as a JSON file
+            - **Broker CSV Import** — Import holdings directly from HDFC Securities, Angel One, Zerodha, Groww, Vested, or Interactive Brokers
+            - **Optional Cloud Backup** — Sign in with Google or email/password to back up and restore via Firestore
             - **Portfolio P&L** — Track your gain/loss per asset and overall
 
             ### 📲 Installation
