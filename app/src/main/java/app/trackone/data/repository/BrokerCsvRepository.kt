@@ -492,7 +492,7 @@ internal object BrokerCsvParser {
         FORMAT_IB_POSITIONS
     }
 
-    private data class RawRow(val cols: List<String>)
+    internal data class RawRow(val cols: List<String>)
 
     /**
      * Maps Vested's full company-name strings (as exported in the `name` column)
@@ -860,7 +860,7 @@ internal object BrokerCsvParser {
 
     // Format A: Stock Name | ISIN | Qty | Avg Buy Price | Buy Value | Closing Price | Closing Value | P&L
     // (HDFC Securities / Angel One "Holding Statement" — see BrokerFormat.FORMAT_A doc.)
-    private fun parseFormatA(cols: List<String>): UniversalHolding? {
+    internal fun parseFormatA(cols: List<String>): UniversalHolding? {
         if (cols.size < 7) return null
         val name = cols[0].ifBlank { return null }
         val isin = cols[1].ifBlank { null }
@@ -876,7 +876,7 @@ internal object BrokerCsvParser {
 
     // Format B: Instrument | Qty. | Avg. cost | LTP | Invested | Cur. val | P&L | Net chg.
     // (Zerodha Console / Groww "Holdings" export — see BrokerFormat.FORMAT_B doc.)
-    private fun parseFormatB(cols: List<String>): UniversalHolding? {
+    internal fun parseFormatB(cols: List<String>): UniversalHolding? {
         if (cols.size < 6) return null
         val symbol = cols[0].ifBlank { return null }
         val quantity = cols[1].toDoubleOrNull() ?: return null
@@ -899,7 +899,7 @@ internal object BrokerCsvParser {
     // currentValue is in USD and will be overwritten by the next live refresh anyway.
     // (This needs Vested's CSV transaction export, not its default PDF statement —
     //  see BrokerFormat.FORMAT_C doc.)
-    private fun parseFormatC(cols: List<String>): UniversalHolding? {
+    internal fun parseFormatC(cols: List<String>): UniversalHolding? {
         if (cols.size < 4) return null
         val rawName  = cols[0].ifBlank { return null }.trim()
         val quantity = cols[1].toDoubleOrNull() ?: return null
@@ -978,7 +978,7 @@ internal object BrokerCsvParser {
     // Fractional-share buys/sells are common in Vested exports and are handled the same
     // way as whole shares. currentValue is set to quantity * avgBuyPrice (break-even) and
     // will be overwritten by the next live price refresh, same convention as Format C.
-    private fun aggregateVestedTrades(header: List<String>, rows: List<RawRow>): Pair<List<UniversalHolding>, Int> {
+    internal fun aggregateVestedTrades(header: List<String>, rows: List<RawRow>): Pair<List<UniversalHolding>, Int> {
         val tickerIdx = header.indexOf("ticker")
         val activityIdx = header.indexOf("activity")
         val qtyIdx = header.indexOf("quantity")
