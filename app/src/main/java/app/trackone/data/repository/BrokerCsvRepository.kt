@@ -321,14 +321,16 @@ class BrokerCsvRepository @Inject constructor(
 // Takes raw file bytes in, returns parsed entities out. Testable with plain
 // byte arrays and no Android framework types.
 
-private object BrokerCsvParser {
+// internal (not private) so BrokerCsvParserTest can exercise format detection and row parsing
+// directly, without going through Context/Uri/SharedPreferences — this is pure string parsing.
+internal object BrokerCsvParser {
 
     sealed class ParseOutcome {
         data class Success(val holdings: List<UniversalHolding>, val skipped: Int) : ParseOutcome()
         data class Failure(val reason: String) : ParseOutcome()
     }
 
-    private enum class BrokerFormat {
+    internal enum class BrokerFormat {
         /**
          * HDFC Securities / Angel One / similar Indian brokers.
          * Report to export: the **Holding Statement** (HDFC Securities: Profile →
@@ -448,7 +450,7 @@ private object BrokerCsvParser {
      * is tried in turn; the first one whose header is recognised AND yields at
      * least one holding wins.
      */
-    fun parse(fileBytes: ByteArray, isXlsx: Boolean): ParseOutcome {
+    internal fun parse(fileBytes: ByteArray, isXlsx: Boolean): ParseOutcome {
         val candidates: List<Pair<List<String>, List<RawRow>>> = if (isXlsx) {
             parseXlsxSheets(fileBytes)
         } else {
@@ -798,7 +800,7 @@ private object BrokerCsvParser {
     // Average Price | Previous Closing Price | ...  (real Console "Holdings" export —
     // see BrokerFormat.FORMAT_ZERODHA doc.) Columns are looked up by header name rather
     // than fixed position, since the leading blank column shifts every index by one.
-    private fun parseFormatZerodha(header: List<String>, cols: List<String>): UniversalHolding? {
+    internal fun parseFormatZerodha(header: List<String>, cols: List<String>): UniversalHolding? {
         val symbolIdx = header.indexOf("symbol")
         val isinIdx = header.indexOf("isin")
         val qtyIdx = header.indexOf("quantity available")
@@ -825,7 +827,7 @@ private object BrokerCsvParser {
     // Mult | Cost Price | Cost Basis | Close Price | Value | Unrealized P/L | Code
     // (the "Open Positions" section of IB's Activity Statement — see
     // BrokerFormat.FORMAT_IB_POSITIONS doc and [parseIbActivityStatement].)
-    private fun parseFormatIbPositions(header: List<String>, cols: List<String>): UniversalHolding? {
+    internal fun parseFormatIbPositions(header: List<String>, cols: List<String>): UniversalHolding? {
         val symbolIdx = header.indexOf("symbol")
         val qtyIdx = header.indexOf("quantity")
         val costPriceIdx = header.indexOf("cost price")
@@ -910,7 +912,7 @@ private object BrokerCsvParser {
         else -> "\\s{2,}".toRegex().find(headerLine)?.value ?: " "
     }
 
-    private fun detectFormat(headers: List<String>): BrokerFormat? {
+    internal fun detectFormat(headers: List<String>): BrokerFormat? {
         val joined = headers.joinToString("|")
         return when {
             // These three checks must come first: each header also contains a substring
