@@ -78,17 +78,17 @@ object FormatUtils {
 
 object MarketUtils {
 
-    fun isUsMarketOpen(): Boolean {
-        val cal = Calendar.getInstance(TimeZone.getTimeZone("America/New_York"))
-        val day = cal.get(Calendar.DAY_OF_WEEK)
-        val time = cal.get(Calendar.HOUR_OF_DAY) * 60 + cal.get(Calendar.MINUTE)
+    /** [now] defaults to the real current time; overridable so the day-of-week/time-of-day
+     *  logic below is deterministic in tests instead of depending on when the test runs. */
+    fun isUsMarketOpen(now: Calendar = Calendar.getInstance(TimeZone.getTimeZone("America/New_York"))): Boolean {
+        val day = now.get(Calendar.DAY_OF_WEEK)
+        val time = now.get(Calendar.HOUR_OF_DAY) * 60 + now.get(Calendar.MINUTE)
         return day != Calendar.SATURDAY && day != Calendar.SUNDAY && time in (9 * 60 + 30)..(16 * 60)
     }
 
-    fun isIndiaMarketOpen(): Boolean {
-        val cal = Calendar.getInstance(TimeZone.getTimeZone("Asia/Kolkata"))
-        val day = cal.get(Calendar.DAY_OF_WEEK)
-        val time = cal.get(Calendar.HOUR_OF_DAY) * 60 + cal.get(Calendar.MINUTE)
+    fun isIndiaMarketOpen(now: Calendar = Calendar.getInstance(TimeZone.getTimeZone("Asia/Kolkata"))): Boolean {
+        val day = now.get(Calendar.DAY_OF_WEEK)
+        val time = now.get(Calendar.HOUR_OF_DAY) * 60 + now.get(Calendar.MINUTE)
         return day != Calendar.SATURDAY && day != Calendar.SUNDAY && time in (9 * 60 + 15)..(15 * 60 + 30)
     }
 
