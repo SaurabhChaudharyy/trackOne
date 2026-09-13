@@ -14,4 +14,10 @@ class Converters {
 
     @TypeConverter
     fun toTransactionType(value: String): TransactionType = TransactionType.valueOf(value)
+
+    @TypeConverter
+    fun fromExpenseCategory(category: ExpenseCategory): String = category.name
+
+    @TypeConverter
+    fun toExpenseCategory(value: String): ExpenseCategory = ExpenseCategory.valueOf(value)
 }

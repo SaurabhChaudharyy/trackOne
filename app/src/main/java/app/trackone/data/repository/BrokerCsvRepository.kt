@@ -160,6 +160,41 @@ data class UniversalHolding(
     )
 }
 
+// ─── Universal trade — canonical shape for a real, dated buy/sell ─────────────
+//
+// Distinct from UniversalHolding: a holdings-statement import is a snapshot with no real
+// trade date (see NetWorthTransactionEntity's own doc comment), while a tradebook/contract-note
+// import is a log of individual trades, each with its own real date — this is what unlocks
+// accurate XIRR later. Not yet populated by any parser (see BrokerCsvParser.parseTradebook) —
+// this exists so the persistence path is ready once real tradebook sample exports are available.
+
+data class UniversalTrade(
+    val symbol: String,
+    val isin: String? = null,
+    val tradeDate: Long,
+    val transactionType: TransactionType,
+    val quantity: Double,
+    val price: Double,
+    val currency: String,
+    val assetType: AssetType,
+    val brokerSource: String
+) {
+    fun toTransaction(assetId: Long, now: Long): NetWorthTransactionEntity = NetWorthTransactionEntity(
+        assetId = assetId,
+        symbol = symbol,
+        assetType = assetType,
+        transactionType = transactionType,
+        quantity = quantity,
+        price = price,
+        currency = currency,
+        transactionDate = tradeDate,
+        isin = isin,
+        brokerSource = brokerSource,
+        notes = "",
+        createdAt = now
+    )
+}
+
 // ─── Repository — file access, dedup, and persistence ─────────────────────────
 //
 // Parsing (format detection, XLSX/CSV reading, row parsing) lives entirely in
@@ -239,6 +274,65 @@ class BrokerCsvRepository @Inject constructor(
             }
         } catch (e: Exception) {
             CsvImportResult.Failure("Import failed: ${e.message}", e)
+        }
+    }
+
+    /**
+     * Parses a broker tradebook/contract-note export (real per-trade dates) and writes each
+     * trade as its own [NetWorthTransactionEntity], finding-or-creating the matching asset by
+     * name+type — unlike [importFromUri], this never overwrites an asset's aggregate
+     * quantity/buyPrice snapshot, since a tradebook's job is only to backfill real transaction
+     * history, not to replace current holdings.
+     *
+     * No format is wired up yet — see [BrokerCsvParser.parseTradebook].
+     */
+    suspend fun importTradebookFromUri(
+        uri: Uri,
+        onProgress: (Int, Int) -> Unit = { _, _ -> }
+    ): CsvImportResult = withContext(Dispatchers.IO) {
+        try {
+            val mimeType = context.contentResolver.getType(uri) ?: ""
+            val fileName = uri.lastPathSegment?.lowercase() ?: ""
+            val isXlsx = mimeType.contains("spreadsheetml") ||
+                mimeType.contains("ms-excel") ||
+                fileName.endsWith(".xlsx") ||
+                fileName.endsWith(".xls")
+
+            val fileBytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+                ?: return@withContext CsvImportResult.Failure("Could not open the selected file.")
+
+            when (val outcome = BrokerCsvParser.parseTradebook(fileBytes, isXlsx)) {
+                is BrokerCsvParser.TradebookParseOutcome.Failure -> CsvImportResult.Failure(outcome.reason)
+                is BrokerCsvParser.TradebookParseOutcome.Success -> {
+                    persistTrades(outcome.trades, onProgress)
+                    CsvImportResult.Success(imported = outcome.trades.size, skipped = outcome.skipped)
+                }
+            }
+        } catch (e: Exception) {
+            CsvImportResult.Failure("Import failed: ${e.message}", e)
+        }
+    }
+
+    private suspend fun persistTrades(trades: List<UniversalTrade>, onProgress: (Int, Int) -> Unit) {
+        val now = System.currentTimeMillis()
+        for ((index, trade) in trades.withIndex()) {
+            val existing = netWorthDao.findAssetByNameAndType(trade.symbol, trade.assetType)
+            val assetId = existing?.id ?: netWorthDao.insertAsset(
+                NetWorthAssetEntity(
+                    name = trade.symbol,
+                    assetType = trade.assetType,
+                    quantity = 0.0,
+                    buyPrice = 0.0,
+                    currentValue = 0.0,
+                    currency = trade.currency,
+                    isin = trade.isin,
+                    brokerSource = trade.brokerSource,
+                    addedAt = now,
+                    updatedAt = now
+                )
+            )
+            netWorthTransactionDao.insert(trade.toTransaction(assetId, now))
+            onProgress(index + 1, trades.size)
         }
     }
 
@@ -450,6 +544,31 @@ internal object BrokerCsvParser {
      * is tried in turn; the first one whose header is recognised AND yields at
      * least one holding wins.
      */
+    // ── Tradebook parsing ────────────────────────────────────────────────────
+    //
+    // NOTE: no tradebook/contract-note formats are implemented yet. Each broker's tradebook
+    // export (real per-trade dates) has a different column layout than its holdings-statement
+    // export handled above, and guessing at that layout for financial data risks silently
+    // wrong dates/amounts — so this intentionally always fails until real sample exports
+    // (headers/structure, values can be redacted) are available per broker. To add a format
+    // once samples arrive: add a header signature and a row-parser emitting UniversalTrade,
+    // following the same shape as parseFormatA/parseFormatZerodha/etc. above — the low-level
+    // XLSX/CSV readers (parseXlsxSheets, parseCsv, splitCsvLine) are already broker-agnostic
+    // and can be reused as-is.
+
+    sealed class TradebookParseOutcome {
+        data class Success(val trades: List<UniversalTrade>, val skipped: Int) : TradebookParseOutcome()
+        data class Failure(val reason: String) : TradebookParseOutcome()
+    }
+
+    internal fun parseTradebook(fileBytes: ByteArray, isXlsx: Boolean): TradebookParseOutcome {
+        return TradebookParseOutcome.Failure(
+            "Tradebook import isn't set up for any broker yet.\n\n" +
+            "This needs a real sample tradebook/contract-note export (with amounts redacted, " +
+            "just the column layout) from your broker to wire up correctly."
+        )
+    }
+
     internal fun parse(fileBytes: ByteArray, isXlsx: Boolean): ParseOutcome {
         val candidates: List<Pair<List<String>, List<RawRow>>> = if (isXlsx) {
             parseXlsxSheets(fileBytes)
