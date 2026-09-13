@@ -7,9 +7,12 @@ import android.os.Bundle
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
+import app.trackone.notifications.NotificationHelper
 import app.trackone.security.AppLockManager
 import app.trackone.ui.lock.LockActivity
+import app.trackone.ui.settings.DigestPrefs
 import app.trackone.ui.settings.ThemePrefs
+import app.trackone.workers.DailyDigestWorker
 import com.google.firebase.crashlytics.FirebaseCrashlytics
 import dagger.hilt.android.HiltAndroidApp
 import javax.inject.Inject
@@ -35,6 +38,11 @@ class FinanceApplication : Application(), Configuration.Provider {
         // just the system default) is already in effect on cold start.
         AppCompatDelegate.setDefaultNightMode(ThemePrefs.getMode(this))
         registerActivityLifecycleCallbacks(AppLockWatcher(appLockManager))
+
+        NotificationHelper.ensureChannelsCreated(this)
+        if (DigestPrefs.isEnabled(this)) {
+            DailyDigestWorker.schedule(this)
+        }
     }
 }
 

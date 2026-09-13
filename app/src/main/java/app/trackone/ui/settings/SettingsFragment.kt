@@ -1,8 +1,11 @@
 package app.trackone.ui.settings
 
+import android.Manifest
 import android.app.Activity
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.os.SystemClock
 import android.text.format.DateUtils
@@ -16,6 +19,7 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatDelegate
+import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
@@ -36,6 +40,7 @@ import app.trackone.data.repository.BrokerCsvRepository
 import app.trackone.databinding.DialogEmailAuthBinding
 import app.trackone.databinding.FragmentSettingsBinding
 import app.trackone.security.AppLockPrefs
+import app.trackone.workers.DailyDigestWorker
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -94,6 +99,22 @@ class SettingsFragment : Fragment() {
         if (uri != null) showBrokerCsvImportConfirmationDialog(uri)
     }
 
+    private val requestNotificationPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            DigestPrefs.setEnabled(requireContext(), true)
+            DailyDigestWorker.schedule(requireContext())
+        } else {
+            Toast.makeText(
+                requireContext(),
+                "Daily digest needs notification permission to work.",
+                Toast.LENGTH_LONG
+            ).show()
+        }
+        updateDailyDigestRow()
+    }
+
     private val googleSignInLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
@@ -136,6 +157,7 @@ class SettingsFragment : Fragment() {
         setupClickListeners()
         updateThemeRowLabel()
         updateFingerprintLockRow()
+        updateDailyDigestRow()
         observeAuthState()
         observeGoogleSignInState()
         observeCloudBackupState()
@@ -218,6 +240,12 @@ class SettingsFragment : Fragment() {
         binding.rowFingerprintLock.setOnDebouncedClickListener {
             it.performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY)
             toggleFingerprintLock()
+        }
+
+        // Daily Digest — same row-level-listener-drives-switch pattern as Fingerprint Lock.
+        binding.rowDailyDigest.setOnDebouncedClickListener {
+            it.performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY)
+            toggleDailyDigest()
         }
 
         // Contact Us
@@ -672,6 +700,37 @@ class SettingsFragment : Fragment() {
 
         appLockPrefs.isLockEnabled = true
         updateFingerprintLockRow()
+    }
+
+    // ── Daily Digest ─────────────────────────────────────────────────────
+
+    private fun updateDailyDigestRow() {
+        binding.switchDailyDigest.isChecked = DigestPrefs.isEnabled(requireContext())
+    }
+
+    private fun toggleDailyDigest() {
+        if (!isAdded) return
+
+        if (DigestPrefs.isEnabled(requireContext())) {
+            DigestPrefs.setEnabled(requireContext(), false)
+            DailyDigestWorker.cancel(requireContext())
+            updateDailyDigestRow()
+            return
+        }
+
+        // POST_NOTIFICATIONS is a runtime permission only from API 33 onward — below that,
+        // notifications just require the (already-granted) manifest permission.
+        val needsRuntimePermission = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.POST_NOTIFICATIONS) !=
+                PackageManager.PERMISSION_GRANTED
+
+        if (needsRuntimePermission) {
+            requestNotificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        } else {
+            DigestPrefs.setEnabled(requireContext(), true)
+            DailyDigestWorker.schedule(requireContext())
+            updateDailyDigestRow()
+        }
     }
 
     private fun showBrokerFileGuideDialog() {
