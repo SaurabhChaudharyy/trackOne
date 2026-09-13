@@ -12,6 +12,7 @@ import app.trackone.data.database.NetWorthDao
 import app.trackone.data.database.StockEntity
 import app.trackone.data.repository.NetWorthRepository
 import app.trackone.data.repository.StockRepository
+import app.trackone.utils.PortfolioGainLoss
 import app.trackone.utils.Resource
 import app.trackone.utils.SymbolUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -302,25 +303,12 @@ class HomeViewModel @Inject constructor(
     /** Pure — no DB access — so both the reactive observer and the suspend callers can share it. */
     private fun buildPortfolioSummary(assets: List<NetWorthAssetEntity>): PortfolioSummary? {
         if (assets.isEmpty()) return null
-
-        var totalInvested = 0.0
-        var totalCurrent  = 0.0
-        for (asset in assets) {
-            if (asset.buyPrice > 0.0) {
-                totalInvested += asset.buyPrice * asset.quantity
-                totalCurrent  += asset.currentValue
-            } else {
-                totalInvested += asset.currentValue
-                totalCurrent  += asset.currentValue
-            }
-        }
-        val absChange = totalCurrent - totalInvested
-        val pct = if (totalInvested > 0.0) (absChange / totalInvested) * 100.0 else 0.0
+        val gainLoss = PortfolioGainLoss.compute(assets)
         return PortfolioSummary(
-            totalCurrent  = totalCurrent,
-            totalInvested = totalInvested,
-            absChange     = absChange,
-            pctChange     = pct
+            totalCurrent  = gainLoss.current,
+            totalInvested = gainLoss.invested,
+            absChange     = gainLoss.absChange,
+            pctChange     = gainLoss.pctChange
         )
     }
 
