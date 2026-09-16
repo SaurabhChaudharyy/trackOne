@@ -52,10 +52,16 @@ class FinanceApplication : Application(), Configuration.Provider {
 }
 
 /**
- * Tracks how many Activities are currently started, across the whole process, to detect the
- * app-wide foreground/background transitions [AppLockManager] cares about — a transition
- * between two of the app's own Activities (e.g. MainActivity -> StockDetailActivity) starts the
- * new one before stopping the old one, so the count never touches zero and no re-lock happens.
+ * Tracks how many Activities are currently started, across the whole process, purely so
+ * [AppLockManager.onAppBackgrounded] can be told when the last Activity stops.
+ *
+ * Every newly-started Activity is gated against [AppLockManager.shouldShowLockScreen] — not just
+ * ones arriving from a fully-backgrounded app. This must NOT be narrowed to "count was zero"
+ * transitions: [LockActivity] itself keeps the count above zero for as long as it's on screen, so
+ * an Activity that gets started *while still locked* (e.g. SplashActivity's timer-driven
+ * `navigateToMain()`, which fires on its own schedule with no idea whether the gate is up) would
+ * never trip the old zero-check and would land on top of the lock screen, fully visible, with no
+ * unlock having happened.
  */
 private class AppLockWatcher(
     private val appLockManager: AppLockManager
@@ -64,10 +70,9 @@ private class AppLockWatcher(
     private var startedActivityCount = 0
 
     override fun onActivityStarted(activity: Activity) {
-        val cameFromBackground = startedActivityCount == 0
         startedActivityCount++
 
-        if (cameFromBackground && activity !is LockActivity && appLockManager.shouldShowLockScreen()) {
+        if (activity !is LockActivity && appLockManager.shouldShowLockScreen()) {
             activity.startActivity(Intent(activity, LockActivity::class.java))
         }
     }

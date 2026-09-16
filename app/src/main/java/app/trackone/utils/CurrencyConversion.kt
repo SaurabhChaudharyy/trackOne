@@ -11,15 +11,15 @@ object CurrencyConversion {
 
     /**
      * Converts a price quoted in [currency] into INR using [usdInrRate]. Yahoo Finance
-     * sometimes reports USD-denominated quotes as "USX" (cents) rather than "USD" — both are
-     * treated as USD here since [priceInNativeCurrency] is already the same regularMarketPrice
-     * field NetWorthRepository reads regardless of which of the two the API returned.
+     * sometimes reports USD-denominated quotes as "USX" (cents) rather than "USD" — same
+     * regularMarketPrice field, but a hundredth the unit, so it needs converting to dollars
+     * before the USD→INR rate is applied or it comes out 100x too high.
      */
     fun toInr(priceInNativeCurrency: Double, currency: String, usdInrRate: Double): Double =
-        if (currency == "USD" || currency == "USX") {
-            priceInNativeCurrency * usdInrRate
-        } else {
-            priceInNativeCurrency
+        when (currency) {
+            "USD" -> priceInNativeCurrency * usdInrRate
+            "USX" -> (priceInNativeCurrency / 100.0) * usdInrRate
+            else -> priceInNativeCurrency
         }
 
     /** Gold/silver are quoted per troy ounce; net-worth tracks them per gram. */

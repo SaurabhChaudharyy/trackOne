@@ -13,10 +13,10 @@ class CurrencyConversionTest {
     }
 
     @Test
-    fun `USX price is treated the same as USD`() {
+    fun `USX price is cents - divided by 100 before applying the USD rate`() {
         val result = CurrencyConversion.toInr(priceInNativeCurrency = 10.0, currency = "USX", usdInrRate = 83.0)
 
-        assertEquals(830.0, result, 0.0001)
+        assertEquals(8.3, result, 0.0001)
     }
 
     @Test
