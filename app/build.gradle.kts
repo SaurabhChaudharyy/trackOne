@@ -16,8 +16,8 @@ android {
         applicationId = "app.trackone"
         minSdk = 26
         targetSdk = 34
-        versionCode = 4
-        versionName = "1.4.1"
+        versionCode = 5
+        versionName = "1.4.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
