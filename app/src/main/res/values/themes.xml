@@ -13,7 +13,7 @@
         <item name="android:windowBackground">@color/background</item>
         <item name="android:statusBarColor">@color/background</item>
         <item name="android:navigationBarColor">@color/nav_bar_bg</item>
-        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowLightStatusBar">@bool/light_status_bar</item>
         <item name="android:windowLightNavigationBar" tools:targetApi="27">false</item>
 
         <item name="android:windowSplashScreenAnimatedIcon">@drawable/transparent_splash</item>
@@ -173,8 +173,8 @@
         <item name="android:windowBackground">@color/background</item>
         <item name="android:statusBarColor">@color/background</item>
         <item name="android:navigationBarColor">@color/background</item>
-        <item name="android:windowLightStatusBar">true</item>
-        <item name="android:windowLightNavigationBar" tools:targetApi="27">true</item>
+        <item name="android:windowLightStatusBar">@bool/light_status_bar</item>
+        <item name="android:windowLightNavigationBar" tools:targetApi="27">@bool/light_splash_nav_bar</item>
         <item name="android:forceDarkAllowed" tools:targetApi="29">false</item>
         <item name="android:windowSplashScreenAnimatedIcon">@drawable/transparent_splash</item>
         <item name="android:windowSplashScreenBackground">@color/background</item>

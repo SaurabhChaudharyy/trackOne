@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Values that must flip with the day/night theme. They live in bool resources rather than in
+  a values-night copy of Theme.FinanceWidget: Android does NOT merge a night style's items
+  into the base style — it replaces the whole style — so a night override of the theme silently
+  dropped fonts, colours and text appearances in dark mode.
+-->
+<resources>
+    <!-- Dark icons on a light status bar in light mode; light icons in dark mode. -->
+    <bool name="light_status_bar">true</bool>
+    <!-- Splash's nav bar uses @color/background, so it flips too. (Main theme's nav bar is
+         the constant black @color/nav_bar_bg and stays non-light in both modes.) -->
+    <bool name="light_splash_nav_bar">true</bool>
+</resources>
