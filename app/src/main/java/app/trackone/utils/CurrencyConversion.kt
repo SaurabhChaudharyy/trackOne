@@ -22,6 +22,16 @@ object CurrencyConversion {
             else -> priceInNativeCurrency
         }
 
+    /**
+     * A quote as this app holds it: INR per unit, where the unit is a gram for gold/silver
+     * ([isMetal]) and a share/coin for everything else. The one place that rule lives — the live
+     * quote and the history chart both go through it, so they can't disagree on units.
+     */
+    fun perUnitInr(price: Double, currency: String, usdInrRate: Double, isMetal: Boolean): Double {
+        val inr = toInr(price, currency, usdInrRate)
+        return if (isMetal) troyOunceToGramPrice(inr) else inr
+    }
+
     /** Gold/silver are quoted per troy ounce; net-worth tracks them per gram. */
     fun troyOunceToGramPrice(pricePerTroyOunceInr: Double): Double =
         pricePerTroyOunceInr / GRAMS_PER_TROY_OUNCE

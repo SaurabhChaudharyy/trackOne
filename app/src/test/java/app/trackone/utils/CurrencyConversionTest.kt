@@ -32,4 +32,16 @@ class CurrencyConversionTest {
 
         assertEquals(10.0, result, 0.0001)
     }
+
+    @Test
+    fun `per-unit INR converts USD shares and leaves INR alone`() {
+        assertEquals(16_000.0, CurrencyConversion.perUnitInr(200.0, "USD", 80.0, isMetal = false), 1e-9)
+        assertEquals(3_500.0, CurrencyConversion.perUnitInr(3_500.0, "INR", 80.0, isMetal = false), 1e-9)
+    }
+
+    @Test
+    fun `per-unit INR turns a USD-per-ounce metal quote into rupees per gram`() {
+        // 2,000 USD/oz * 80 = 160,000 INR/oz; / 31.1035 g = ~5,144.3 INR/g
+        assertEquals(160_000.0 / 31.1035, CurrencyConversion.perUnitInr(2_000.0, "USD", 80.0, isMetal = true), 1e-6)
+    }
 }

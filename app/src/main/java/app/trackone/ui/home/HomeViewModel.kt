@@ -11,11 +11,14 @@ import app.trackone.data.database.NetWorthAssetEntity
 import app.trackone.data.database.NetWorthDao
 import app.trackone.data.database.StockEntity
 import app.trackone.data.repository.NetWorthRepository
+import app.trackone.data.repository.PortfolioHistoryRepository
 import app.trackone.data.repository.StockRepository
+import app.trackone.utils.ChartRange
 import app.trackone.utils.PortfolioGainLoss
 import app.trackone.utils.Resource
 import app.trackone.utils.SymbolUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -79,9 +82,8 @@ data class PortfolioSummary(
 )
 
 /**
- * A single point on the portfolio value chart.
- * [timestamp] is a Unix epoch in millis, [invested] is cumulative cost-basis,
- * [current] is cumulative current market value at that moment.
+ * One point on the Home chart: what today's holdings were worth on [timestamp]'s day.
+ * [current] is that day's total value in INR; [invested] is today's cost basis (constant).
  */
 data class PortfolioChartPoint(
     val timestamp: Long,   // millis
@@ -93,7 +95,8 @@ data class PortfolioChartPoint(
 class HomeViewModel @Inject constructor(
     private val repository: StockRepository,
     private val netWorthRepository: NetWorthRepository,
-    private val netWorthDao: NetWorthDao
+    private val netWorthDao: NetWorthDao,
+    private val portfolioHistoryRepository: PortfolioHistoryRepository
 ) : ViewModel() {
 
     companion object {
@@ -134,6 +137,43 @@ class HomeViewModel @Inject constructor(
     private val _portfolioChartData = MutableLiveData<List<PortfolioChartPoint>>(emptyList())
     val portfolioChartData: LiveData<List<PortfolioChartPoint>> = _portfolioChartData.distinctUntilChanged()
 
+    private val _chartRange = MutableLiveData(ChartRange.MONTH)
+    val chartRange: LiveData<ChartRange> = _chartRange
+
+    private val _chartLoading = MutableLiveData(false)
+    val chartLoading: LiveData<Boolean> = _chartLoading
+
+    private var chartJob: Job? = null
+    private var latestAssets: List<NetWorthAssetEntity> = emptyList()
+
+    fun setChartRange(range: ChartRange) {
+        if (range == _chartRange.value) return
+        _chartRange.value = range
+        rebuildChart(latestAssets)
+    }
+
+    /**
+     * Rebuilds the chart for the selected range. Each call cancels the one before it, so a quick
+     * run of range taps (or a price refresh landing mid-fetch) can't apply a stale result over a
+     * newer one. The fetches themselves are cached per symbol+range by the repository.
+     */
+    private fun rebuildChart(assets: List<NetWorthAssetEntity>) {
+        latestAssets = assets
+        chartJob?.cancel()
+        if (assets.isEmpty()) {
+            _chartLoading.value = false
+            _portfolioChartData.value = emptyList()
+            return
+        }
+        val range = _chartRange.value ?: ChartRange.MONTH
+        chartJob = viewModelScope.launch {
+            _chartLoading.value = true
+            val points = portfolioHistoryRepository.history(assets, range)
+            _portfolioChartData.value = points
+            _chartLoading.value = false
+        }
+    }
+
     // ── Portfolio refresh event (fires when live data differs from cached) ─────
     /** Carries the fresh PortfolioSummary so the Fragment can show a "Updated" banner. */
     private val _portfolioRefreshed = MutableLiveData<PortfolioSummary?>()
@@ -152,7 +192,7 @@ class HomeViewModel @Inject constructor(
     private val netWorthAssetsLiveData: LiveData<List<NetWorthAssetEntity>> = netWorthDao.getAllAssets()
     private val netWorthAssetsObserver = Observer<List<NetWorthAssetEntity>> { assets ->
         _portfolioSummary.value = buildPortfolioSummary(assets)
-        _portfolioChartData.value = buildPortfolioChartData(assets)
+        rebuildChart(assets)
     }
 
     init {
@@ -342,53 +382,7 @@ class HomeViewModel @Inject constructor(
         _portfolioSummary.postValue(buildPortfolioSummary())
     }
 
-    /**
-     * Builds a time-series of cumulative portfolio value vs invested cost-basis.
-     * Assets are sorted by addedAt timestamp; each distinct calendar-day boundary
-     * becomes a data point showing cumulative invested + current values up to that day.
-     * We append today as the final "live" point using current market values.
-     */
-    /** Pure — no DB access — so both the reactive observer and the suspend callers can share it. */
-    private fun buildPortfolioChartData(assets: List<NetWorthAssetEntity>): List<PortfolioChartPoint> {
-        if (assets.size < 2) return emptyList()
-
-        // Sort by when each asset was added
-        val sorted = assets.sortedBy { it.addedAt }
-
-        // Build cumulative points: one point per asset-addition event
-        val points = mutableListOf<PortfolioChartPoint>()
-        var cumulativeInvested = 0.0
-        var cumulativeCurrent  = 0.0
-
-        for (asset in sorted) {
-            val invested = PortfolioGainLoss.investedValue(asset)
-            cumulativeInvested += invested
-            cumulativeCurrent  += asset.currentValue
-            points.add(
-                PortfolioChartPoint(
-                    timestamp = asset.addedAt,
-                    invested  = cumulativeInvested,
-                    current   = cumulativeCurrent
-                )
-            )
-        }
-
-        // Ensure the last point is "now" with fresh current values (covers same-day additions)
-        val nowTs = System.currentTimeMillis()
-        if (points.isNotEmpty() && nowTs > points.last().timestamp) {
-            points.add(
-                PortfolioChartPoint(
-                    timestamp = nowTs,
-                    invested  = points.last().invested,
-                    current   = points.last().current
-                )
-            )
-        }
-
-        return points
-    }
-
     private suspend fun computePortfolioChartData() {
-        _portfolioChartData.postValue(buildPortfolioChartData(netWorthDao.getAllAssetsSync()))
+        rebuildChart(netWorthDao.getAllAssetsSync())
     }
 }

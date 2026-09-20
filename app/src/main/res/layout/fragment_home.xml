@@ -159,10 +159,10 @@
 
                 <!-- Chart -->
                 <FrameLayout
+                    android:id="@+id/fl_portfolio_chart"
                     android:layout_width="match_parent"
                     android:layout_height="180dp"
-                    android:layout_marginTop="4dp"
-                    android:layout_marginBottom="16dp">
+                    android:layout_marginTop="4dp">
 
                     <com.github.mikephil.charting.charts.LineChart
                         android:id="@+id/portfolio_line_chart"
@@ -176,6 +176,90 @@
                         android:layout_gravity="center"
                         android:visibility="gone"/>
                 </FrameLayout>
+
+                <!-- Shown instead of the chart when a range has no price history -->
+                <TextView
+                    android:id="@+id/tv_chart_empty"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginHorizontal="16dp"
+                    android:layout_marginVertical="24dp"
+                    android:text="@string/chart_empty"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="12sp"
+                    android:visibility="gone"/>
+
+                <!-- Range selector -->
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="10dp"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:id="@+id/tv_range_1w"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:minWidth="48dp"
+                        android:minHeight="44dp"
+                        android:gravity="center"
+                        android:paddingHorizontal="12dp"
+                        android:text="@string/chart_range_1w"
+                        android:textSize="12sp"
+                        android:fontFamily="@font/inter_semi_bold"
+                        android:textColor="@color/text_tertiary"
+                        android:contentDescription="@string/chart_range_1w_desc"/>
+                    <TextView
+                        android:id="@+id/tv_range_1m"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:minWidth="48dp"
+                        android:minHeight="44dp"
+                        android:gravity="center"
+                        android:paddingHorizontal="12dp"
+                        android:text="@string/chart_range_1m"
+                        android:textSize="12sp"
+                        android:fontFamily="@font/inter_semi_bold"
+                        android:textColor="@color/text_tertiary"
+                        android:contentDescription="@string/chart_range_1m_desc"/>
+                    <TextView
+                        android:id="@+id/tv_range_3m"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:minWidth="48dp"
+                        android:minHeight="44dp"
+                        android:gravity="center"
+                        android:paddingHorizontal="12dp"
+                        android:text="@string/chart_range_3m"
+                        android:textSize="12sp"
+                        android:fontFamily="@font/inter_semi_bold"
+                        android:textColor="@color/text_tertiary"
+                        android:contentDescription="@string/chart_range_3m_desc"/>
+                    <TextView
+                        android:id="@+id/tv_range_1y"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:minWidth="48dp"
+                        android:minHeight="44dp"
+                        android:gravity="center"
+                        android:paddingHorizontal="12dp"
+                        android:text="@string/chart_range_1y"
+                        android:textSize="12sp"
+                        android:fontFamily="@font/inter_semi_bold"
+                        android:textColor="@color/text_tertiary"
+                        android:contentDescription="@string/chart_range_1y_desc"/>
+                </LinearLayout>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="16dp"
+                    android:layout_marginTop="2dp"
+                    android:layout_marginBottom="16dp"
+                    android:text="@string/chart_caption"
+                    android:textColor="@color/text_tertiary"
+                    android:textSize="11sp"
+                    android:fontFamily="@font/inter"/>
             </LinearLayout>
 
             <!-- ── DIVIDER ───────────────────────────────────────────────── -->

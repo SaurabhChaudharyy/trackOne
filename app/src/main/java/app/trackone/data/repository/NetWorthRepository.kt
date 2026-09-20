@@ -117,15 +117,8 @@ class NetWorthRepository @Inject constructor(
 
                 // Price and previous close go through the same conversion so their ratio
                 // (the day's move) is unaffected by FX, units or cents-vs-dollars.
-                val toFinalPrice = { native: Double ->
-                    val inr = if (currency == "USD" || currency == "USX") {
-                        CurrencyConversion.toInr(native, currency, usdInr)
-                    } else native
-                    when (assetType) {
-                        AssetType.GOLD, AssetType.SILVER -> CurrencyConversion.troyOunceToGramPrice(inr)
-                        else                             -> inr
-                    }
-                }
+                val isMetal = assetType == AssetType.GOLD || assetType == AssetType.SILVER
+                val toFinalPrice = { native: Double -> CurrencyConversion.perUnitInr(native, currency, usdInr, isMetal) }
 
                 Resource.Success(
                     LiveQuote(

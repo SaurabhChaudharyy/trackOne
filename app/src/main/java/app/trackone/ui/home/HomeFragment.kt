@@ -23,6 +23,8 @@ import app.trackone.data.database.StockEntity
 import app.trackone.databinding.FragmentHomeBinding
 import app.trackone.ui.detail.StockDetailActivity
 import app.trackone.utils.AnimationUtils.animateNumberFromZero
+import app.trackone.utils.ChartAxis
+import app.trackone.utils.ChartRange
 import app.trackone.utils.FormatUtils
 import app.trackone.utils.MarketUtils
 import app.trackone.utils.Resource
@@ -52,6 +54,9 @@ class HomeFragment : Fragment() {
     private var allChartPoints: List<PortfolioChartPoint> = emptyList()
     private var scrubbedIndex = -1
     private var currentPortfolioTotal: Double? = null
+    /** Once a chart has shown, the range chips stay put even when a range has no data, so the
+     *  person can always switch away from it. */
+    private var chartEverShown = false
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -66,6 +71,7 @@ class HomeFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         setupDateTime()
         setupPortfolioChart()
+        setupRangeChips()
         setupMarketStatusChips()
         setupIndexCardClicks()
         setupPortfolioCardClick()
@@ -174,11 +180,24 @@ class HomeFragment : Fragment() {
             applyPortfolioSummary(summary)
         }
 
+        viewModel.chartRange.observe(viewLifecycleOwner) { styleRangeChips(it) }
+
+        viewModel.chartLoading.observe(viewLifecycleOwner) { loading ->
+            binding.portfolioChartProgress.visibility = if (loading) View.VISIBLE else View.GONE
+        }
+
         viewModel.portfolioChartData.observe(viewLifecycleOwner) { points ->
             allChartPoints = points
             if (points.size >= 2) {
+                chartEverShown = true
                 binding.llPortfolioChartSection.visibility = View.VISIBLE
+                binding.flPortfolioChart.visibility = View.VISIBLE
+                binding.tvChartEmpty.visibility = View.GONE
                 drawPortfolioChart(points)
+            } else if (chartEverShown) {
+                // This range has no history: say so, but keep the chips so it can be changed.
+                binding.flPortfolioChart.visibility = View.GONE
+                binding.tvChartEmpty.visibility = View.VISIBLE
             } else {
                 binding.llPortfolioChartSection.visibility = View.GONE
             }
@@ -254,7 +273,6 @@ class HomeFragment : Fragment() {
                 setDrawAxisLine(false)
                 setDrawLabels(true)
                 setLabelCount(4, false)
-                axisMinimum      = 0f  // Prevents negative Y-axis values
                 // @color/text_tertiary / @color/divider_color flip with the theme (unlike a
                 // fixed hex), so the grid stays a faint, legible hairline in both — a literal
                 // zinc-100 grid line was invisible on the light background it was tuned for and
@@ -300,12 +318,43 @@ class HomeFragment : Fragment() {
                 when (ev.actionMasked) {
                     android.view.MotionEvent.ACTION_DOWN -> v.parent?.requestDisallowInterceptTouchEvent(true)
                     android.view.MotionEvent.ACTION_UP, android.view.MotionEvent.ACTION_CANCEL -> {
+                        if (ev.actionMasked == android.view.MotionEvent.ACTION_UP) v.performClick()
                         v.parent?.requestDisallowInterceptTouchEvent(false)
                         v.post { highlightValues(null); restoreScrubHeader() }
                     }
                 }
                 false
             })
+        }
+    }
+
+    // ── Range chips ──────────────────────────────────────────────────────
+
+    // Built on demand, never cached: the binding's views are recreated with the fragment's view.
+    private fun rangeChips() = mapOf(
+        ChartRange.WEEK    to binding.tvRange1w,
+        ChartRange.MONTH   to binding.tvRange1m,
+        ChartRange.QUARTER to binding.tvRange3m,
+        ChartRange.YEAR    to binding.tvRange1y
+    )
+
+    private fun setupRangeChips() {
+        rangeChips().forEach { (range, chip) ->
+            chip.setOnClickListener {
+                it.performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY)
+                viewModel.setChartRange(range)
+            }
+        }
+    }
+
+    /** Selected = the app's neon highlighter pill with dark ink (same as the gain pills). */
+    private fun styleRangeChips(selected: ChartRange) {
+        if (_binding == null) return
+        rangeChips().forEach { (range, chip) ->
+            val on = range == selected
+            chip.background = if (on) ContextCompat.getDrawable(requireContext(), R.drawable.bg_gain_pill) else null
+            chip.setTextColor(requireContext().getColor(if (on) R.color.primary else R.color.text_tertiary))
+            chip.isSelected = on
         }
     }
 
@@ -318,7 +367,11 @@ class HomeFragment : Fragment() {
         if (_binding == null) return
         val point = allChartPoints.getOrNull(index) ?: return
         if (index != scrubbedIndex) {
-            binding.portfolioLineChart.performHapticFeedback(android.view.HapticFeedbackConstants.SEGMENT_FREQUENT_TICK)
+            binding.portfolioLineChart.performHapticFeedback(
+                // The finer scrub tick is API 34+; older devices get the standard clock tick.
+                if (android.os.Build.VERSION.SDK_INT >= 34) android.view.HapticFeedbackConstants.SEGMENT_FREQUENT_TICK
+                else android.view.HapticFeedbackConstants.CLOCK_TICK
+            )
             scrubbedIndex = index
         }
         // A count-up may still be running on this view; stop it so it doesn't overwrite the scrub.
@@ -371,6 +424,10 @@ class HomeFragment : Fragment() {
             cubicIntensity = 0.15f
             setDrawFilled(true)
             fillDrawable = gradientDrawable
+            // The visible labels belong to the RIGHT axis. Bound to the (hidden) left axis, the
+            // line autoscaled to its own min/max while the labels stayed pinned to a different
+            // scale — harmless while the data spanned zero to the total, wrong for a real history.
+            axisDependency = com.github.mikephil.charting.components.YAxis.AxisDependency.RIGHT
             isHighlightEnabled = true
             highLightColor = requireContext().getColor(R.color.text_secondary)
             highlightLineWidth = 1f
@@ -380,10 +437,10 @@ class HomeFragment : Fragment() {
 
         // Date formatter for xAxis labels
         val span = points.last().timestamp - points.first().timestamp
-        val dateFmt = if (span < 30L * 24 * 60 * 60 * 1000) {
+        val dateFmt = if (span < 200L * 24 * 60 * 60 * 1000) {
             SimpleDateFormat("d MMM", Locale.getDefault())
         } else {
-            SimpleDateFormat("MMM yy", Locale.getDefault())
+            SimpleDateFormat("MMM ''yy", Locale.getDefault())   // Sep '25 — "Sep 25" reads as a day
         }
         binding.portfolioLineChart.xAxis.valueFormatter = object : com.github.mikephil.charting.formatter.ValueFormatter() {
             override fun getAxisLabel(value: Float, axis: com.github.mikephil.charting.components.AxisBase?): String {
@@ -393,6 +450,11 @@ class HomeFragment : Fragment() {
         }
 
         binding.portfolioLineChart.apply {
+            // Axis hugs the data: a portfolio moving a couple of percent would otherwise be a flat
+            // line at the top of a zero-based axis.
+            val (axisLo, axisHi) = ChartAxis.bounds(points.minOf { it.current }, points.maxOf { it.current })
+            axisRight.axisMinimum = axisLo.toFloat()
+            axisRight.axisMaximum = axisHi.toFloat()
             data = LineData(currentDataSet)
             animateX(700)
             invalidate()

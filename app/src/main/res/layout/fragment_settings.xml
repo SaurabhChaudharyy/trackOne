@@ -420,7 +420,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Portfolio Digest"
+                    android:text="@string/settings_digest_title"
                     android:textColor="@color/text_primary"
                     android:textSize="14sp"
                     android:fontFamily="@font/inter_semi_bold"/>
@@ -428,7 +428,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Daily: how your holdings moved today. Sunday: your total gain/loss and best/worst holdings"
+                    android:text="@string/settings_digest_desc"
                     android:textColor="@color/text_tertiary"
                     android:textSize="11sp"
                     android:fontFamily="@font/inter"
