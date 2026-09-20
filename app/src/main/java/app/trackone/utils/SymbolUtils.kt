@@ -14,4 +14,8 @@ object SymbolUtils {
         val trimmed = symbol.trim().uppercase()
         return if (trimmed.contains('.')) trimmed else "$trimmed.NS"
     }
+
+    /** What to show a person: Yahoo's index caret and NSE/BSE suffixes are lookup plumbing, not names. */
+    fun displaySymbol(symbol: String): String =
+        symbol.removePrefix("^").removeSuffix(".NS").removeSuffix(".BO")
 }

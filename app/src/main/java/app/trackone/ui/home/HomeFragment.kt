@@ -483,7 +483,7 @@ class HomeFragment : Fragment() {
 
         // Symbol
         val tvSymbol = TextView(requireContext()).apply {
-            text = stock.symbol.removePrefix("^")
+            text = mover.label
             textSize = 12f
             setTextColor(requireContext().getColor(R.color.text_primary))
             typeface = android.graphics.Typeface.DEFAULT_BOLD
@@ -533,13 +533,10 @@ class HomeFragment : Fragment() {
         pill.addView(ivTrend)
         pill.addView(tvChange)
 
-        // Optional invested → current sub-line
-        if (mover.invested > 0.0) {
-            val pnl = mover.currentVal - mover.invested
-            val isInvGain = pnl >= 0
-
+        // Optional holding-value sub-line (INR), shown whenever the value is known
+        if (mover.currentVal > 0.0) {
             val tvInv = TextView(requireContext()).apply {
-                text = FormatUtils.formatPrice(mover.currentVal, stock.currency)
+                text = FormatUtils.formatPrice(mover.currentVal, "INR")
                 textSize = 10f
                 setTextColor(requireContext().getColor(R.color.text_primary))
                 typeface = android.graphics.Typeface.DEFAULT_BOLD

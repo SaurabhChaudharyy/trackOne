@@ -31,13 +31,34 @@ data class IndexData(
 
 /**
  * A single top-mover row: live price data + user's position info.
- * [invested] and [currentVal] are 0 when the user has no buy price recorded.
+ * [invested] is 0 when the user has no buy price recorded. [currentVal] is the holding's value
+ * in INR, or 0 when that isn't known (see [buildTopMover]).
  */
 data class TopMover(
     val stock: StockEntity,
+    val label: String,      // what to show as the title — see buildTopMover
     val invested: Double,   // buyPrice * quantity (0 if no buy price)
-    val currentVal: Double, // currentPrice * quantity
+    val currentVal: Double, // the holding's INR value (0 if unknown)
     val qty: Double
+)
+
+/**
+ * The holding's value comes from the stored INR [NetWorthAssetEntity.currentValue], not from
+ * `stock.currentPrice * quantity`: a quote is in its own currency and unit (gold/silver futures
+ * are USD per troy OUNCE, while the holding is in GRAMS), so that product was both the wrong
+ * currency and the wrong unit. A row still labelled with a foreign currency hasn't been
+ * converted yet, so it reports 0 (unknown) rather than a number carrying the wrong symbol.
+ */
+internal fun buildTopMover(asset: NetWorthAssetEntity, stock: StockEntity): TopMover = TopMover(
+    stock      = stock,
+    label      = when (asset.assetType) {
+        AssetType.GOLD   -> "Gold"
+        AssetType.SILVER -> "Silver"
+        else             -> SymbolUtils.displaySymbol(stock.symbol)
+    },
+    invested   = if (asset.buyPrice > 0.0) asset.buyPrice * asset.quantity else 0.0,
+    currentVal = if (asset.currency == "INR") asset.currentValue else 0.0,
+    qty        = asset.quantity
 )
 
 /**
@@ -279,12 +300,7 @@ class HomeViewModel @Inject constructor(
                     val result = repository.fetchAndCacheStock(symbol)
                     if (result is Resource.Success) {
                         val stock = result.data
-                        TopMover(
-                            stock      = stock,
-                            invested   = if (asset.buyPrice > 0.0) asset.buyPrice * asset.quantity else 0.0,
-                            currentVal = stock.currentPrice * asset.quantity,
-                            qty        = asset.quantity
-                        )
+                        buildTopMover(asset, stock)
                     } else null
                 }
             }.awaitAll()

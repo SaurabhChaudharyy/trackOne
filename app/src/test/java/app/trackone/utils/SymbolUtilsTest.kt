@@ -29,4 +29,12 @@ class SymbolUtilsTest {
     fun `whitespace is trimmed before suffixing`() {
         assertEquals("HDFC.NS", SymbolUtils.normaliseIndianSymbol("  hdfc  "))
     }
+
+    @Test
+    fun `display symbol drops the index caret and NSE or BSE suffix`() {
+        assertEquals("NIFTY", SymbolUtils.displaySymbol("^NIFTY"))
+        assertEquals("TCS", SymbolUtils.displaySymbol("TCS.NS"))
+        assertEquals("SOMETHING", SymbolUtils.displaySymbol("SOMETHING.BO"))
+        assertEquals("AAPL", SymbolUtils.displaySymbol("AAPL"))
+    }
 }
