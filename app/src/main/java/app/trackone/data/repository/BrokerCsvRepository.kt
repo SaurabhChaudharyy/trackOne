@@ -356,6 +356,9 @@ class BrokerCsvRepository @Inject constructor(
                         quantity     = entity.quantity,
                         buyPrice     = entity.buyPrice,
                         currentValue = entity.currentValue,
+                        // buyPrice/currentValue above are in the file's currency; a prior live
+                        // refresh may have relabelled this row "INR", so the label must follow.
+                        currency     = entity.currency,
                         updatedAt    = entity.updatedAt,
                         isin         = entity.isin,
                         brokerSource = entity.brokerSource

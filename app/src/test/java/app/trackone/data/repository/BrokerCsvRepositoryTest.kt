@@ -108,6 +108,33 @@ class BrokerCsvRepositoryTest {
     }
 
     @Test
+    fun `re-importing a USD holding over an already-refreshed INR row keeps buyPrice and currency consistent`() = runTest {
+        // After the first live refresh NetWorthRepository rewrites this row to INR. A later
+        // re-import of the USD broker file overwrites buyPrice/currentValue with USD figures;
+        // if `currency` isn't reset to match, the next refresh sees currency == "INR", skips the
+        // buyPrice USD->INR conversion, and pairs an INR currentValue with a USD buyPrice
+        // (~88x fake gain in the portfolio digest).
+        stubFileContents("name,quantity,buyprice,currentvalue\nDOCN,10,14.0,140.0\n".toByteArray())
+        val refreshedExisting = NetWorthAssetEntity(
+            id = 9,
+            name = "DOCN",
+            assetType = AssetType.STOCK_US,
+            quantity = 10.0,
+            buyPrice = 1232.0,       // already converted to INR
+            currentValue = 3520.0,
+            currency = "INR"
+        )
+        coEvery { netWorthDao.findAssetByNameAndType("DOCN", AssetType.STOCK_US) } returns refreshedExisting
+        val updated = slot<NetWorthAssetEntity>()
+        coEvery { netWorthDao.updateAsset(capture(updated)) } returns Unit
+
+        repository.importFromUri(uri)
+
+        assertEquals(14.0, updated.captured.buyPrice, 0.0)   // written in USD...
+        assertEquals("USD", updated.captured.currency)        // ...so it must be labelled USD
+    }
+
+    @Test
     fun `an unrecognised file format fails without touching the database`() = runTest {
         stubFileContents("some,random,header\n1,2,3\n".toByteArray())
 
