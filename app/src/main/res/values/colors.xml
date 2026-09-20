@@ -14,8 +14,8 @@
     <color name="overlay_scrim">#80FFFFFF</color>
 
     <color name="text_primary">#09090B</color>
-    <color name="text_secondary">#71717A</color>
-    <color name="text_tertiary">#A1A1AA</color>
+    <color name="text_secondary">#52525B</color>
+    <color name="text_tertiary">#6B6B75</color>
 
     <!-- Gain = neon yellow (Minna no Ginko style) -->
     <color name="gain_green">#F3FE78</color>
@@ -34,6 +34,8 @@
     <color name="nav_bar_bg">#09090B</color>
     <color name="nav_icon_active">#FFFFFF</color>
     <color name="nav_icon_inactive">#71717A</color>
+    <!-- Inactive LABEL text on the constant-black bar: #71717A was 4.1:1 (fails AA for small text) -->
+    <color name="nav_label_inactive">#8B8B95</color>
 
     <color name="widget_background">#E6FFFFFF</color>
     <color name="widget_surface">#E6F4F4F5</color>
@@ -46,4 +48,9 @@
     <color name="cat_crypto">#F3FE78</color>
     <color name="cat_cash">#10B981</color>
     <color name="cat_bank">#06B6D4</color>
+    <!-- Switch, off state: track must stand apart from the card it sits on -->
+    <color name="switch_track_off">#D4D4D8</color>
+    <color name="switch_thumb_off">#FFFFFF</color>
+    <!-- Data-quality warning text: amber-700 on white = 5.0:1 -->
+    <color name="warning_text">#B45309</color>
 </resources>

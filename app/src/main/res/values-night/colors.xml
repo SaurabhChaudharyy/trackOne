@@ -18,7 +18,7 @@
 
     <color name="text_primary">#FAFAFA</color>
     <color name="text_secondary">#A1A1AA</color>
-    <color name="text_tertiary">#71717A</color>
+    <color name="text_tertiary">#8B8B95</color>
 
     <color name="loss_red_bg">#2A1414</color>
 
@@ -26,4 +26,8 @@
     <color name="widget_surface">#CC27272A</color>
 
     <color name="overlay_scrim">#80000000</color>
+    <color name="switch_track_off">#52525B</color>
+    <color name="switch_thumb_off">#A1A1AA</color>
+    <!-- amber-400 on near-black = 11:1 -->
+    <color name="warning_text">#FBBF24</color>
 </resources>

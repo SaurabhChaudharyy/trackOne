@@ -12,6 +12,7 @@ import app.trackone.data.database.AssetType
 import app.trackone.data.database.NetWorthAssetEntity
 import app.trackone.databinding.ItemNetworthAssetBinding
 import app.trackone.R
+import app.trackone.utils.HoldingQuality
 import app.trackone.utils.PortfolioGainLoss
 import java.text.NumberFormat
 import java.util.Locale
@@ -86,6 +87,11 @@ class NetWorthAssetAdapter(
             } else {
                 binding.tvAssetNotes.visibility = View.GONE
             }
+
+            // Surface untrustworthy numbers instead of presenting them as fact.
+            val issue = HoldingQuality.primaryIssue(asset)
+            binding.tvAssetWarning.text = issue?.let { "⚠ ${it.message}" }.orEmpty()
+            binding.tvAssetWarning.visibility = if (issue != null) View.VISIBLE else View.GONE
 
             if (PortfolioGainLoss.hasCostBasis(asset) && asset.buyPrice > 0 && asset.quantity > 0) {
                 val perAsset = PortfolioGainLoss.computePerAsset(asset)

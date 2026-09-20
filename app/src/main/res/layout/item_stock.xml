@@ -29,9 +29,7 @@
                 android:fontFamily="@font/inter_semi_bold"
                 android:textStyle="bold"
                 android:singleLine="true"
-                android:ellipsize="marquee"
-                android:marqueeRepeatLimit="marquee_forever"
-                android:scrollHorizontally="true"
+                android:ellipsize="end"
                 android:letterSpacing="-0.01"
                 tools:text="AAPL"/>
 
@@ -43,9 +41,7 @@
                 android:textColor="@color/text_tertiary"
                 android:textSize="12sp"
                 android:singleLine="true"
-                android:ellipsize="marquee"
-                android:marqueeRepeatLimit="marquee_forever"
-                android:scrollHorizontally="true"
+                android:ellipsize="end"
                 tools:text="Apple Inc."/>
 
             <TextView
@@ -70,9 +66,7 @@
                 android:textSize="14sp"
                 android:fontFamily="@font/geist_mono_regular"
                 android:singleLine="true"
-                android:ellipsize="marquee"
-                android:marqueeRepeatLimit="marquee_forever"
-                android:scrollHorizontally="true"
+                android:ellipsize="end"
                 tools:text="$187.62"/>
         </LinearLayout>
 
@@ -89,9 +83,7 @@
                 android:textColor="@color/text_secondary"
                 android:textSize="13sp"
                 android:singleLine="true"
-                android:ellipsize="marquee"
-                android:marqueeRepeatLimit="marquee_forever"
-                android:scrollHorizontally="true"
+                android:ellipsize="end"
                 tools:text="-7.94"/>
         </LinearLayout>
 

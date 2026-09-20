@@ -9,6 +9,7 @@ import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
+import com.google.android.material.transition.MaterialFadeThrough
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import app.trackone.R
 import app.trackone.databinding.ActivityMainBinding
@@ -135,8 +136,9 @@ class MainActivity : AppCompatActivity() {
 
             val dot = View(this).apply {
                 layoutParams = FrameLayout.LayoutParams(dotSize, dotSize).apply {
-                    gravity = Gravity.CENTER_HORIZONTAL or Gravity.BOTTOM
-                    bottomMargin = (4 * resources.displayMetrics.density).toInt()
+                    // Above the icon: the label now occupies the bottom of the item.
+                    gravity = Gravity.CENTER_HORIZONTAL or Gravity.TOP
+                    topMargin = (3 * resources.displayMetrics.density).toInt()
                 }
                 background = ContextCompat.getDrawable(this@MainActivity, R.drawable.dot_active_tab)
                 visibility = View.GONE
@@ -161,8 +163,15 @@ class MainActivity : AppCompatActivity() {
 
     private fun showFragment(target: Fragment) {
         if (target === activeFragment) return
+        // Material "fade through" is the spec'd pattern for bottom-nav destinations that have no
+        // spatial relationship to each other: the old tab fades out, then the new one fades in
+        // while scaling up slightly. Transitions need reordering allowed.
+        listOf(activeFragment, target).forEach {
+            it.exitTransition = MaterialFadeThrough()
+            it.enterTransition = MaterialFadeThrough()
+        }
         supportFragmentManager.beginTransaction()
-            .setCustomAnimations(android.R.anim.fade_in, android.R.anim.fade_out)
+            .setReorderingAllowed(true)
             .hide(activeFragment)
             .show(target)
             .commit()

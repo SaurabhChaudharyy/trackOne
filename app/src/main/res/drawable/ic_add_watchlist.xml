@@ -3,17 +3,17 @@
     android:height="24dp"
     android:viewportWidth="24"
     android:viewportHeight="24">
-    <!-- Plus icon -->
+    <!-- "Add to list": three list lines and a plus, so it reads differently from the add-stock FAB -->
     <path
         android:fillColor="#00000000"
         android:strokeColor="#71717A"
         android:strokeWidth="1.8"
         android:strokeLineCap="round"
-        android:pathData="M12,5 L12,19"/>
+        android:pathData="M4,6 L15,6 M4,11 L12,11 M4,16 L10,16"/>
     <path
         android:fillColor="#00000000"
         android:strokeColor="#71717A"
         android:strokeWidth="1.8"
         android:strokeLineCap="round"
-        android:pathData="M5,12 L19,12"/>
+        android:pathData="M18,12 L18,20 M14,16 L22,16"/>
 </vector>

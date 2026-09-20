@@ -145,8 +145,8 @@
                 android:layout_margin="24dp"
                 android:src="@drawable/ic_add"
                 android:contentDescription="Add stock"
-                app:backgroundTint="@color/primary"
-                app:tint="@color/on_primary"
+                app:backgroundTint="@color/neon_highlight"
+                app:tint="@color/primary"
                 app:elevation="4dp"/>
 
         </FrameLayout>

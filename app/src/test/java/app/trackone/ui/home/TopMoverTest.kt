@@ -56,4 +56,18 @@ class TopMoverTest {
 
         assertEquals(0.0, mover.currentVal, 0.0)
     }
+
+    @Test
+    fun `metals expose a per-gram rupee price instead of the USD-per-ounce quote`() {
+        val gold = buildTopMover(holding("GOLD", AssetType.GOLD, qty = 15.0, valueInr = 204_567.42), stock("GC=F", 4424.90))
+
+        assertEquals(13_637.828, gold.unitPriceInr!!, 0.001)
+    }
+
+    @Test
+    fun `non-metal holdings keep their own quote price`() {
+        val stock = buildTopMover(holding("TCS", AssetType.STOCK_IN, 3.0, 6300.0), stock("TCS.NS", 2100.0, "INR"))
+
+        assertEquals(null, stock.unitPriceInr)
+    }
 }

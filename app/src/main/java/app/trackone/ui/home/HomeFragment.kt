@@ -50,6 +50,8 @@ class HomeFragment : Fragment() {
 
     // Chart state
     private var allChartPoints: List<PortfolioChartPoint> = emptyList()
+    private var scrubbedIndex = -1
+    private var currentPortfolioTotal: Double? = null
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -228,13 +230,18 @@ class HomeFragment : Fragment() {
             description.isEnabled = false
             legend.isEnabled      = false
             setBackgroundColor(Color.TRANSPARENT)
-            setTouchEnabled(false)
-            isDragEnabled             = false
+            // Touch drives scrubbing only: dragging along the line highlights a day and the
+            // header shows that day's value (see showScrubbedPoint). Pan/zoom stay off.
+            setTouchEnabled(true)
+            // Must be true even though we never pan: BarLineChartTouchListener.onTouch returns
+            // early when drag AND scale are both off, so highlight-per-drag would never fire. With
+            // scaling off the chart is always fully zoomed out, so a drag highlights, not pans.
+            isDragEnabled             = true
             setScaleEnabled(false)
             setPinchZoom(false)
             isDoubleTapToZoomEnabled  = false
-            isHighlightPerTapEnabled  = false
-            isHighlightPerDragEnabled = false
+            isHighlightPerTapEnabled  = true
+            isHighlightPerDragEnabled = true
             setDrawGridBackground(false)
             setDrawBorders(false)
             minOffset = 0f
@@ -257,16 +264,10 @@ class HomeFragment : Fragment() {
                 gridColor  = requireContext().getColor(R.color.divider_color)
                 gridLineWidth = 0.5f
                 setPosition(com.github.mikephil.charting.components.YAxis.YAxisLabelPosition.INSIDE_CHART)
-                // Format values as ₹XL or ₹XK
+                // Indian units (₹6L, ₹1.2Cr) — not the Western "₹600K"
                 valueFormatter = object : com.github.mikephil.charting.formatter.ValueFormatter() {
-                    override fun getAxisLabel(value: Float, axis: com.github.mikephil.charting.components.AxisBase?): String {
-                        return when {
-                            value >= 10_00_000 -> "₹${String.format("%.1f", value / 100_000)}L"
-                            value >= 1_000     -> "₹${String.format("%.0f", value / 1_000)}K"
-                            value <= 0         -> "₹0"
-                            else               -> "₹${value.toInt()}"
-                        }
-                    }
+                    override fun getAxisLabel(value: Float, axis: com.github.mikephil.charting.components.AxisBase?): String =
+                        FormatUtils.formatCompactInr(value.toDouble())
                 }
             }
 
@@ -285,7 +286,52 @@ class HomeFragment : Fragment() {
                 textSize  = 9f
                 yOffset   = 4f
             }
+
+            setOnChartValueSelectedListener(object : com.github.mikephil.charting.listener.OnChartValueSelectedListener {
+                override fun onValueSelected(e: Entry?, h: com.github.mikephil.charting.highlight.Highlight?) {
+                    e?.let { showScrubbedPoint(it.x.toInt()) }
+                }
+                override fun onNothingSelected() = restoreScrubHeader()
+            })
+
+            // Keep the parent (scroll / pull-to-refresh) from stealing a scrub, and clear the
+            // highlight the moment the finger lifts. Returns false so the chart still handles it.
+            (this as View).setOnTouchListener(View.OnTouchListener { v, ev ->
+                when (ev.actionMasked) {
+                    android.view.MotionEvent.ACTION_DOWN -> v.parent?.requestDisallowInterceptTouchEvent(true)
+                    android.view.MotionEvent.ACTION_UP, android.view.MotionEvent.ACTION_CANCEL -> {
+                        v.parent?.requestDisallowInterceptTouchEvent(false)
+                        v.post { highlightValues(null); restoreScrubHeader() }
+                    }
+                }
+                false
+            })
         }
+    }
+
+    // ── Chart scrubbing ──────────────────────────────────────────────────
+
+    private val scrubDateFmt = SimpleDateFormat("EEE, d MMM yyyy", Locale.getDefault())
+
+    /** Header shows the highlighted day's value + date while a finger is down on the chart. */
+    private fun showScrubbedPoint(index: Int) {
+        if (_binding == null) return
+        val point = allChartPoints.getOrNull(index) ?: return
+        if (index != scrubbedIndex) {
+            binding.portfolioLineChart.performHapticFeedback(android.view.HapticFeedbackConstants.SEGMENT_FREQUENT_TICK)
+            scrubbedIndex = index
+        }
+        // A count-up may still be running on this view; stop it so it doesn't overwrite the scrub.
+        (binding.tvPortfolioCurrent.tag as? android.animation.ValueAnimator)?.cancel()
+        binding.tvPortfolioCurrent.text = FormatUtils.formatPrice(point.current, "INR")
+        binding.tvDate.text = scrubDateFmt.format(java.util.Date(point.timestamp))
+    }
+
+    private fun restoreScrubHeader() {
+        if (_binding == null || scrubbedIndex == -1) return
+        scrubbedIndex = -1
+        currentPortfolioTotal?.let { binding.tvPortfolioCurrent.text = FormatUtils.formatPrice(it, "INR") }
+        setupDateTime()
     }
 
     private fun drawPortfolioChart(points: List<PortfolioChartPoint>) {
@@ -325,7 +371,11 @@ class HomeFragment : Fragment() {
             cubicIntensity = 0.15f
             setDrawFilled(true)
             fillDrawable = gradientDrawable
-            isHighlightEnabled = false
+            isHighlightEnabled = true
+            highLightColor = requireContext().getColor(R.color.text_secondary)
+            highlightLineWidth = 1f
+            enableDashedHighlightLine(6f, 4f, 0f)
+            setDrawHorizontalHighlightIndicator(false)
         }
 
         // Date formatter for xAxis labels
@@ -486,14 +536,16 @@ class HomeFragment : Fragment() {
             text = mover.label
             textSize = 12f
             setTextColor(requireContext().getColor(R.color.text_primary))
-            typeface = android.graphics.Typeface.DEFAULT_BOLD
+            typeface = androidx.core.content.res.ResourcesCompat.getFont(requireContext(), R.font.inter_semi_bold)
             maxLines = 1
             ellipsize = android.text.TextUtils.TruncateAt.END
         }
 
         // Current price
         val tvPrice = TextView(requireContext()).apply {
-            text = FormatUtils.formatPrice(stock.currentPrice, stock.currency)
+            // Metals: the futures quote is USD per troy ounce, but a holding is in grams — show ₹/g.
+            text = mover.unitPriceInr?.let { FormatUtils.formatPrice(it, "INR") + "/g" }
+                ?: FormatUtils.formatPrice(stock.currentPrice, stock.currency)
             textSize = 11f
             setTextColor(requireContext().getColor(R.color.text_secondary))
             layoutParams = LinearLayout.LayoutParams(
@@ -539,7 +591,7 @@ class HomeFragment : Fragment() {
                 text = FormatUtils.formatPrice(mover.currentVal, "INR")
                 textSize = 10f
                 setTextColor(requireContext().getColor(R.color.text_primary))
-                typeface = android.graphics.Typeface.DEFAULT_BOLD
+                typeface = androidx.core.content.res.ResourcesCompat.getFont(requireContext(), R.font.inter_semi_bold)
                 maxLines = 1
                 ellipsize = android.text.TextUtils.TruncateAt.END
                 // No background for this sub-line as per user request
@@ -576,6 +628,7 @@ class HomeFragment : Fragment() {
         }
 
         binding.cardPortfolioSummary.visibility = View.VISIBLE
+        currentPortfolioTotal = summary.totalCurrent
 
         // Animate total on first load
         if (!portfolioAnimated) {

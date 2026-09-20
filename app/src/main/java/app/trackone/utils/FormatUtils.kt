@@ -32,6 +32,21 @@ object FormatUtils {
         return format.format(price)
     }
 
+    /** Axis-style rupees in Indian units: ₹6L, ₹1.25Cr, ₹50K — never the Western "₹600K". */
+    fun formatCompactInr(value: Double): String {
+        val abs = abs(value)
+        val (scaled, unit) = when {
+            abs >= 1e7 -> abs / 1e7 to "Cr"
+            abs >= 1e5 -> abs / 1e5 to "L"
+            abs >= 1e3 -> abs / 1e3 to "K"
+            else       -> abs to ""
+        }
+        val digits = if (unit.isEmpty()) "%.0f".format(Locale.US, scaled)
+                     else "%.2f".format(Locale.US, scaled).trimEnd('0').trimEnd('.')
+        val sign = if (value < 0 && digits != "0") "-" else ""
+        return "$sign₹$digits$unit"
+    }
+
     fun formatChange(change: Double): String {
         val prefix = if (change >= 0) "+" else ""
         return "$prefix${String.format("%.2f", change)}"

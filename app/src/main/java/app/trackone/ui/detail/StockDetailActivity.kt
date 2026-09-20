@@ -159,8 +159,8 @@ class StockDetailActivity : AppCompatActivity() {
             // No fill — clean line only
             setDrawFilled(false)
 
-            // Neon yellow highlight crosshair
-            highLightColor = getColor(R.color.neon_highlight)
+            // Crosshair uses the primary ink so it reads in both themes (neon is ~1.1:1 on white)
+            highLightColor = getColor(R.color.text_primary)
             highlightLineWidth = 1.5f
             enableDashedHighlightLine(6f, 3f, 0f)
             setDrawHorizontalHighlightIndicator(false)

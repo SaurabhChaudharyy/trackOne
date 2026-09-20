@@ -73,4 +73,27 @@ class FormatUtilsTest {
         val result = FormatUtils.formatLastUpdated(System.currentTimeMillis() - 3 * 3_600_000)
         assertEquals("3h ago", result)
     }
+
+    // ── formatCompactInr ─────────────────────────────────────────────────────
+
+    @Test
+    fun `compact INR uses lakh and crore units`() {
+        assertEquals("₹6L", FormatUtils.formatCompactInr(600_000.0))
+        assertEquals("₹6.5L", FormatUtils.formatCompactInr(650_000.0))
+        assertEquals("₹2Cr", FormatUtils.formatCompactInr(20_000_000.0))
+        assertEquals("₹1.25Cr", FormatUtils.formatCompactInr(12_500_000.0))
+    }
+
+    @Test
+    fun `compact INR uses K below a lakh and plain digits below a thousand`() {
+        assertEquals("₹50K", FormatUtils.formatCompactInr(50_000.0))
+        assertEquals("₹1.5K", FormatUtils.formatCompactInr(1_500.0))
+        assertEquals("₹999", FormatUtils.formatCompactInr(999.0))
+        assertEquals("₹0", FormatUtils.formatCompactInr(0.0))
+    }
+
+    @Test
+    fun `compact INR keeps the sign of a negative value`() {
+        assertEquals("-₹2.5L", FormatUtils.formatCompactInr(-250_000.0))
+    }
 }

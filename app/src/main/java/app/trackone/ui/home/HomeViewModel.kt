@@ -39,7 +39,9 @@ data class TopMover(
     val label: String,      // what to show as the title — see buildTopMover
     val invested: Double,   // buyPrice * quantity (0 if no buy price)
     val currentVal: Double, // the holding's INR value (0 if unknown)
-    val qty: Double
+    val qty: Double,
+    /** ₹ per gram for gold/silver (the unit the holding is measured in); null for everything else. */
+    val unitPriceInr: Double?
 )
 
 /**
@@ -58,7 +60,12 @@ internal fun buildTopMover(asset: NetWorthAssetEntity, stock: StockEntity): TopM
     },
     invested   = if (asset.buyPrice > 0.0) asset.buyPrice * asset.quantity else 0.0,
     currentVal = if (asset.currency == "INR") asset.currentValue else 0.0,
-    qty        = asset.quantity
+    qty        = asset.quantity,
+    unitPriceInr = when {
+        asset.assetType != AssetType.GOLD && asset.assetType != AssetType.SILVER -> null
+        asset.currency != "INR" || asset.quantity <= 0.0 -> null
+        else -> asset.currentValue / asset.quantity
+    }
 )
 
 /**

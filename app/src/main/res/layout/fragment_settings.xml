@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ScrollView
     xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -377,7 +378,10 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:clickable="false"
-                android:focusable="false"/>
+                android:focusable="false"
+                app:useMaterialThemeColors="false"
+                app:thumbTint="@color/switch_thumb"
+                app:trackTint="@color/switch_track"/>
         </LinearLayout>
 
         <LinearLayout
@@ -416,7 +420,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Daily Digest"
+                    android:text="Portfolio Digest"
                     android:textColor="@color/text_primary"
                     android:textSize="14sp"
                     android:fontFamily="@font/inter_semi_bold"/>
@@ -424,7 +428,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="A once-a-day notification with your best/worst holdings and overall P&amp;L"
+                    android:text="Daily: how your holdings moved today. Sunday: your total gain/loss and best/worst holdings"
                     android:textColor="@color/text_tertiary"
                     android:textSize="11sp"
                     android:fontFamily="@font/inter"
@@ -436,7 +440,10 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:clickable="false"
-                android:focusable="false"/>
+                android:focusable="false"
+                app:useMaterialThemeColors="false"
+                app:thumbTint="@color/switch_thumb"
+                app:trackTint="@color/switch_track"/>
         </LinearLayout>
 
         <LinearLayout
@@ -495,7 +502,10 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:clickable="false"
-                android:focusable="false"/>
+                android:focusable="false"
+                app:useMaterialThemeColors="false"
+                app:thumbTint="@color/switch_thumb"
+                app:trackTint="@color/switch_track"/>
         </LinearLayout>
 
         <!-- ══════════════════════════════════════════════════════════════ -->
