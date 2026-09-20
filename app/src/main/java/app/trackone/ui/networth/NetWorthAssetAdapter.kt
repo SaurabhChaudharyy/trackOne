@@ -12,6 +12,7 @@ import app.trackone.data.database.AssetType
 import app.trackone.data.database.NetWorthAssetEntity
 import app.trackone.databinding.ItemNetworthAssetBinding
 import app.trackone.R
+import app.trackone.utils.PortfolioGainLoss
 import java.text.NumberFormat
 import java.util.Locale
 
@@ -86,13 +87,13 @@ class NetWorthAssetAdapter(
                 binding.tvAssetNotes.visibility = View.GONE
             }
 
-            if (asset.buyPrice > 0 && asset.quantity > 0) {
-                val invested = asset.buyPrice * asset.quantity
-                val gain     = asset.currentValue - invested
-                val gainPct  = (gain / invested) * 100.0
+            if (PortfolioGainLoss.hasCostBasis(asset) && asset.buyPrice > 0 && asset.quantity > 0) {
+                val perAsset = PortfolioGainLoss.computePerAsset(asset)
+                val invested = perAsset.invested
+                val gain     = perAsset.absChange
+                val gainPct  = perAsset.pctChange
                 val isGain   = gain >= 0
                 val arrow    = if (isGain) "▲" else "▼"
-                val colour   = if (isGain) R.color.gain_green else R.color.loss_red
                 val ctx      = binding.root.context
 
                 binding.tvAssetPl.text = "%s %s (%+.2f%%)".format(

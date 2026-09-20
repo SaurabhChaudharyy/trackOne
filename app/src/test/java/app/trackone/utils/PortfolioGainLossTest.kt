@@ -91,4 +91,50 @@ class PortfolioGainLossTest {
         assertEquals(portfolio.absChange, perAsset.absChange, 0.0)
         assertEquals(portfolio.pctChange, perAsset.pctChange, 0.0001)
     }
+
+    // ── cash / bank have no cost basis ───────────────────────────────────────
+
+    private fun typed(type: AssetType, buyPrice: Double, currentValue: Double, quantity: Double = 1.0) =
+        NetWorthAssetEntity(
+            name = "X", assetType = type, quantity = quantity, buyPrice = buyPrice, currentValue = currentValue
+        )
+
+    @Test
+    fun `a bank balance with a placeholder buy price is break-even, not a phantom gain`() {
+        // Seen in real data: buyPrice = 1.0 on a 1,25,000 balance made the "gain" 1,24,999 (+12,499,900%).
+        val result = PortfolioGainLoss.computePerAsset(typed(AssetType.BANK, buyPrice = 1.0, currentValue = 125_000.0))
+
+        assertEquals(125_000.0, result.invested, 0.0)
+        assertEquals(0.0, result.absChange, 0.0)
+        assertEquals(0.0, result.pctChange, 0.0)
+    }
+
+    @Test
+    fun `cash is break-even regardless of buy price`() {
+        val result = PortfolioGainLoss.computePerAsset(typed(AssetType.CASH, buyPrice = 500.0, currentValue = 50_000.0))
+
+        assertEquals(0.0, result.absChange, 0.0)
+    }
+
+    @Test
+    fun `portfolio total does not count a cash buy price as cost`() {
+        val result = PortfolioGainLoss.compute(
+            listOf(
+                asset(buyPrice = 100.0, quantity = 1.0, currentValue = 150.0),   // +50
+                typed(AssetType.CASH, buyPrice = 1.0, currentValue = 50_000.0)   // must add 0, not +49,999
+            )
+        )
+
+        assertEquals(50_100.0, result.invested, 0.0)
+        assertEquals(50_150.0, result.current, 0.0)
+        assertEquals(50.0, result.absChange, 0.0)
+    }
+
+    @Test
+    fun `only cash and bank lack a cost basis`() {
+        assertEquals(false, PortfolioGainLoss.hasCostBasis(typed(AssetType.CASH, 1.0, 1.0)))
+        assertEquals(false, PortfolioGainLoss.hasCostBasis(typed(AssetType.BANK, 1.0, 1.0)))
+        assertEquals(true, PortfolioGainLoss.hasCostBasis(typed(AssetType.MF, 1.0, 1.0)))
+        assertEquals(true, PortfolioGainLoss.hasCostBasis(typed(AssetType.STOCK_US, 1.0, 1.0)))
+    }
 }

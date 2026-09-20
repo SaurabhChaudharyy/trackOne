@@ -25,6 +25,7 @@ import app.trackone.data.database.NetWorthAssetEntity
 import app.trackone.databinding.DialogAddAssetBinding
 import app.trackone.databinding.FragmentNetworthBinding
 import app.trackone.utils.AnimationUtils.animateNumberFromZero
+import app.trackone.utils.PortfolioGainLoss
 import app.trackone.utils.Resource
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
@@ -271,23 +272,12 @@ class NetWorthFragment : Fragment() {
         val allAssets = viewModel.allAssets.value ?: emptyList()
         val filtered = if (activeFilter == null) allAssets else allAssets.filter { it.assetType == activeFilter }
         
-        var totalInvested = 0.0
-        var totalCurrent = 0.0
-        
-        for (asset in filtered) {
-            if (asset.buyPrice > 0.0) {
-                val cost = asset.buyPrice * asset.quantity
-                totalInvested += cost
-                totalCurrent += asset.currentValue
-            } else {
-                totalInvested += asset.currentValue
-                totalCurrent += asset.currentValue
-            }
-        }
-        
-        val absChange = totalCurrent - totalInvested
-        val pct = if (totalInvested > 0.0) (absChange / totalInvested) * 100.0 else 0.0
-        
+        val gainLoss = PortfolioGainLoss.compute(filtered)
+        val totalInvested = gainLoss.invested
+        val totalCurrent  = gainLoss.current
+        val absChange     = gainLoss.absChange
+        val pct           = gainLoss.pctChange
+
         // update current amount text
         if (!hasAnimatedTotal && totalCurrent > 0.0) {
             binding.tvTotalNetworth.animateNumberFromZero(totalCurrent) { inrFormat.format(it) }

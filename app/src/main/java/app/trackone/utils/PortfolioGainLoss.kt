@@ -1,5 +1,6 @@
 package app.trackone.utils
 
+import app.trackone.data.database.AssetType
 import app.trackone.data.database.NetWorthAssetEntity
 
 /**
@@ -37,8 +38,17 @@ object PortfolioGainLoss {
     fun computePerAsset(asset: NetWorthAssetEntity): GainLoss =
         fromTotals(investedValue(asset), asset.currentValue)
 
-    private fun investedValue(asset: NetWorthAssetEntity): Double =
-        if (asset.buyPrice > 0.0) asset.buyPrice * asset.quantity else asset.currentValue
+    /**
+     * Cash and bank balances are money, not investments: they have no purchase price, so any
+     * buyPrice on one (a placeholder "1.0" from an import, say) must not be read as a cost basis
+     * — that turned a 1,25,000 balance into a 1,24,999 "gain". They are always break-even.
+     */
+    fun hasCostBasis(asset: NetWorthAssetEntity): Boolean =
+        asset.assetType != AssetType.CASH && asset.assetType != AssetType.BANK
+
+    /** What was put in, for any P&L display — the one place this rule lives. */
+    fun investedValue(asset: NetWorthAssetEntity): Double =
+        if (hasCostBasis(asset) && asset.buyPrice > 0.0) asset.buyPrice * asset.quantity else asset.currentValue
 
     private fun fromTotals(invested: Double, current: Double): GainLoss {
         val absChange = current - invested

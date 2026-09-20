@@ -354,7 +354,7 @@ class HomeViewModel @Inject constructor(
         var cumulativeCurrent  = 0.0
 
         for (asset in sorted) {
-            val invested = if (asset.buyPrice > 0.0) asset.buyPrice * asset.quantity else asset.currentValue
+            val invested = PortfolioGainLoss.investedValue(asset)
             cumulativeInvested += invested
             cumulativeCurrent  += asset.currentValue
             points.add(
