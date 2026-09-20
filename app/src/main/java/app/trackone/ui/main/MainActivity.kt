@@ -10,6 +10,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import com.google.android.material.transition.MaterialFadeThrough
+import com.google.android.material.transition.platform.MaterialContainerTransformSharedElementCallback
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import app.trackone.R
 import app.trackone.databinding.ActivityMainBinding
@@ -49,6 +50,10 @@ class MainActivity : AppCompatActivity() {
     private val dotViews = mutableMapOf<Int, View>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        // Container-transform start side (row/card -> stock detail). Overlay off so the tapped
+        // view stays in this window's hierarchy and the transform can find it on return.
+        setExitSharedElementCallback(MaterialContainerTransformSharedElementCallback())
+        window.sharedElementsUseOverlay = false
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)

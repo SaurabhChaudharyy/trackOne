@@ -175,6 +175,17 @@
                         android:layout_height="wrap_content"
                         android:layout_gravity="center"
                         android:visibility="gone"/>
+
+                    <!-- Reserves the chart's space during the first load so nothing below it jumps -->
+                    <View
+                        android:id="@+id/v_chart_skeleton"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:layout_marginHorizontal="16dp"
+                        android:layout_marginVertical="8dp"
+                        android:background="@color/surface_variant"
+                        android:importantForAccessibility="no"
+                        android:visibility="gone"/>
                 </FrameLayout>
 
                 <!-- Shown instead of the chart when a range has no price history -->

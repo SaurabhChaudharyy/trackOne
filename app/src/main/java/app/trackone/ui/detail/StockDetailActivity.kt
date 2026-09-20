@@ -1,5 +1,9 @@
 package app.trackone.ui.detail
 
+import android.app.Activity
+import android.app.ActivityOptions
+import com.google.android.material.transition.platform.MaterialContainerTransform
+import com.google.android.material.transition.platform.MaterialContainerTransformSharedElementCallback
 import android.content.Context
 import android.content.Intent
 import android.graphics.Color
@@ -37,18 +41,43 @@ class StockDetailActivity : AppCompatActivity() {
     private var chartTimestamps: List<Long> = emptyList()
     private var hasPriceAnimated = false
 
+    private fun containerTransform(durationMs: Long) = MaterialContainerTransform().apply {
+        addTarget(android.R.id.content)
+        duration = durationMs
+        scrimColor = Color.TRANSPARENT
+        setAllContainerColors(getColor(R.color.background))
+    }
+
     companion object {
         const val EXTRA_SYMBOL = "extra_symbol"
 
-        fun start(context: Context, symbol: String) {
-            Intent(context, StockDetailActivity::class.java).also {
-                it.putExtra(EXTRA_SYMBOL, symbol)
-                context.startActivity(it)
+        /** Both ends of the container transform share this name. */
+        const val SHARED_ELEMENT = "stock_detail_container"
+
+        /**
+         * Pass the tapped row/card as [sharedView] and it grows into this screen (and shrinks back on
+         * return) — Material's container transform, the pattern for list item -> detail.
+         */
+        fun start(context: Context, symbol: String, sharedView: View? = null) {
+            val intent = Intent(context, StockDetailActivity::class.java).putExtra(EXTRA_SYMBOL, symbol)
+            val activity = context as? Activity
+            if (activity != null && sharedView != null) {
+                sharedView.transitionName = SHARED_ELEMENT
+                val options = ActivityOptions.makeSceneTransitionAnimation(activity, sharedView, SHARED_ELEMENT)
+                context.startActivity(intent, options.toBundle())
+            } else {
+                context.startActivity(intent)
             }
         }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        // Container-transform end of the shared element: must be set up before super.onCreate.
+        findViewById<View>(android.R.id.content).transitionName = SHARED_ELEMENT
+        setEnterSharedElementCallback(MaterialContainerTransformSharedElementCallback())
+        window.sharedElementEnterTransition = containerTransform(durationMs = 300L)
+        window.sharedElementReturnTransition = containerTransform(durationMs = 250L)
+
         super.onCreate(savedInstanceState)
         binding = ActivityStockDetailBinding.inflate(layoutInflater)
         setContentView(binding.root)

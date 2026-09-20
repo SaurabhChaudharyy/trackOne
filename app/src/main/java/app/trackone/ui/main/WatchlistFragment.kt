@@ -290,9 +290,9 @@ class WatchlistFragment : Fragment() {
 
     private fun setupRecyclerView() {
         adapter = WatchlistAdapter(
-            onStockClick = { stock ->
+            onStockClick = { stock, row ->
                 binding.root.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
-                StockDetailActivity.start(requireActivity(), stock.symbol)
+                StockDetailActivity.start(requireActivity(), stock.symbol, sharedView = row)
             },
             onRemoveClick = { stock ->
                 binding.root.performHapticFeedback(HapticFeedbackConstants.CONFIRM)

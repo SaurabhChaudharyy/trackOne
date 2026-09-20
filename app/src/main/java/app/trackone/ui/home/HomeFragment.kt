@@ -57,6 +57,8 @@ class HomeFragment : Fragment() {
     /** Once a chart has shown, the range chips stay put even when a range has no data, so the
      *  person can always switch away from it. */
     private var chartEverShown = false
+    /** Mover card that launched the stock detail screen, so a rebuilt card keeps its transition name. */
+    private var sharedMoverSymbol: String? = null
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -133,10 +135,10 @@ class HomeFragment : Fragment() {
     // ── Index card click → StockDetailActivity ──────────────────────────
 
     private fun setupIndexCardClicks() {
-        binding.cardNifty.setOnClickListener  { StockDetailActivity.start(requireContext(), "^NSEI") }
-        binding.cardSensex.setOnClickListener { StockDetailActivity.start(requireContext(), "^BSESN") }
-        binding.cardSp500.setOnClickListener  { StockDetailActivity.start(requireContext(), "^GSPC") }
-        binding.cardNasdaq.setOnClickListener { StockDetailActivity.start(requireContext(), "^IXIC") }
+        binding.cardNifty.setOnClickListener  { StockDetailActivity.start(requireActivity(), "^NSEI", it) }
+        binding.cardSensex.setOnClickListener { StockDetailActivity.start(requireActivity(), "^BSESN", it) }
+        binding.cardSp500.setOnClickListener  { StockDetailActivity.start(requireActivity(), "^GSPC", it) }
+        binding.cardNasdaq.setOnClickListener { StockDetailActivity.start(requireActivity(), "^IXIC", it) }
     }
 
     // ── Portfolio card → NetWorth tab ───────────────────────────────────
@@ -183,7 +185,17 @@ class HomeFragment : Fragment() {
         viewModel.chartRange.observe(viewLifecycleOwner) { styleRangeChips(it) }
 
         viewModel.chartLoading.observe(viewLifecycleOwner) { loading ->
-            binding.portfolioChartProgress.visibility = if (loading) View.VISIBLE else View.GONE
+            // First load: reserve the chart's space with a pulsing placeholder instead of leaving a
+            // gap that the chart later pushes everything below it out of. Later loads (range
+            // switches) keep the old chart on screen and show the small spinner over it.
+            val firstLoad = loading && !chartEverShown
+            if (firstLoad) {
+                binding.llPortfolioChartSection.visibility = View.VISIBLE
+                binding.flPortfolioChart.visibility = View.VISIBLE
+                binding.tvChartEmpty.visibility = View.GONE
+            }
+            setChartSkeleton(firstLoad)
+            binding.portfolioChartProgress.visibility = if (loading && chartEverShown) View.VISIBLE else View.GONE
         }
 
         viewModel.portfolioChartData.observe(viewLifecycleOwner) { points ->
@@ -325,6 +337,31 @@ class HomeFragment : Fragment() {
                 }
                 false
             })
+        }
+    }
+
+    // ── Chart skeleton ───────────────────────────────────────────────────
+
+    private var skeletonAnimator: android.animation.ObjectAnimator? = null
+
+    private fun setChartSkeleton(show: Boolean) {
+        if (_binding == null) return
+        val skeleton = binding.vChartSkeleton
+        if (show) {
+            skeleton.visibility = View.VISIBLE
+            if (skeletonAnimator == null) {
+                skeletonAnimator = android.animation.ObjectAnimator.ofFloat(skeleton, View.ALPHA, 0.35f, 0.85f).apply {
+                    duration = 900L
+                    repeatMode = android.animation.ValueAnimator.REVERSE
+                    repeatCount = android.animation.ValueAnimator.INFINITE
+                    start()
+                }
+            }
+        } else {
+            skeletonAnimator?.cancel()
+            skeletonAnimator = null
+            skeleton.alpha = 1f
+            skeleton.visibility = View.GONE
         }
     }
 
@@ -590,7 +627,12 @@ class HomeFragment : Fragment() {
                     val res = ta.getResourceId(0, 0); ta.recycle(); res
                 }
             )
-            setOnClickListener { StockDetailActivity.start(requireContext(), stock.symbol) }
+            // Cards are rebuilt on every update, so the transition name follows the symbol (see WatchlistAdapter).
+            if (stock.symbol == sharedMoverSymbol) transitionName = StockDetailActivity.SHARED_ELEMENT
+            setOnClickListener {
+                sharedMoverSymbol = stock.symbol
+                StockDetailActivity.start(requireActivity(), stock.symbol, it)
+            }
         }
 
         // Symbol
@@ -818,6 +860,9 @@ class HomeFragment : Fragment() {
 
     override fun onDestroyView() {
         super.onDestroyView()
+        // An infinite animator would otherwise keep the destroyed view tree alive.
+        skeletonAnimator?.cancel()
+        skeletonAnimator = null
         _binding = null
     }
 

@@ -1,6 +1,7 @@
 package app.trackone.ui.main
 
 import android.view.LayoutInflater
+import android.view.View
 import android.view.ViewGroup
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.DiffUtil
@@ -9,15 +10,19 @@ import androidx.recyclerview.widget.RecyclerView
 import app.trackone.R
 import app.trackone.data.database.StockEntity
 import app.trackone.databinding.ItemStockBinding
+import app.trackone.ui.detail.StockDetailActivity
 import app.trackone.utils.FormatUtils
 import app.trackone.utils.SymbolUtils
 
 class WatchlistAdapter(
-    private val onStockClick: (StockEntity) -> Unit,
+    private val onStockClick: (StockEntity, View) -> Unit,
     private val onRemoveClick: (StockEntity) -> Unit
 ) : RecyclerView.Adapter<WatchlistAdapter.StockViewHolder>() {
 
     var items: MutableList<StockEntity> = mutableListOf()
+
+    /** Symbol of the row that launched (or is returning from) the stock detail screen. */
+    var sharedSymbol: String? = null
 
     fun submitList(newItems: List<StockEntity>) {
         val diffCallback = object : DiffUtil.Callback() {
@@ -54,6 +59,12 @@ class WatchlistAdapter(
 
         fun bind(stock: StockEntity) {
             val ctx = binding.root.context
+            // The name belongs to the symbol being transitioned, not to whichever view was tapped:
+            // live price updates rebind this row while the detail screen is open, and losing the
+            // name then makes the return transition wait out its timeout before it can start.
+            // A symbol appears once in the list, so the name stays unique.
+            binding.root.transitionName =
+                if (stock.symbol == sharedSymbol) StockDetailActivity.SHARED_ELEMENT else null
             val isIndex = stock.symbol.startsWith("^")
 
             binding.tvSymbol.text = SymbolUtils.displaySymbol(stock.symbol)
@@ -65,10 +76,12 @@ class WatchlistAdapter(
             binding.tvChange.text = FormatUtils.formatChange(stock.change)
             binding.tvChangePercent.text = FormatUtils.formatChangePercent(stock.changePercent)
 
-            // Pill's fill is constant across themes, so its ink stays @color/primary.
+            // Pill's fill is constant across themes, so the ink INSIDE it stays @color/primary.
+            // tvChange (the absolute change) sits outside the pill on the theme background, so it
+            // keeps its layout colour — forcing @color/primary on it made it black-on-black (invisible)
+            // in dark mode while showing in light mode.
             val primaryColor = ContextCompat.getColor(ctx, R.color.primary)
 
-            binding.tvChange.setTextColor(primaryColor)
             binding.tvChangePercent.setTextColor(primaryColor)
             binding.ivTrend.setImageResource(
                 if (stock.isPositive) R.drawable.ic_arrow_up else R.drawable.ic_arrow_down
@@ -86,7 +99,10 @@ class WatchlistAdapter(
                 binding.tvLastUpdated.visibility = android.view.View.GONE
             }
 
-            binding.root.setOnClickListener { onStockClick(stock) }
+            binding.root.setOnClickListener {
+                sharedSymbol = stock.symbol
+                onStockClick(stock, binding.root)
+            }
             binding.btnRemove.setOnClickListener { onRemoveClick(stock) }
         }
     }
