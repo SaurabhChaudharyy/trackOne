@@ -15,6 +15,7 @@ import app.trackone.ui.settings.ReminderPrefs
 import app.trackone.ui.settings.ThemePrefs
 import app.trackone.workers.DailyDigestWorker
 import app.trackone.workers.PortfolioReminderWorker
+import app.trackone.workers.WeeklySummaryWorker
 import com.google.firebase.crashlytics.FirebaseCrashlytics
 import dagger.hilt.android.HiltAndroidApp
 import javax.inject.Inject
@@ -44,6 +45,7 @@ class FinanceApplication : Application(), Configuration.Provider {
         NotificationHelper.ensureChannelsCreated(this)
         if (DigestPrefs.isEnabled(this)) {
             DailyDigestWorker.schedule(this)
+            WeeklySummaryWorker.schedule(this)
         }
         if (ReminderPrefs.isEnabled(this)) {
             PortfolioReminderWorker.schedule(this)

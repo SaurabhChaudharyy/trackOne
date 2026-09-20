@@ -42,6 +42,7 @@ import app.trackone.databinding.FragmentSettingsBinding
 import app.trackone.security.AppLockPrefs
 import app.trackone.workers.DailyDigestWorker
 import app.trackone.workers.PortfolioReminderWorker
+import app.trackone.workers.WeeklySummaryWorker
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -747,6 +748,7 @@ class SettingsFragment : Fragment() {
         if (DigestPrefs.isEnabled(requireContext())) {
             DigestPrefs.setEnabled(requireContext(), false)
             DailyDigestWorker.cancel(requireContext())
+            WeeklySummaryWorker.cancel(requireContext())
             updateDailyDigestRow()
             return
         }
@@ -754,6 +756,7 @@ class SettingsFragment : Fragment() {
         runWithNotificationPermission {
             DigestPrefs.setEnabled(requireContext(), true)
             DailyDigestWorker.schedule(requireContext())
+            WeeklySummaryWorker.schedule(requireContext())
             updateDailyDigestRow()
         }
     }

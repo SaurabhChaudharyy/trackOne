@@ -8,7 +8,6 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import app.trackone.R
 import app.trackone.ui.main.MainActivity
-import app.trackone.utils.GainLoss
 
 /**
  * All notification-building lives here so a second notification type (e.g. the price-threshold
@@ -19,6 +18,9 @@ object NotificationHelper {
 
     const val CHANNEL_ID_DIGEST = "daily_digest"
     private const val NOTIFICATION_ID_DIGEST = 1001
+
+    const val CHANNEL_ID_WEEKLY = "weekly_summary"
+    private const val NOTIFICATION_ID_WEEKLY = 1003
 
     const val CHANNEL_ID_PORTFOLIO_REMINDER = "portfolio_reminder"
     private const val NOTIFICATION_ID_PORTFOLIO_REMINDER = 1002
@@ -33,7 +35,17 @@ object NotificationHelper {
                 "Daily Digest",
                 NotificationManager.IMPORTANCE_DEFAULT
             ).apply {
-                description = "A once-a-day summary of your portfolio's best/worst performers and overall P&L."
+                description = "A once-a-day summary of how your portfolio moved today and its top/lagging holdings."
+            }
+        )
+
+        manager.createNotificationChannel(
+            NotificationChannel(
+                CHANNEL_ID_WEEKLY,
+                "Weekly Summary",
+                NotificationManager.IMPORTANCE_DEFAULT
+            ).apply {
+                description = "A once-a-week summary of your portfolio's total gain/loss and best/worst holdings."
             }
         )
 
@@ -48,25 +60,18 @@ object NotificationHelper {
         )
     }
 
-    /**
-     * [best]/[worst] are per-asset [GainLoss] paired with a display name; either may be null
-     * when there are no holdings with a known symbol/name to rank.
-     */
-    fun notifyDigest(
-        context: Context,
-        portfolioPctChange: Double,
-        best: Pair<String, GainLoss>?,
-        worst: Pair<String, GainLoss>?
-    ) {
-        val body = buildString {
-            append("Portfolio ${formatPct(portfolioPctChange)} overall.")
-            if (best != null) append(" Best: ${best.first} ${formatPct(best.second.pctChange)}.")
-            if (worst != null) append(" Worst: ${worst.first} ${formatPct(worst.second.pctChange)}.")
-        }
+    /** [body] is the finished daily text — see formatDailyBody in DigestFormat.kt. */
+    fun notifyDigest(context: Context, body: String) =
+        postSummary(context, CHANNEL_ID_DIGEST, NOTIFICATION_ID_DIGEST, "Your daily portfolio digest", body)
 
-        val notification = NotificationCompat.Builder(context, CHANNEL_ID_DIGEST)
+    /** [body] is the finished weekly text — see formatWeeklyBody in DigestFormat.kt. */
+    fun notifyWeeklySummary(context: Context, body: String) =
+        postSummary(context, CHANNEL_ID_WEEKLY, NOTIFICATION_ID_WEEKLY, "Your weekly portfolio summary", body)
+
+    private fun postSummary(context: Context, channelId: String, id: Int, title: String, body: String) {
+        val notification = NotificationCompat.Builder(context, channelId)
             .setSmallIcon(R.drawable.ic_notification_digest)
-            .setContentTitle("Your daily portfolio digest")
+            .setContentTitle(title)
             .setContentText(body)
             .setStyle(NotificationCompat.BigTextStyle().bigText(body))
             .setContentIntent(mainActivityPendingIntent(context))
@@ -74,7 +79,7 @@ object NotificationHelper {
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .build()
 
-        notify(context, NOTIFICATION_ID_DIGEST, notification)
+        notify(context, id, notification)
     }
 
     /**
@@ -111,10 +116,5 @@ object NotificationHelper {
         if (NotificationManagerCompat.from(context).areNotificationsEnabled()) {
             NotificationManagerCompat.from(context).notify(id, notification)
         }
-    }
-
-    private fun formatPct(pct: Double): String {
-        val sign = if (pct >= 0) "+" else ""
-        return "$sign${"%.2f".format(pct)}%"
     }
 }

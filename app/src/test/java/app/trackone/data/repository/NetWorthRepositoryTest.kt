@@ -5,6 +5,7 @@ import android.content.SharedPreferences
 import app.trackone.data.api.YahooFinanceApiService
 import app.trackone.data.database.AssetType
 import app.trackone.data.database.FinanceDatabase
+import app.trackone.data.database.NetWorthAssetEntity
 import app.trackone.data.database.NetWorthDao
 import app.trackone.data.model.YahooChart
 import app.trackone.data.model.YahooChartResponse
@@ -139,6 +140,77 @@ class NetWorthRepositoryTest {
         val result = repository.fetchLivePrice("AAPL", AssetType.STOCK_US)
 
         assertTrue(result is Resource.Error)
+    }
+
+    private fun chartResponse(currency: String, price: Double, previousClose: Double): Response<YahooChartResponse> =
+        Response.success(
+            YahooChartResponse(
+                chart = YahooChart(
+                    result = listOf(
+                        YahooChartResult(
+                            meta = YahooMeta(currency = currency, regularMarketPrice = price, previousClose = previousClose),
+                            timestamps = null,
+                            indicators = null
+                        )
+                    ),
+                    error = null
+                )
+            )
+        )
+
+    @Test
+    fun `fetchQuote returns the previous close alongside the price`() = runTest {
+        coEvery { apiService.getQuote("TCS.NS") } returns chartResponse("INR", 3500.0, 3400.0)
+
+        val quote = (repository.fetchQuote("TCS", AssetType.STOCK_IN) as Resource.Success).data
+
+        assertEquals(3500.0, quote.priceInr, 0.0001)
+        assertEquals(3400.0, quote.previousCloseInr, 0.0001)
+    }
+
+    @Test
+    fun `fetchQuote converts price and previous close with the same USD rate`() = runTest {
+        coEvery { apiService.getQuote("AAPL") } returns chartResponse("USD", 200.0, 190.0)
+
+        val quote = (repository.fetchQuote("AAPL", AssetType.STOCK_US, usdInrRate = 80.0) as Resource.Success).data
+
+        assertEquals(16000.0, quote.priceInr, 0.0001)
+        assertEquals(15200.0, quote.previousCloseInr, 0.0001)
+    }
+
+    @Test
+    fun `fetchQuote treats USX cents the same way for both prices`() = runTest {
+        coEvery { apiService.getQuote("XYZ") } returns chartResponse("USX", 20000.0, 19000.0)
+
+        val quote = (repository.fetchQuote("XYZ", AssetType.STOCK_US, usdInrRate = 80.0) as Resource.Success).data
+
+        assertEquals(16000.0, quote.priceInr, 0.0001)
+        assertEquals(15200.0, quote.previousCloseInr, 0.0001)
+    }
+
+    @Test
+    fun `a missing previous close is reported as 0, not as an unchanged price`() = runTest {
+        coEvery { apiService.getQuote("TCS.NS") } returns chartResponse("INR", 3500.0)
+
+        val quote = (repository.fetchQuote("TCS", AssetType.STOCK_IN) as Resource.Success).data
+
+        assertEquals(0.0, quote.previousCloseInr, 0.0)
+    }
+
+    @Test
+    fun `fetchQuotesFor skips non-market holdings and holdings whose quote failed`() = runTest {
+        coEvery { apiService.getQuote("TCS.NS") } returns chartResponse("INR", 3500.0, 3400.0)
+        coEvery { apiService.getQuote("BAD.NS") } returns Response.error(404, okhttp3.ResponseBody.create(null, ""))
+        coEvery { apiService.getQuote("USDINR=X") } returns chartResponse("USD", 84.0)
+        val assets = listOf(
+            NetWorthAssetEntity(id = 1, name = "TCS", assetType = AssetType.STOCK_IN, currentValue = 0.0),
+            NetWorthAssetEntity(id = 2, name = "BAD", assetType = AssetType.STOCK_IN, currentValue = 0.0),
+            NetWorthAssetEntity(id = 3, name = "HDFC MF", assetType = AssetType.MF, currentValue = 1000.0)
+        )
+
+        val quotes = repository.fetchQuotesFor(assets)
+
+        assertEquals(setOf(1L), quotes.keys)
     }
 
     @Test

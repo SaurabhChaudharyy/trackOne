@@ -3,11 +3,9 @@ package app.trackone.workers
 import android.content.Context
 import androidx.hilt.work.HiltWorker
 import androidx.work.*
-import app.trackone.data.database.NetWorthAssetEntity
 import app.trackone.data.database.NetWorthDao
+import app.trackone.data.repository.NetWorthRepository
 import app.trackone.notifications.NotificationHelper
-import app.trackone.utils.GainLoss
-import app.trackone.utils.PortfolioGainLoss
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import java.time.LocalDateTime
@@ -16,54 +14,37 @@ import java.time.ZoneId
 import java.time.temporal.ChronoUnit
 import java.util.concurrent.TimeUnit
 
-/** What the digest notification says — pulled out of [DailyDigestWorker.doWork] so the
- *  best/worst-picking logic is testable without an Android Worker/Context. */
-internal data class DigestContent(
-    val portfolioPctChange: Double,
-    val best: Pair<String, GainLoss>?,
-    val worst: Pair<String, GainLoss>?
-)
-
 /**
- * Ranks [assets] by cumulative per-asset gain/loss to pick a best and worst performer.
- * Assets with a blank name are excluded (nothing meaningful to display). When there's only
- * one rankable asset, [DigestContent.worst] is null rather than repeating the same holding
- * as both best and worst.
- */
-internal fun computeDigestContent(assets: List<NetWorthAssetEntity>): DigestContent {
-    val portfolioPctChange = PortfolioGainLoss.compute(assets).pctChange
-
-    val ranked = assets
-        .filter { it.name.isNotBlank() }
-        .map { it.name to PortfolioGainLoss.computePerAsset(it) }
-    val best = ranked.maxByOrNull { it.second.pctChange }
-    val worst = if (ranked.size > 1) ranked.minByOrNull { it.second.pctChange } else null
-
-    return DigestContent(portfolioPctChange, best, worst)
-}
-
-/**
- * Posts a once-daily notification summarizing the portfolio's best/worst performing holdings
- * and overall P&L. Deliberately uses cumulative gain/loss since purchase (via
- * [PortfolioGainLoss]) rather than day-over-day price movement — that works uniformly across
- * every asset type (including MF/cash/bank, which have no live-price tracking at all) and
- * needs no network call at digest-fire time, at the cost of likely repeating the same 1-2
- * holdings most days. Confirmed acceptable for v1.
+ * Posts a once-daily notification with how the portfolio's market-priced holdings moved
+ * today, and which moved most. Cumulative gain/loss since purchase is deliberately NOT here —
+ * it barely changes day to day, so repeating it daily is noise; [WeeklySummaryWorker] carries it.
+ *
+ * Fetches live quotes at fire time (the previous close is needed for "today"), so it only runs
+ * with a network. Fires ~8:30pm IST: Indian markets have closed (a full day's move); US markets
+ * are mid-session, so US holdings show their move so far.
  */
 @HiltWorker
 class DailyDigestWorker @AssistedInject constructor(
     @Assisted context: Context,
     @Assisted workerParams: WorkerParameters,
-    private val netWorthDao: NetWorthDao
+    private val netWorthDao: NetWorthDao,
+    private val netWorthRepository: NetWorthRepository
 ) : CoroutineWorker(context, workerParams) {
 
     override suspend fun doWork(): Result {
         return try {
             val assets = netWorthDao.getAllAssetsSync()
-            if (assets.isEmpty()) return Result.success()
+            val measurable = assets.filter { it.assetType in NetWorthRepository.FETCHABLE_TYPES && it.name.isNotBlank() }
+            // Nothing market-priced (e.g. only cash/MF) — no daily move exists; the weekly
+            // summary still covers this portfolio.
+            if (measurable.isEmpty()) return Result.success()
 
-            val content = computeDigestContent(assets)
-            NotificationHelper.notifyDigest(applicationContext, content.portfolioPctChange, content.best, content.worst)
+            val quotes = netWorthRepository.fetchQuotesFor(assets)
+            val content = computeDailyDigest(assets, quotes)
+                // Every quote failed or had no previous close: retry rather than post a fake "0%".
+                ?: return if (runAttemptCount < 3) Result.retry() else Result.success()
+
+            NotificationHelper.notifyDigest(applicationContext, formatDailyBody(content))
             Result.success()
         } catch (e: Exception) {
             if (runAttemptCount < 3) Result.retry() else Result.failure()
@@ -86,6 +67,7 @@ class DailyDigestWorker @AssistedInject constructor(
         fun schedule(context: Context) {
             val request = PeriodicWorkRequestBuilder<DailyDigestWorker>(24, TimeUnit.HOURS)
                 .setInitialDelay(millisUntilNextDigestTime(), TimeUnit.MILLISECONDS)
+                .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
                 .build()
 
             WorkManager.getInstance(context).enqueueUniquePeriodicWork(

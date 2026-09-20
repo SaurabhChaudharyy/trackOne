@@ -15,6 +15,11 @@ enum class AssetType {
     BANK        
 }
 
+/** Types whose value comes from a live market quote (vs. MF/cash/bank, which are entered by hand). */
+val AssetType.hasLivePrice: Boolean
+    get() = this == AssetType.STOCK_IN || this == AssetType.STOCK_US || this == AssetType.CRYPTO ||
+        this == AssetType.GOLD || this == AssetType.SILVER
+
 @Entity(tableName = "networth_assets")
 data class NetWorthAssetEntity(
     @PrimaryKey(autoGenerate = true)

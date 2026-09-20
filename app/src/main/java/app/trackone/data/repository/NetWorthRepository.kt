@@ -8,6 +8,7 @@ import app.trackone.data.database.AssetType
 import app.trackone.data.database.FinanceDatabase
 import app.trackone.data.database.NetWorthAssetEntity
 import app.trackone.data.database.NetWorthDao
+import app.trackone.data.database.hasLivePrice
 import app.trackone.utils.CurrencyConversion
 import app.trackone.utils.Resource
 import app.trackone.utils.SymbolUtils
@@ -43,6 +44,9 @@ class NetWorthRepository @Inject constructor(
          *  of per-asset network calls concurrently and again on every tab switch, which is both
          *  wasteful and why portfolio values visibly flickered right after opening the app. */
         private const val MIN_PASSIVE_REFRESH_INTERVAL_MS = 5 * 60 * 1000L
+
+        /** Asset types that have a live market price (vs. MF/cash/bank, which are entered by hand). */
+        val FETCHABLE_TYPES: Set<AssetType> = AssetType.values().filter { it.hasLivePrice }.toSet()
     }
 
     private val prefs by lazy { context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE) }
@@ -62,11 +66,25 @@ class NetWorthRepository @Inject constructor(
         prefs.edit().putFloat(KEY_LAST_USD_INR_RATE, rate.toFloat()).apply()
     }
 
+    /** A live price and yesterday's close, both in INR per unit. [previousCloseInr] is 0.0 when
+     *  the quote didn't carry one — callers must treat that as "unknown", not "unchanged". */
+    data class LiveQuote(val priceInr: Double, val previousCloseInr: Double)
+
     suspend fun fetchLivePrice(
         symbol: String,
         assetType: AssetType,
         usdInrRate: Double? = null
-    ): Resource<Double> =
+    ): Resource<Double> = when (val quote = fetchQuote(symbol, assetType, usdInrRate)) {
+        is Resource.Success -> Resource.Success(quote.data.priceInr)
+        is Resource.Error   -> Resource.Error(quote.message)
+        is Resource.Loading -> Resource.Loading()
+    }
+
+    suspend fun fetchQuote(
+        symbol: String,
+        assetType: AssetType,
+        usdInrRate: Double? = null
+    ): Resource<LiveQuote> =
         withContext(Dispatchers.IO) {
             try {
 
@@ -91,25 +109,52 @@ class NetWorthRepository @Inject constructor(
                 }
 
                 val currency = meta.currency
-                val priceInr = if (currency == "USD" || currency == "USX") {
-                    // Reuse a batch-level rate when the caller already fetched one, instead
-                    // of issuing a fresh USDINR=X call per asset.
-                    val usdInr = usdInrRate ?: fetchUsdInrRate()
-                    CurrencyConversion.toInr(priceInNativeCurrency, currency, usdInr)
-                } else {
-                    priceInNativeCurrency
+                // Reuse a batch-level rate when the caller already fetched one, instead
+                // of issuing a fresh USDINR=X call per asset.
+                val usdInr = if (currency == "USD" || currency == "USX") {
+                    usdInrRate ?: fetchUsdInrRate()
+                } else 1.0
+
+                // Price and previous close go through the same conversion so their ratio
+                // (the day's move) is unaffected by FX, units or cents-vs-dollars.
+                val toFinalPrice = { native: Double ->
+                    val inr = if (currency == "USD" || currency == "USX") {
+                        CurrencyConversion.toInr(native, currency, usdInr)
+                    } else native
+                    when (assetType) {
+                        AssetType.GOLD, AssetType.SILVER -> CurrencyConversion.troyOunceToGramPrice(inr)
+                        else                             -> inr
+                    }
                 }
 
-                val finalPrice = when (assetType) {
-                    AssetType.GOLD, AssetType.SILVER -> CurrencyConversion.troyOunceToGramPrice(priceInr)
-                    else                             -> priceInr
-                }
-
-                Resource.Success(finalPrice)
+                Resource.Success(
+                    LiveQuote(
+                        priceInr = toFinalPrice(priceInNativeCurrency),
+                        previousCloseInr = meta.effectivePreviousClose
+                            .takeIf { it > 0.0 }?.let(toFinalPrice) ?: 0.0
+                    )
+                )
             } catch (e: Exception) {
                 Resource.Error(e.message ?: "Network error")
             }
         }
+
+    /**
+     * Live quotes for every market-priced holding in [assets], keyed by asset id. Holdings whose
+     * quote fails are simply absent from the map. One USD→INR fetch is shared across the batch.
+     */
+    suspend fun fetchQuotesFor(assets: List<NetWorthAssetEntity>): Map<Long, LiveQuote> {
+        val fetchable = assets.filter { it.assetType in FETCHABLE_TYPES && it.name.isNotBlank() }
+        if (fetchable.isEmpty()) return emptyMap()
+
+        val usdInrRate = fetchUsdInrRate()
+        val quotes = mutableMapOf<Long, LiveQuote>()
+        for (asset in fetchable) {
+            val result = fetchQuote(asset.name, asset.assetType, usdInrRate)
+            if (result is Resource.Success) quotes[asset.id] = result.data
+        }
+        return quotes
+    }
 
     /**
      * Fetches the current USD→INR exchange rate. On success, caches it so future failures
@@ -161,11 +206,7 @@ class NetWorthRepository @Inject constructor(
         withContext(Dispatchers.IO) {
         try {
             val assets = netWorthDao.getAllAssetsSync()
-            val fetchableTypes = setOf(
-                AssetType.STOCK_IN, AssetType.STOCK_US, AssetType.CRYPTO,
-                AssetType.GOLD, AssetType.SILVER
-            )
-            val fetchableAssets = assets.filter { it.assetType in fetchableTypes && it.name.isNotBlank() }
+            val fetchableAssets = assets.filter { it.assetType in FETCHABLE_TYPES && it.name.isNotBlank() }
 
             // Fetch USDINR once for the whole batch — reused below for both live-price
             // conversion and buyPrice conversion, instead of being re-fetched per asset.
