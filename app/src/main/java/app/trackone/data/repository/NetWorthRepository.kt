@@ -25,6 +25,7 @@ class NetWorthRepository @Inject constructor(
     private val database: FinanceDatabase,
     private val netWorthDao: NetWorthDao,
     private val apiService: YahooFinanceApiService,
+    private val symbolRepairer: SymbolRepairer,
     @ApplicationContext private val context: Context
 ) {
     companion object {
@@ -165,6 +166,25 @@ class NetWorthRepository @Inject constructor(
     } catch (e: Exception) { lastKnownUsdInrRate() }
 
     /**
+     * [asset] with its live price applied. If the row's buyPrice is still in USD (first refresh after
+     * an import) it is converted to INR and the currency flipped, so P&L compares like with like.
+     */
+    private fun withLivePrice(asset: NetWorthAssetEntity, priceInr: Double, usdInrRate: Double): NetWorthAssetEntity {
+        val (buyPrice, currency) = if (asset.currency == "USD") {
+            val buyPriceInr = if (asset.buyPrice > 0) CurrencyConversion.toInr(asset.buyPrice, asset.currency, usdInrRate) else 0.0
+            buyPriceInr to "INR"
+        } else {
+            asset.buyPrice to asset.currency
+        }
+        return asset.copy(
+            currentValue = priceInr * asset.quantity,
+            buyPrice     = buyPrice,
+            currency     = currency,
+            updatedAt    = System.currentTimeMillis()
+        )
+    }
+
+    /**
      * Refreshes live prices for all fetchable assets, best-effort: a failure on one asset
      * (or the whole batch) is logged and swallowed, never surfaced to callers — every call
      * site treats this as fire-and-forget, so the interface says so instead of returning
@@ -208,38 +228,35 @@ class NetWorthRepository @Inject constructor(
             // Collected here, not written per-iteration — see the transaction below for why.
             val updatedAssets = mutableListOf<NetWorthAssetEntity>()
 
+            // Holdings whose live price could not be fetched, kept for the symbol repair below.
+            val failed = mutableListOf<NetWorthAssetEntity>()
+
             for ((index, asset) in fetchableAssets.withIndex()) {
                 val symbol = if (asset.assetType == AssetType.GOLD) "GC=F" else asset.name
                 val result = fetchLivePrice(symbol, asset.assetType, usdInrRate)
 
                 if (result is Resource.Success) {
-                    val currentPriceInr = result.data   // already in INR
-                    val updatedValue    = currentPriceInr * asset.quantity
-
-                    // If the asset's buyPrice is still in USD (first refresh after import),
-                    // convert it to INR and flip currency to "INR" so P&L is apples-to-apples.
-                    val (updatedBuyPrice, updatedCurrency) = if (asset.currency == "USD") {
-                        val buyPriceInr = if (asset.buyPrice > 0) {
-                            CurrencyConversion.toInr(asset.buyPrice, asset.currency, usdInrRate)
-                        } else 0.0
-                        Pair(buyPriceInr, "INR")
-                    } else {
-                        Pair(asset.buyPrice, asset.currency)
-                    }
-
-                    updatedAssets.add(
-                        asset.copy(
-                            currentValue = updatedValue,
-                            buyPrice     = updatedBuyPrice,
-                            currency     = updatedCurrency,
-                            updatedAt    = System.currentTimeMillis()
-                        )
-                    )
+                    updatedAssets.add(withLivePrice(asset, result.data, usdInrRate))
                 } else if (result is Resource.Error) {
                     Log.w(TAG, "refreshNetWorthAssets: failed to update ${asset.name}: ${result.message}")
+                    failed.add(asset)
                 }
 
                 onProgress(index + 1, fetchableAssets.size)
+            }
+
+            // A holding stored under a company name (or a wrong symbol) can never be priced. Give the
+            // failures one guarded attempt at a rename — and price the renamed ones right away. Only
+            // tried when something in this batch DID price, so a dead network doesn't send every row
+            // to the resolver.
+            if (failed.isNotEmpty() && updatedAssets.isNotEmpty()) {
+                for (repair in symbolRepairer.findRepairs(failed, assets)) {
+                    Log.i(TAG, "symbol repair: '${repair.oldName}' -> '${repair.newName}' " +
+                        "(matched '${repair.matchedName}' by ${repair.basis})")
+                    val renamed = assets.first { it.id == repair.assetId }.copy(name = repair.newName)
+                    val price = fetchLivePrice(renamed.name, renamed.assetType, usdInrRate)
+                    updatedAssets.add(if (price is Resource.Success) withLivePrice(renamed, price.data, usdInrRate) else renamed)
+                }
             }
 
             // One transaction for the whole batch — network calls are already done by this

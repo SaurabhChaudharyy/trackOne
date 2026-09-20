@@ -2,6 +2,7 @@ package app.trackone.data.repository
 
 import android.content.Context
 import android.net.Uri
+import android.util.Log
 import app.trackone.data.database.AssetType
 import app.trackone.data.database.NetWorthAssetEntity
 import app.trackone.data.database.NetWorthDao
@@ -10,6 +11,11 @@ import app.trackone.data.database.NetWorthTransactionEntity
 import app.trackone.data.database.TransactionType
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import org.xmlpull.v1.XmlPullParser
 import java.io.InputStream
@@ -122,7 +128,12 @@ data class UniversalHolding(
     val currency: String,
     val assetType: AssetType,
     /** Which broker/format this row came from, e.g. "Zerodha / Groww". */
-    val brokerSource: String
+    val brokerSource: String,
+    /**
+     * False when [symbol] is really a company name the broker printed ("ITC HOTELS LIMITED"), which can
+     * never be priced — the importer then resolves it to a ticker from [isin] or the name.
+     */
+    val symbolIsTicker: Boolean = true
 ) {
     fun toEntity(now: Long): NetWorthAssetEntity = NetWorthAssetEntity(
         id = 0,
@@ -206,10 +217,14 @@ data class UniversalTrade(
 class BrokerCsvRepository @Inject constructor(
     @ApplicationContext private val context: Context,
     private val netWorthDao: NetWorthDao,
-    private val netWorthTransactionDao: NetWorthTransactionDao
+    private val netWorthTransactionDao: NetWorthTransactionDao,
+    private val symbolResolver: SymbolResolver
 ) {
 
     companion object {
+        private const val TAG = "BrokerCsvRepository"
+        private const val MAX_PARALLEL_LOOKUPS = 4
+
         val IMPORT_MIME_TYPES = arrayOf(
             "text/csv",
             "text/plain",
@@ -266,7 +281,7 @@ class BrokerCsvRepository @Inject constructor(
             when (val outcome = BrokerCsvParser.parse(fileBytes, isXlsx)) {
                 is BrokerCsvParser.ParseOutcome.Failure -> CsvImportResult.Failure(outcome.reason)
                 is BrokerCsvParser.ParseOutcome.Success -> {
-                    persist(outcome.holdings, onProgress)
+                    persist(resolveSymbols(outcome.holdings), onProgress)
                     // Record hash only after a fully successful import.
                     recordImportHash(fileHash)
                     CsvImportResult.Success(imported = outcome.holdings.size, skipped = outcome.skipped)
@@ -334,6 +349,33 @@ class BrokerCsvRepository @Inject constructor(
             netWorthTransactionDao.insert(trade.toTransaction(assetId, now))
             onProgress(index + 1, trades.size)
         }
+    }
+
+    // ── Symbol resolution ────────────────────────────────────────────────────
+
+    /**
+     * Rows whose "symbol" is really a company name are resolved to a ticker (by ISIN, then name) before
+     * they are stored: the name doubles as the price-lookup key everywhere, so storing "ITC HOTELS
+     * LIMITED" meant the holding could never be priced. Anything that can't be resolved confidently —
+     * offline, ambiguous, unknown — is stored exactly as before, never guessed; the price-refresh repair
+     * (SymbolRepairer) tries again later.
+     */
+    private suspend fun resolveSymbols(holdings: List<UniversalHolding>): List<UniversalHolding> = coroutineScope {
+        val limiter = Semaphore(MAX_PARALLEL_LOOKUPS)
+        holdings.map { holding ->
+            async {
+                if (holding.symbolIsTicker) return@async holding
+                limiter.withPermit {
+                    when (val resolution = symbolResolver.resolve(holding.symbol, holding.isin, holding.assetType)) {
+                        is SymbolResolution.Confident -> {
+                            Log.i(TAG, "resolved '${holding.symbol}' -> '${resolution.symbol}' (${resolution.basis})")
+                            holding.copy(symbol = resolution.symbol, symbolIsTicker = true)
+                        }
+                        else -> holding
+                    }
+                }
+            }
+        }.awaitAll()
     }
 
     // ── Persist ──────────────────────────────────────────────────────────────
@@ -873,7 +915,9 @@ internal object BrokerCsvParser {
         return UniversalHolding(
             symbol = name.trim(), isin = isin, quantity = quantity, avgBuyPrice = buyPrice,
             currentValue = curValue, currency = "INR", assetType = AssetType.STOCK_IN,
-            brokerSource = "HDFC Securities / Angel One"
+            brokerSource = "HDFC Securities / Angel One",
+            // "Stock Name" is usually the company name ("ITC HOTELS LIMITED"), sometimes a ticker.
+            symbolIsTicker = SymbolMatcher.looksLikeTicker(name.trim().uppercase())
         )
     }
 
@@ -910,11 +954,14 @@ internal object BrokerCsvParser {
         val curValue = cols[3].toDoubleOrNull() ?: return null
 
         // Use known ticker if this looks like a Vested full-name; otherwise keep as-is.
-        val symbol = VESTED_NAME_TO_TICKER[rawName.uppercase()] ?: rawName.uppercase()
+        val known = VESTED_NAME_TO_TICKER[rawName.uppercase()]
+        val symbol = known ?: rawName.uppercase()
         return UniversalHolding(
             symbol = symbol, quantity = quantity, avgBuyPrice = buyPrice,
             currentValue = curValue, currency = "USD", assetType = AssetType.STOCK_US,
-            brokerSource = "Vested / Interactive Brokers"
+            brokerSource = "Vested / Interactive Brokers",
+            // A name that isn't in the lookup table above is still just a name.
+            symbolIsTicker = known != null || SymbolMatcher.looksLikeTicker(symbol)
         )
     }
 

@@ -24,6 +24,10 @@ import app.trackone.data.database.AssetType
 import app.trackone.data.database.NetWorthAssetEntity
 import app.trackone.databinding.DialogAddAssetBinding
 import app.trackone.databinding.FragmentNetworthBinding
+import app.trackone.data.repository.MatchBasis
+import app.trackone.data.repository.SymbolResolution
+import app.trackone.utils.HoldingIssue
+import app.trackone.utils.SymbolCheck
 import app.trackone.utils.AnimationUtils.animateNumberFromZero
 import app.trackone.utils.PortfolioGainLoss
 import app.trackone.utils.Resource
@@ -173,7 +177,8 @@ class NetWorthFragment : Fragment() {
                 onDeleteClick      = { asset -> confirmDelete(asset) },
                 onEditClick        = { asset -> showEditDialog(asset) },
                 onLongPress        = { asset -> enterSelectionMode(asset) },
-                onSelectionChanged = { count -> updateSelectionBar(type, count) }
+                onSelectionChanged = { count -> updateSelectionBar(type, count) },
+                onWarningClick     = { asset, issue -> showEditDialog(asset, issue) }
             )
             adapters[type] = adapter
             rv.apply {
@@ -931,7 +936,11 @@ class NetWorthFragment : Fragment() {
         bottomSheet.show()
     }
 
-    private fun showEditDialog(asset: NetWorthAssetEntity) {
+    /**
+     * @param focusIssue set when opened from a holding's warning: puts the cursor on the field that
+     * fixes it — and, for a price that won't update, looks up the ticker and suggests it.
+     */
+    private fun showEditDialog(asset: NetWorthAssetEntity, focusIssue: HoldingIssue? = null) {
         val type = asset.assetType
         val d = DialogAddAssetBinding.inflate(layoutInflater)
         val fetchable = type in isFetchable
@@ -974,20 +983,17 @@ class NetWorthFragment : Fragment() {
         var pricePerUnit = if (asset.quantity > 0) asset.currentValue / asset.quantity else 0.0
         var isAutoUpdating = false
 
-        if (fetchable) {
+        // Fetches and shows the live price for [symbol]: on open, and again when a suggested symbol is filled in.
+        val loadPrice: (String) -> Unit = { symbol ->
             d.llPriceCard.isVisible = true
             d.llPriceLoading.isVisible = true
             d.tvFetchStatus.isVisible = false
-            val fetchSymbol = when (type) {
-                AssetType.GOLD -> "GC=F"
-                AssetType.SILVER -> "SI=F"
-                else -> asset.name
-            }
+            d.tvPriceError.isVisible = false
             lifecycleScope.launch {
-                val result = viewModel.fetchLivePrice(fetchSymbol, type)
+                val result = viewModel.fetchLivePrice(symbol, type)
+                d.llPriceLoading.isVisible = false
                 if (result is Resource.Success) {
                     pricePerUnit = result.data
-                    d.llPriceLoading.isVisible = false
                     val unitLabel = when (type) {
                         AssetType.GOLD, AssetType.SILVER -> "/gram"
                         AssetType.CRYPTO -> "/coin"
@@ -1003,10 +1009,25 @@ class NetWorthFragment : Fragment() {
                         d.etValue.setText("%.2f".format(pricePerUnit * qty))
                         isAutoUpdating = false
                     }
-                } else {
-                    d.llPriceCard.isVisible = false
+                } else if (result is Resource.Error) {
+                    // This used to just hide the card, leaving no hint that the symbol was the problem.
+                    d.tvPriceError.text = if (SymbolCheck.isNotFound(result.message))
+                        "✗ No live price found for $symbol — check the ticker"
+                    else
+                        "✗ Couldn't fetch the live price right now"
+                    d.tvPriceError.isVisible = true
                 }
             }
+        }
+
+        if (fetchable) {
+            loadPrice(
+                when (type) {
+                    AssetType.GOLD -> "GC=F"
+                    AssetType.SILVER -> "SI=F"
+                    else -> asset.name
+                }
+            )
         }
 
         d.etQuantity.addTextChangedListener(object : android.text.TextWatcher {
@@ -1077,20 +1098,75 @@ class NetWorthFragment : Fragment() {
                     else -> d.etName.text?.toString()?.trim()?.ifBlank { asset.name } ?: asset.name
                 }
 
-                viewModel.updateAsset(
-                    asset.copy(
-                        name         = name,
-                        quantity     = qty,
-                        buyPrice     = d.etBuyPrice.text?.toString()?.toDoubleOrNull() ?: 0.0,
-                        currentValue = value,
-                        notes        = if (isMetalType) d.etNotes.text?.toString()?.trim() ?: asset.notes else asset.notes,
-                        updatedAt    = System.currentTimeMillis()
+                val saveEdit = {
+                    viewModel.updateAsset(
+                        asset.copy(
+                            name         = name,
+                            quantity     = qty,
+                            buyPrice     = d.etBuyPrice.text?.toString()?.toDoubleOrNull() ?: 0.0,
+                            currentValue = value,
+                            notes        = if (isMetalType) d.etNotes.text?.toString()?.trim() ?: asset.notes else asset.notes,
+                            updatedAt    = System.currentTimeMillis()
+                        )
                     )
-                )
-                dialog.dismiss()
+                    dialog.dismiss()
+                }
+
+                // A symbol that was typed in must actually exist: this used to save whatever text was
+                // there, which is how a company name ends up as an unpriceable "symbol". Only a definite
+                // "no such symbol" blocks it — being offline or rate-limited never stops a save.
+                if (fetchable && !isMetalType && name != asset.name) {
+                    val saveButton = dialog.getButton(AlertDialog.BUTTON_POSITIVE)
+                    saveButton.isEnabled = false
+                    lifecycleScope.launch {
+                        val check = viewModel.fetchLivePrice(name, type)
+                        saveButton.isEnabled = true
+                        if (check is Resource.Error && SymbolCheck.isNotFound(check.message)) {
+                            d.tilSymbol.error = "No price found for “$name”. Use the ticker (e.g. RELIANCE), not the company name."
+                        } else {
+                            d.tilSymbol.error = null
+                            saveEdit()
+                        }
+                    }
+                } else {
+                    saveEdit()
+                }
             }
         }
+        if (focusIssue != null) dialog.window?.setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE)
         dialog.show()
+
+        when (focusIssue) {
+            HoldingIssue.NO_LIVE_PRICE -> if (fetchable && !isMetalType) {
+                val field = d.etSymbol as? AutoCompleteTextView
+                field?.requestFocus()
+                field?.selectAll()
+                d.tilSymbol.helperText = "Looking for a match…"
+                lifecycleScope.launch {
+                    when (val match = viewModel.resolveSymbol(asset)) {
+                        is SymbolResolution.Confident -> {
+                            field?.setText(match.symbol, false)
+                            field?.setSelection(match.symbol.length)
+                            val via = if (match.basis == MatchBasis.ISIN) "ISIN" else "name"
+                            d.tilSymbol.helperText = "Matched “${match.matchedName}” by $via — check it, then Save"
+                            loadPrice(match.symbol)
+                        }
+                        is SymbolResolution.Ambiguous ->
+                            d.tilSymbol.helperText = "Could be ${match.symbols.joinToString(" or ")} — type the one you hold"
+                        SymbolResolution.Unavailable ->
+                            d.tilSymbol.helperText = "Couldn't look this up right now — enter the ticker, e.g. RELIANCE"
+                        SymbolResolution.NotFound ->
+                            d.tilSymbol.helperText = "No match found — enter the ticker (e.g. RELIANCE), not the company name"
+                    }
+                }
+            }
+            HoldingIssue.IMPLAUSIBLE_GAIN -> {
+                d.etBuyPrice.requestFocus()
+                d.etBuyPrice.selectAll()
+                d.tilBuyPrice.helperText = "Cost per unit in ₹ — this is far from today's price"
+            }
+            else -> Unit
+        }
     }
 
     private fun rvForType(type: AssetType): RecyclerView? = when (type) {

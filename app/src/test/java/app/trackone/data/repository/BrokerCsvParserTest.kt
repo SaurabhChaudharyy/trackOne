@@ -320,4 +320,29 @@ class BrokerCsvParserTest {
         assertTrue(holdings.isEmpty())
         assertEquals(1, skipped)
     }
+
+    // ── which rows still need a ticker looked up ─────────────────────────────
+
+    @Test
+    fun `Format A flags a company name as not a ticker, but leaves a real ticker alone`() {
+        val named = listOf("ITC HOTELS LIMITED", "INE379A01028", "10", "200.0", "2000.0", "210.0", "2100.0", "100.0")
+        val ticker = listOf("RELIANCE", "INE002A01018", "10", "2400.0", "24000.0", "2500.0", "25000.0", "1000.0")
+
+        assertEquals(false, BrokerCsvParser.parseFormatA(named)!!.symbolIsTicker)
+        assertEquals("ITC HOTELS LIMITED", BrokerCsvParser.parseFormatA(named)!!.symbol)   // kept as printed until resolved
+        assertEquals(true, BrokerCsvParser.parseFormatA(ticker)!!.symbolIsTicker)
+    }
+
+    @Test
+    fun `Format C treats a known Vested name and a plain ticker as tickers, but an unknown name as a name`() {
+        assertEquals(true, BrokerCsvParser.parseFormatC(listOf("APPLE INC", "10", "150.0", "1800.0"))!!.symbolIsTicker)   // in the lookup table
+        assertEquals(true, BrokerCsvParser.parseFormatC(listOf("AMD", "10", "80.0", "900.0"))!!.symbolIsTicker)
+        assertEquals(false, BrokerCsvParser.parseFormatC(listOf("Some Unlisted Holdings Inc", "1", "10.0", "10.0"))!!.symbolIsTicker)
+    }
+
+    @Test
+    fun `broker formats that give a ticker column are never flagged`() {
+        val zerodhaLike = listOf("INFY", "5", "1500.0", "1600.0", "7500.0", "8000.0")
+        assertEquals(true, BrokerCsvParser.parseFormatB(zerodhaLike)!!.symbolIsTicker)
+    }
 }

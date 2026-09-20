@@ -36,7 +36,7 @@ class NetWorthViewModelTest {
         every { netWorthDao.getAllAssets() } returns mockk<LiveData<List<NetWorthAssetEntity>>>(relaxed = true)
         every { netWorthDao.getTotalNetWorth() } returns mockk<LiveData<Double?>>(relaxed = true)
 
-        viewModel = NetWorthViewModel(netWorthDao, netWorthRepository)
+        viewModel = NetWorthViewModel(netWorthDao, netWorthRepository, mockk(relaxed = true))
     }
 
     @After

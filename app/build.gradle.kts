@@ -60,6 +60,11 @@ android {
         jvmTarget = "17"
     }
 
+    testOptions {
+        // Lets JVM unit tests run code that logs (android.util.Log) instead of throwing "not mocked".
+        unitTests.isReturnDefaultValues = true
+    }
+
     buildFeatures {
         viewBinding = true
         buildConfig = true

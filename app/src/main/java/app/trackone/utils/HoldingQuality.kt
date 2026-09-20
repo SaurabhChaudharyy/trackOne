@@ -4,10 +4,11 @@ import app.trackone.data.database.NetWorthAssetEntity
 import app.trackone.data.database.hasLivePrice
 
 /** Why a holding's numbers can't be trusted, in the words shown to the person. */
-enum class HoldingIssue(val message: String) {
-    NO_LIVE_PRICE("Price isn't updating · edit it to set the ticker"),
-    FOREIGN_CURRENCY("Value isn't converted to ₹ yet"),
-    IMPLAUSIBLE_GAIN("Gain looks off · check the buy price")
+enum class HoldingIssue(val message: String, val tappable: Boolean) {
+    NO_LIVE_PRICE("Price isn't updating · tap to fix", tappable = true),
+    // Nothing to edit here: it resolves itself on the next successful price refresh.
+    FOREIGN_CURRENCY("Value isn't converted to ₹ yet", tappable = false),
+    IMPLAUSIBLE_GAIN("Gain looks off · tap to check the buy price", tappable = true)
 }
 
 /**

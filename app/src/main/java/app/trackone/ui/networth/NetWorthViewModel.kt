@@ -5,6 +5,8 @@ import app.trackone.data.database.AssetType
 import app.trackone.data.database.NetWorthAssetEntity
 import app.trackone.data.database.NetWorthDao
 import app.trackone.data.repository.NetWorthRepository
+import app.trackone.data.repository.SymbolResolution
+import app.trackone.data.repository.SymbolResolver
 import app.trackone.utils.PortfolioGainLoss
 import app.trackone.utils.Resource
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -14,7 +16,8 @@ import javax.inject.Inject
 @HiltViewModel
 class NetWorthViewModel @Inject constructor(
     private val netWorthDao: NetWorthDao,
-    private val netWorthRepository: NetWorthRepository
+    private val netWorthRepository: NetWorthRepository,
+    private val symbolResolver: SymbolResolver
 ) : ViewModel() {
 
     val allAssets: LiveData<List<NetWorthAssetEntity>> = netWorthDao.getAllAssets()
@@ -89,6 +92,10 @@ class NetWorthViewModel @Inject constructor(
         val gainLoss = PortfolioGainLoss.compute(assets)
         Pair(gainLoss.absChange, gainLoss.pctChange)
     }
+
+    /** What ticker this holding most likely is (by its ISIN, then its name) — used to suggest a fix. */
+    suspend fun resolveSymbol(asset: NetWorthAssetEntity): SymbolResolution =
+        symbolResolver.resolve(asset.name, asset.isin, asset.assetType)
 
     suspend fun fetchLivePrice(symbol: String, assetType: AssetType): Resource<Double> =
         netWorthRepository.fetchLivePrice(symbol, assetType)

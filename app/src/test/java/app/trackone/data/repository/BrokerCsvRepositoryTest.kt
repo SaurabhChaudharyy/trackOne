@@ -28,6 +28,7 @@ class BrokerCsvRepositoryTest {
     private lateinit var netWorthTransactionDao: NetWorthTransactionDao
     private lateinit var sharedPreferences: SharedPreferences
     private lateinit var editor: SharedPreferences.Editor
+    private lateinit var symbolResolver: SymbolResolver
     private lateinit var repository: BrokerCsvRepository
     private lateinit var uri: Uri
 
@@ -61,7 +62,10 @@ class BrokerCsvRepositoryTest {
             every { lastPathSegment } returns "holdings.csv"
         }
 
-        repository = BrokerCsvRepository(context, netWorthDao, netWorthTransactionDao)
+        symbolResolver = mockk()
+        coEvery { symbolResolver.resolve(any(), any(), any(), any()) } returns SymbolResolution.NotFound
+
+        repository = BrokerCsvRepository(context, netWorthDao, netWorthTransactionDao, symbolResolver)
     }
 
     private fun stubFileContents(bytes: ByteArray) {
@@ -185,5 +189,66 @@ class BrokerCsvRepositoryTest {
         repository.clearImportHistory()
 
         io.mockk.verify { editor.clear() }
+    }
+
+    // ── company names are resolved to tickers at import ─────────────────────
+
+    // HDFC Securities / Angel One "Holding Statement": Stock Name | ISIN | Qty | Avg Buy | Buy Value | Close | Close Value | P&L
+    private val formatACsv = (
+        "Stock Name,ISIN,Quantity,Average Buy Price,Buy Value,Closing Price,Closing Value,Unrealised P&L\n" +
+        "ITC HOTELS LIMITED,INE379A01028,10,200.0,2000.0,210.0,2100.0,100.0\n"
+    ).toByteArray()
+
+    @Test
+    fun `a company name from a broker statement is stored as its ticker, not the name`() = runTest {
+        stubFileContents(formatACsv)
+        coEvery { symbolResolver.resolve("ITC HOTELS LIMITED", "INE379A01028", AssetType.STOCK_IN, any()) } returns
+            SymbolResolution.Confident("ITCHOTELS", "ITC Hotels Limited", MatchBasis.ISIN)
+        coEvery { netWorthDao.findAssetByNameAndType(any(), any()) } returns null
+        val inserted = slot<NetWorthAssetEntity>()
+        coEvery { netWorthDao.insertAsset(capture(inserted)) } returns 1L
+
+        repository.importFromUri(uri)
+
+        assertEquals("ITCHOTELS", inserted.captured.name)
+        assertEquals("INE379A01028", inserted.captured.isin)     // still kept
+        coVerify { netWorthTransactionDao.insert(match { it.symbol == "ITCHOTELS" }) }
+    }
+
+    @Test
+    fun `an unresolvable name is stored as before, never guessed or dropped`() = runTest {
+        stubFileContents(formatACsv)      // resolver stub defaults to NotFound
+        coEvery { netWorthDao.findAssetByNameAndType(any(), any()) } returns null
+        val inserted = slot<NetWorthAssetEntity>()
+        coEvery { netWorthDao.insertAsset(capture(inserted)) } returns 1L
+
+        val result = repository.importFromUri(uri)
+
+        assertTrue(result is CsvImportResult.Success)
+        assertEquals("ITC HOTELS LIMITED", inserted.captured.name)
+    }
+
+    @Test
+    fun `an ambiguous name is stored as before rather than picking one`() = runTest {
+        stubFileContents(formatACsv)
+        coEvery { symbolResolver.resolve(any(), any(), any(), any()) } returns SymbolResolution.Ambiguous(listOf("GOOG", "GOOGL"))
+        coEvery { netWorthDao.findAssetByNameAndType(any(), any()) } returns null
+        val inserted = slot<NetWorthAssetEntity>()
+        coEvery { netWorthDao.insertAsset(capture(inserted)) } returns 1L
+
+        repository.importFromUri(uri)
+
+        assertEquals("ITC HOTELS LIMITED", inserted.captured.name)
+    }
+
+    @Test
+    fun `rows that already carry a ticker never trigger a lookup`() = runTest {
+        stubFileContents(validCsvBytes)   // Zerodha/Groww style: the Instrument column is the ticker
+        coEvery { netWorthDao.findAssetByNameAndType(any(), any()) } returns null
+        coEvery { netWorthDao.insertAsset(any()) } returns 1L
+
+        repository.importFromUri(uri)
+
+        coVerify(exactly = 0) { symbolResolver.resolve(any(), any(), any(), any()) }
     }
 }

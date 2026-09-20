@@ -12,6 +12,7 @@ import app.trackone.data.database.AssetType
 import app.trackone.data.database.NetWorthAssetEntity
 import app.trackone.databinding.ItemNetworthAssetBinding
 import app.trackone.R
+import app.trackone.utils.HoldingIssue
 import app.trackone.utils.HoldingQuality
 import app.trackone.utils.PortfolioGainLoss
 import java.text.NumberFormat
@@ -21,7 +22,9 @@ class NetWorthAssetAdapter(
     private val onDeleteClick: (NetWorthAssetEntity) -> Unit,
     private val onEditClick: (NetWorthAssetEntity) -> Unit,
     private val onLongPress: (NetWorthAssetEntity) -> Unit = {},
-    private val onSelectionChanged: (count: Int) -> Unit = {}
+    private val onSelectionChanged: (count: Int) -> Unit = {},
+    /** The amber warning was tapped: open the fix for [HoldingIssue] (only issues that can be acted on are tappable). */
+    private val onWarningClick: (NetWorthAssetEntity, HoldingIssue) -> Unit = { _, _ -> }
 ) : ListAdapter<NetWorthAssetEntity, NetWorthAssetAdapter.ViewHolder>(DIFF) {
 
     private val inrFormat = NumberFormat.getCurrencyInstance(Locale("en", "IN"))
@@ -92,6 +95,10 @@ class NetWorthAssetAdapter(
             val issue = HoldingQuality.primaryIssue(asset)
             binding.tvAssetWarning.text = issue?.let { "⚠ ${it.message}" }.orEmpty()
             binding.tvAssetWarning.visibility = if (issue != null) View.VISIBLE else View.GONE
+            binding.tvAssetWarning.isClickable = issue?.tappable == true
+            binding.tvAssetWarning.setOnClickListener(
+                if (issue != null && issue.tappable) View.OnClickListener { onWarningClick(asset, issue) } else null
+            )
 
             if (PortfolioGainLoss.hasCostBasis(asset) && asset.buyPrice > 0 && asset.quantity > 0) {
                 val perAsset = PortfolioGainLoss.computePerAsset(asset)

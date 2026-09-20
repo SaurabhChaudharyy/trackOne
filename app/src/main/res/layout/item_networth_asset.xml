@@ -65,10 +65,13 @@
             android:id="@+id/tv_asset_warning"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
+            android:layout_marginTop="2dp"
+            android:minHeight="36dp"
+            android:gravity="center_vertical"
             android:textColor="@color/warning_text"
             android:textSize="11sp"
             android:fontFamily="@font/inter_semi_bold"
+            android:foreground="?attr/selectableItemBackground"
             android:visibility="gone"
             tools:text="⚠ Price isn't updating · edit it to set the ticker"/>
 

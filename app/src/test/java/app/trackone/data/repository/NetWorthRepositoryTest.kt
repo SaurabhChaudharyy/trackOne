@@ -52,7 +52,7 @@ class NetWorthRepositoryTest {
         context = mockk<Context> {
             every { getSharedPreferences(any(), any()) } returns sharedPreferences
         }
-        repository = NetWorthRepository(database, netWorthDao, apiService, context)
+        repository = NetWorthRepository(database, netWorthDao, apiService, mockk(relaxed = true), context)
     }
 
     private fun chartResponse(currency: String, price: Double): Response<YahooChartResponse> =

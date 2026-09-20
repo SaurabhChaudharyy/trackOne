@@ -19,7 +19,7 @@ No other personal data (name, photo, contacts, location, etc.) is collected, eve
 
 ## Third-party network requests
 
-- **Yahoo Finance** (public, unofficial endpoint): stock/crypto symbols you track or search for are sent to Yahoo Finance to fetch prices and charts. No account identifiers are attached to these requests.
+- **Yahoo Finance** (public, unofficial endpoint): stock/crypto symbols you track, hold or search for are sent to Yahoo Finance to fetch prices and charts. When a holding was imported or saved under a company name instead of a ticker (some broker statements list only the name), that company name or its ISIN is also sent to Yahoo Finance's search so the app can find the right ticker. No account identifiers are attached to these requests.
 
 ## Crash reporting
 
