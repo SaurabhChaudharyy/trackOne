@@ -10,12 +10,12 @@ plugins {
 
 android {
     namespace = "app.trackone"
-    compileSdk = 34
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "app.trackone"
         minSdk = 26
-        targetSdk = 34
+        targetSdk = 36
         versionCode = 5
         versionName = "1.4.2"
 
