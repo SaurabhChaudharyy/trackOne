@@ -1,7 +1,6 @@
 package app.trackone.ui.main
 
 import android.graphics.Canvas
-import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Typeface
 import android.os.Bundle
@@ -359,7 +358,7 @@ class WatchlistFragment : Fragment() {
                     val revealed  = -dX
 
                     val bgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                        color = ContextCompat.getColor(ctx, R.color.loss_red)
+                        color = ContextCompat.getColor(ctx, R.color.danger)
                     }
                     c.drawRect(
                         itemView.right + dX,
@@ -371,7 +370,7 @@ class WatchlistFragment : Fragment() {
 
                     if (revealed >= 60 * density) {
                         val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                            color     = Color.WHITE
+                            color     = ContextCompat.getColor(ctx, R.color.on_danger)
                             textSize  = 13f * density
                             typeface  = Typeface.DEFAULT_BOLD
                             textAlign = Paint.Align.CENTER
@@ -392,6 +391,7 @@ class WatchlistFragment : Fragment() {
 
     private fun setupSwipeRefresh() {
         binding.swipeRefreshLayout.setOnRefreshListener { viewModel.refresh() }
+        // Constant black: the spinner's disc is always light, so ink would vanish in dark mode.
         binding.swipeRefreshLayout.setColorSchemeResources(R.color.primary)
     }
 

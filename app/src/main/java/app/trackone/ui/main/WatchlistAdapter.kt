@@ -11,6 +11,7 @@ import app.trackone.R
 import app.trackone.data.database.StockEntity
 import app.trackone.databinding.ItemStockBinding
 import app.trackone.ui.detail.StockDetailActivity
+import app.trackone.ui.util.MoneyColor
 import app.trackone.utils.FormatUtils
 import app.trackone.utils.SymbolUtils
 
@@ -76,21 +77,16 @@ class WatchlistAdapter(
             binding.tvChange.text = FormatUtils.formatChange(stock.change)
             binding.tvChangePercent.text = FormatUtils.formatChangePercent(stock.changePercent)
 
-            // Pill's fill is constant across themes, so the ink INSIDE it stays @color/primary.
-            // tvChange (the absolute change) sits outside the pill on the theme background, so it
-            // keeps its layout colour — forcing @color/primary on it made it black-on-black (invisible)
-            // in dark mode while showing in light mode.
-            val primaryColor = ContextCompat.getColor(ctx, R.color.primary)
+            // The day's move is coloured text and arrow, with no pill behind it. tvChange (the
+            // absolute change) keeps its neutral layout colour.
+            val moveColor = ContextCompat.getColor(ctx, MoneyColor.forChange(stock.changePercent))
 
-            binding.tvChangePercent.setTextColor(primaryColor)
+            binding.tvChangePercent.setTextColor(moveColor)
             binding.ivTrend.setImageResource(
                 if (stock.isPositive) R.drawable.ic_arrow_up else R.drawable.ic_arrow_down
             )
-            binding.ivTrend.setColorFilter(primaryColor)
-
-            binding.changeContainer.setBackgroundResource(
-                if (stock.isPositive) R.drawable.bg_gain_pill else R.drawable.bg_loss_pill
-            )
+            binding.ivTrend.setColorFilter(moveColor)
+            binding.changeContainer.background = null
 
             if (stock.isStale) {
                 binding.tvLastUpdated.text = "• ${FormatUtils.formatLastUpdated(stock.lastUpdated)}"

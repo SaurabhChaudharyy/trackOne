@@ -1,5 +1,8 @@
 package app.trackone.ui.networth
 
+import android.text.SpannableString
+import android.text.Spanned
+import android.text.style.BackgroundColorSpan
 import android.view.HapticFeedbackConstants
 import android.view.LayoutInflater
 import android.view.View
@@ -11,6 +14,7 @@ import androidx.recyclerview.widget.RecyclerView
 import app.trackone.data.database.AssetType
 import app.trackone.data.database.NetWorthAssetEntity
 import app.trackone.databinding.ItemNetworthAssetBinding
+import app.trackone.ui.util.MoneyColor
 import app.trackone.R
 import app.trackone.utils.HoldingIssue
 import app.trackone.utils.HoldingQuality
@@ -79,6 +83,7 @@ class NetWorthAssetAdapter(
 
         fun bind(asset: NetWorthAssetEntity) {
             val fmt = if (asset.currency == "USD") usdFormat else inrFormat
+            val ctx = binding.root.context
 
             binding.tvAssetName.text = asset.name.removePrefix("^")
             binding.tvAssetValue.text = fmt.format(asset.currentValue)
@@ -91,9 +96,11 @@ class NetWorthAssetAdapter(
                 binding.tvAssetNotes.visibility = View.GONE
             }
 
-            // Surface untrustworthy numbers instead of presenting them as fact.
+            // Surface untrustworthy numbers instead of presenting them as fact. A warning is one of
+            // the neon's jobs: ink on a highlighter stroke that follows each wrapped line.
             val issue = HoldingQuality.primaryIssue(asset)
-            binding.tvAssetWarning.text = issue?.let { "⚠ ${it.message}" }.orEmpty()
+            binding.tvAssetWarning.text =
+                if (issue != null) markerHighlight("⚠ ${issue.message}", ctx.getColor(R.color.marker)) else ""
             binding.tvAssetWarning.visibility = if (issue != null) View.VISIBLE else View.GONE
             binding.tvAssetWarning.isClickable = issue?.tappable == true
             binding.tvAssetWarning.setOnClickListener(
@@ -107,15 +114,13 @@ class NetWorthAssetAdapter(
                 val gainPct  = perAsset.pctChange
                 val isGain   = gain >= 0
                 val arrow    = if (isGain) "▲" else "▼"
-                val ctx      = binding.root.context
 
                 binding.tvAssetPl.text = "%s %s (%+.2f%%)".format(
                     arrow, fmt.format(gain), gainPct
                 )
-                // Pill's fill is constant across themes, so its ink stays @color/primary.
-                binding.tvAssetPl.setTextColor(ctx.getColor(R.color.primary))
-                val bgRes = if (isGain) R.drawable.bg_gain_pill else R.drawable.bg_loss_pill
-                binding.tvAssetPl.background = ctx.getDrawable(bgRes)
+                // The move is coloured text; money direction never gets a filled pill.
+                binding.tvAssetPl.setTextColor(ctx.getColor(MoneyColor.forChange(gain)))
+                binding.tvAssetPl.background = null
                 binding.tvAssetPl.visibility = View.VISIBLE
 
                 binding.tvAssetInvested.text = "inv ${fmt.format(invested)}"
@@ -178,6 +183,12 @@ class NetWorthAssetAdapter(
             if (idx >= 0) notifyItemChanged(idx)
             onSelectionChanged(selectedIds.size)
         }
+
+        /** [text] over a highlighter stroke; thin spaces keep the stroke off the first and last glyph. */
+        private fun markerHighlight(text: String, color: Int): CharSequence =
+            SpannableString("\u2009$text\u2009").apply {
+                setSpan(BackgroundColorSpan(color), 0, length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            }
 
         private fun buildSubtitle(asset: NetWorthAssetEntity, fmt: NumberFormat): String {
             val isFetchable = asset.assetType in listOf(

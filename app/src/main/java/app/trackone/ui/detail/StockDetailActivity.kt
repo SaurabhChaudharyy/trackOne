@@ -26,6 +26,7 @@ import app.trackone.databinding.ActivityStockDetailBinding
 import app.trackone.utils.AnimationUtils.animateNumberFromZero
 import app.trackone.utils.FormatUtils
 import app.trackone.utils.Resource
+import app.trackone.ui.util.MoneyColor
 import app.trackone.ui.util.applyEdgeToEdge
 import dagger.hilt.android.AndroidEntryPoint
 import java.text.SimpleDateFormat
@@ -173,6 +174,9 @@ class StockDetailActivity : AppCompatActivity() {
         // Clean line — like the Coinbase screenshot. Sits directly on the chart's
         // (flipping) background, so its ink must flip with the theme too.
         val lineColor = getColor(R.color.text_primary)
+        // Resolved out here on purpose: inside LineDataSet.apply {}, getColor(Int) is the data
+        // set's own getColor(index), which returns the line colour, not a colour resource.
+        val washColor = getColor(R.color.chart_wash)
 
         val entries = points.mapIndexed { i, y -> Entry(i.toFloat(), y) }
 
@@ -185,11 +189,15 @@ class StockDetailActivity : AppCompatActivity() {
             mode = LineDataSet.Mode.CUBIC_BEZIER
             cubicIntensity = 0.12f
 
-            // No fill — clean line only
-            setDrawFilled(false)
+            // The same faint ink wash as the Home chart, so the two charts read as one design.
+            setDrawFilled(true)
+            fillDrawable = android.graphics.drawable.GradientDrawable(
+                android.graphics.drawable.GradientDrawable.Orientation.TOP_BOTTOM,
+                intArrayOf(washColor, Color.TRANSPARENT)
+            )
 
-            // Crosshair uses the primary ink so it reads in both themes (neon is ~1.1:1 on white)
-            highLightColor = getColor(R.color.text_primary)
+            // Crosshair uses the line's ink so it reads in both themes
+            highLightColor = lineColor
             highlightLineWidth = 1.5f
             enableDashedHighlightLine(6f, 3f, 0f)
             setDrawHorizontalHighlightIndicator(false)
@@ -203,7 +211,7 @@ class StockDetailActivity : AppCompatActivity() {
     }
 
     private fun setupTimeframeChips() {
-        val neonColor = getColor(R.color.neon_highlight)
+        val inkColor = getColor(R.color.ink)
 
         TIMEFRAME_OPTIONS.keys.forEach { label ->
             val chip = Chip(this).apply {
@@ -217,7 +225,7 @@ class StockDetailActivity : AppCompatActivity() {
                         intArrayOf()
                     ),
                     intArrayOf(
-                        neonColor,
+                        inkColor,
                         Color.TRANSPARENT
                     )
                 )
@@ -229,10 +237,9 @@ class StockDetailActivity : AppCompatActivity() {
                             intArrayOf()
                         ),
                         intArrayOf(
-                            // Checked chip's fill is the constant neonColor, so its ink
-                            // stays the constant @color/primary, not the flippable text_primary.
-                            getColor(R.color.primary),
-                            getColor(R.color.text_tertiary)
+                            // Checked chip is an ink block (flips with the theme); its label is the inverse.
+                            getColor(R.color.on_ink),
+                            getColor(R.color.text_secondary)
                         )
                     )
                 )
@@ -299,13 +306,9 @@ class StockDetailActivity : AppCompatActivity() {
         val arrow = if (stock.isPositive) "↗" else "↘"
         binding.tvDetailChange.text = "$arrow ${FormatUtils.formatChange(stock.change)} · ${FormatUtils.formatChangePercent(stock.changePercent)}"
 
-        // Neon for positive, red for negative — the pill's fill is constant across
-        // themes, so its ink is the constant @color/primary, not the flippable text_primary.
-        val primaryColor = getColor(R.color.primary)
-        binding.tvDetailChange.setTextColor(primaryColor)
-        binding.tvDetailChange.setBackgroundResource(
-            if (stock.isPositive) R.drawable.bg_gain_pill else R.drawable.bg_loss_pill
-        )
+        // The day's move is coloured text; money direction never gets a filled pill.
+        binding.tvDetailChange.setTextColor(getColor(MoneyColor.forChange(stock.change)))
+        binding.tvDetailChange.background = null
 
         binding.tvStatOpen.text = if (stock.openPrice != 0.0)
             (if (isIndex) FormatUtils.formatIndexPrice(stock.openPrice, stock.currency)

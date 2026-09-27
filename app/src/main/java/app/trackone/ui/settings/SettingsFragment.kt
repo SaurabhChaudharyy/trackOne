@@ -412,7 +412,7 @@ class SettingsFragment : Fragment() {
                         }
                         is EmailAuthUiState.Error -> {
                             dialog.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled = true
-                            d.tvError.setTextColor(requireContext().getColor(R.color.loss_red))
+                            d.tvError.setTextColor(requireContext().getColor(R.color.danger))
                             d.tvError.text = state.message
                             d.tvError.isVisible = true
                         }

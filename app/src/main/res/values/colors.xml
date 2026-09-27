@@ -17,15 +17,38 @@
     <color name="text_secondary">#52525B</color>
     <color name="text_tertiary">#6B6B75</color>
 
-    <!-- Gain = neon yellow (Minna no Ginko style) -->
-    <color name="gain_green">#F3FE78</color>
-    <color name="gain_green_bg">#1AF3FE78</color>
-    <!-- Loss = red (unchanged) -->
-    <color name="loss_red">#E74C3C</color>
-    <color name="loss_red_bg">#FEF2F2</color>
+    <!-- ── Marker palette ──────────────────────────────────────────────────────
+         The neon marks only what needs the user, ink shows what's selected, and money
+         direction is coloured text. -->
 
-    <color name="accent_blue">#F3FE78</color>
-    <color name="neon_highlight">#F3FE78</color>
+    <!-- The marker: ONLY for things that need the user (update banner, add actions,
+         data-quality warnings, active-tab dot, launch mark). Never gains, selection or
+         state. Constant in both themes, and always carries on_marker ink (18.3:1). -->
+    <color name="marker">#F3FE78</color>
+    <color name="on_marker">#09090B</color>
+
+    <!-- Ink: selected chips and tabs, "on" switches, open-market chip, filled buttons.
+         Flips in values-night, so it never disappears into the dark background. -->
+    <color name="ink">#09090B</color>
+    <color name="on_ink">#FFFFFF</color>
+
+    <!-- Money direction as coloured TEXT, never a filled pill. At least 4.85:1 on every
+         surface and colour-blind safe as a pair. A move that shows as 0.00 uses text_secondary. -->
+    <color name="gain">#087A5A</color>
+    <color name="loss">#C2380E</color>
+
+    <!-- Destructive actions and errors: the loss hue, but a separate job. -->
+    <color name="danger">@color/loss</color>
+    <color name="on_danger">@color/on_ink</color>
+
+    <!-- Area under a chart's ink line: 7% ink at the top, fading to nothing. -->
+    <color name="chart_wash">#1209090B</color>
+
+    <!-- Hairline on top of the black nav bar: the bar's own black in light, #27272A in dark. -->
+    <color name="nav_bar_divider">#09090B</color>
+
+    <!-- Constant black / white in both themes: settings icon tiles and the pull-to-refresh arrow
+         (its disc is always light). Anything drawn on the page that must flip uses ink / on_ink. -->
     <color name="primary">#09090B</color>
     <color name="primary_variant">#F4F4F5</color>
     <color name="on_primary">#FFFFFF</color>
@@ -40,17 +63,17 @@
     <color name="widget_background">#E6FFFFFF</color>
     <color name="widget_surface">#E6F4F4F5</color>
 
-    <color name="cat_stock_in">#3B82F6</color>
-    <color name="cat_stock_us">#8B5CF6</color>
-    <color name="cat_mf">#F97316</color>
-    <color name="cat_gold">#EAB308</color>
-    <color name="cat_silver">#9CA3AF</color>
-    <color name="cat_crypto">#F3FE78</color>
-    <color name="cat_cash">#10B981</color>
-    <color name="cat_bank">#06B6D4</color>
+    <!-- Asset categories: fixed per type, never by rank; dark steps in values-night.
+         Indian vs US stocks is ΔE 13 for colour-blind readers (the old blue/violet was 1.3). -->
+    <color name="cat_stock_in">#2A78D6</color>
+    <color name="cat_stock_us">#E87BA4</color>
+    <color name="cat_mf">#008300</color>
+    <color name="cat_gold">#EDA100</color>
+    <color name="cat_silver">#1BAF7A</color>
+    <color name="cat_crypto">#EB6834</color>
+    <color name="cat_cash">#4A3AA7</color>
+    <color name="cat_bank">#94582A</color>
     <!-- Switch, off state: track must stand apart from the card it sits on -->
     <color name="switch_track_off">#D4D4D8</color>
     <color name="switch_thumb_off">#FFFFFF</color>
-    <!-- Data-quality warning text: amber-700 on white = 5.0:1 -->
-    <color name="warning_text">#B45309</color>
 </resources>

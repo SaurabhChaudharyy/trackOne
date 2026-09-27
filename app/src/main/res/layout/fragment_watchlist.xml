@@ -109,9 +109,9 @@
                     android:layout_marginTop="24dp"
                     android:text="Add stock"
                     android:textSize="13sp"
-                    android:textColor="@color/on_primary"
+                    android:textColor="@color/on_ink"
                     android:paddingHorizontal="20dp"
-                    app:backgroundTint="@color/primary"
+                    app:backgroundTint="@color/ink"
                     app:cornerRadius="8dp"/>
             </LinearLayout>
 
@@ -132,7 +132,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="Failed to refresh"
-                    android:textColor="@color/loss_red"
+                    android:textColor="@color/danger"
                     android:textSize="12sp"/>
             </LinearLayout>
 
@@ -145,8 +145,8 @@
                 android:layout_margin="24dp"
                 android:src="@drawable/ic_add"
                 android:contentDescription="Add stock"
-                app:backgroundTint="@color/neon_highlight"
-                app:tint="@color/primary"
+                app:backgroundTint="@color/marker"
+                app:tint="@color/on_marker"
                 app:elevation="4dp"/>
 
         </FrameLayout>

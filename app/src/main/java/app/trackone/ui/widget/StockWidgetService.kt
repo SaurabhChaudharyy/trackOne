@@ -8,6 +8,7 @@ import android.widget.RemoteViewsService
 import app.trackone.R
 import app.trackone.data.database.StockEntity
 import app.trackone.data.repository.StockRepository
+import app.trackone.ui.util.MoneyColor
 import app.trackone.utils.FormatUtils
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.runBlocking
@@ -72,16 +73,16 @@ class StockRemoteViewsFactory(
 
         val changePercentText = FormatUtils.formatChangePercent(stock.changePercent)
 
-        // Toggle gain/loss pill (backgrounds baked in XML)
-        if (stock.isPositive) {
-            views.setViewVisibility(R.id.widget_item_gain, android.view.View.VISIBLE)
-            views.setViewVisibility(R.id.widget_item_loss, android.view.View.GONE)
-            views.setTextViewText(R.id.widget_item_gain, changePercentText)
-        } else {
-            views.setViewVisibility(R.id.widget_item_gain, android.view.View.GONE)
-            views.setViewVisibility(R.id.widget_item_loss, android.view.View.VISIBLE)
-            views.setTextViewText(R.id.widget_item_loss, changePercentText)
+        // Show exactly one of the gain / loss / flat views; their colours are baked into the layout.
+        val shown = when (MoneyColor.forChange(stock.changePercent)) {
+            R.color.gain -> R.id.widget_item_gain
+            R.color.loss -> R.id.widget_item_loss
+            else -> R.id.widget_item_flat
         }
+        for (id in intArrayOf(R.id.widget_item_gain, R.id.widget_item_loss, R.id.widget_item_flat)) {
+            views.setViewVisibility(id, if (id == shown) android.view.View.VISIBLE else android.view.View.GONE)
+        }
+        views.setTextViewText(shown, changePercentText)
 
         val clickIntent = Intent().apply {
             putExtra(StockWidgetProvider.EXTRA_SYMBOL, stock.symbol)

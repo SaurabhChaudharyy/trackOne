@@ -65,16 +65,13 @@
                     android:id="@+id/tv_total_pnl"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:paddingHorizontal="4dp"
-                    android:paddingVertical="0dp"
                     android:textSize="15sp"
                     android:letterSpacing="-0.02"
                     android:textStyle="bold"
-                    android:background="@drawable/bg_pnl_chip"
                     android:visibility="gone"
                     tools:text="↗ +₹8,432 (0.68%)"
                     tools:visibility="visible"
-                    tools:textColor="@color/gain_green"/>
+                    tools:textColor="@color/gain"/>
 
                 <View
                     android:layout_width="0dp"
@@ -226,7 +223,7 @@
                         android:paddingHorizontal="6dp"
                         android:paddingVertical="2dp"
                         android:background="@drawable/bg_count_pill"
-                        android:textColor="@color/primary"
+                        android:textColor="@color/text_secondary"
                         android:textSize="10sp"
                         android:fontFamily="@font/inter_semi_bold"
                         android:visibility="gone"
@@ -262,12 +259,8 @@
 
                 <ImageButton
                     android:id="@+id/btn_add_stock_in"
-                    android:layout_width="28dp"
-                    android:layout_height="28dp"
-                    android:src="@drawable/ic_add"
-                    android:background="?attr/selectableItemBackgroundBorderless"
-                    android:contentDescription="Add Indian stock"
-                    android:tint="@color/text_tertiary"/>
+                    style="@style/Widget.App.MarkerAddButton"
+                    android:contentDescription="Add Indian stock"/>
             </LinearLayout>
 
             <androidx.recyclerview.widget.RecyclerView
@@ -323,7 +316,7 @@
                         android:paddingHorizontal="6dp"
                         android:paddingVertical="2dp"
                         android:background="@drawable/bg_count_pill"
-                        android:textColor="@color/primary"
+                        android:textColor="@color/text_secondary"
                         android:textSize="10sp"
                         android:fontFamily="@font/inter_semi_bold"
                         android:visibility="gone"
@@ -358,12 +351,8 @@
 
                 <ImageButton
                     android:id="@+id/btn_add_stock_us"
-                    android:layout_width="28dp"
-                    android:layout_height="28dp"
-                    android:src="@drawable/ic_add"
-                    android:background="?attr/selectableItemBackgroundBorderless"
-                    android:contentDescription="Add US stock"
-                    android:tint="@color/text_tertiary"/>
+                    style="@style/Widget.App.MarkerAddButton"
+                    android:contentDescription="Add US stock"/>
             </LinearLayout>
 
             <androidx.recyclerview.widget.RecyclerView
@@ -419,7 +408,7 @@
                         android:paddingHorizontal="6dp"
                         android:paddingVertical="2dp"
                         android:background="@drawable/bg_count_pill"
-                        android:textColor="@color/primary"
+                        android:textColor="@color/text_secondary"
                         android:textSize="10sp"
                         android:fontFamily="@font/inter_semi_bold"
                         android:visibility="gone"
@@ -454,12 +443,8 @@
 
                 <ImageButton
                     android:id="@+id/btn_add_mf"
-                    android:layout_width="28dp"
-                    android:layout_height="28dp"
-                    android:src="@drawable/ic_add"
-                    android:background="?attr/selectableItemBackgroundBorderless"
-                    android:contentDescription="Add mutual fund"
-                    android:tint="@color/text_tertiary"/>
+                    style="@style/Widget.App.MarkerAddButton"
+                    android:contentDescription="Add mutual fund"/>
             </LinearLayout>
 
             <androidx.recyclerview.widget.RecyclerView
@@ -515,7 +500,7 @@
                         android:paddingHorizontal="6dp"
                         android:paddingVertical="2dp"
                         android:background="@drawable/bg_count_pill"
-                        android:textColor="@color/primary"
+                        android:textColor="@color/text_secondary"
                         android:textSize="10sp"
                         android:fontFamily="@font/inter_semi_bold"
                         android:visibility="gone"
@@ -550,12 +535,8 @@
 
                 <ImageButton
                     android:id="@+id/btn_add_gold"
-                    android:layout_width="28dp"
-                    android:layout_height="28dp"
-                    android:src="@drawable/ic_add"
-                    android:background="?attr/selectableItemBackgroundBorderless"
-                    android:contentDescription="Add gold"
-                    android:tint="@color/text_tertiary"/>
+                    style="@style/Widget.App.MarkerAddButton"
+                    android:contentDescription="Add gold"/>
             </LinearLayout>
 
             <androidx.recyclerview.widget.RecyclerView
@@ -611,7 +592,7 @@
                         android:paddingHorizontal="6dp"
                         android:paddingVertical="2dp"
                         android:background="@drawable/bg_count_pill"
-                        android:textColor="@color/primary"
+                        android:textColor="@color/text_secondary"
                         android:textSize="10sp"
                         android:fontFamily="@font/inter_semi_bold"
                         android:visibility="gone"
@@ -646,12 +627,8 @@
 
                 <ImageButton
                     android:id="@+id/btn_add_silver"
-                    android:layout_width="28dp"
-                    android:layout_height="28dp"
-                    android:src="@drawable/ic_add"
-                    android:background="?attr/selectableItemBackgroundBorderless"
-                    android:contentDescription="Add silver"
-                    android:tint="@color/text_tertiary"/>
+                    style="@style/Widget.App.MarkerAddButton"
+                    android:contentDescription="Add silver"/>
             </LinearLayout>
 
             <androidx.recyclerview.widget.RecyclerView
@@ -707,7 +684,7 @@
                         android:paddingHorizontal="6dp"
                         android:paddingVertical="2dp"
                         android:background="@drawable/bg_count_pill"
-                        android:textColor="@color/primary"
+                        android:textColor="@color/text_secondary"
                         android:textSize="10sp"
                         android:fontFamily="@font/inter_semi_bold"
                         android:visibility="gone"
@@ -742,12 +719,8 @@
 
                 <ImageButton
                     android:id="@+id/btn_add_crypto"
-                    android:layout_width="28dp"
-                    android:layout_height="28dp"
-                    android:src="@drawable/ic_add"
-                    android:background="?attr/selectableItemBackgroundBorderless"
-                    android:contentDescription="Add crypto"
-                    android:tint="@color/text_tertiary"/>
+                    style="@style/Widget.App.MarkerAddButton"
+                    android:contentDescription="Add crypto"/>
             </LinearLayout>
 
             <androidx.recyclerview.widget.RecyclerView
@@ -803,7 +776,7 @@
                         android:paddingHorizontal="6dp"
                         android:paddingVertical="2dp"
                         android:background="@drawable/bg_count_pill"
-                        android:textColor="@color/primary"
+                        android:textColor="@color/text_secondary"
                         android:textSize="10sp"
                         android:fontFamily="@font/inter_semi_bold"
                         android:visibility="gone"
@@ -838,12 +811,8 @@
 
                 <ImageButton
                     android:id="@+id/btn_add_cash"
-                    android:layout_width="28dp"
-                    android:layout_height="28dp"
-                    android:src="@drawable/ic_add"
-                    android:background="?attr/selectableItemBackgroundBorderless"
-                    android:contentDescription="Add cash"
-                    android:tint="@color/text_tertiary"/>
+                    style="@style/Widget.App.MarkerAddButton"
+                    android:contentDescription="Add cash"/>
             </LinearLayout>
 
             <androidx.recyclerview.widget.RecyclerView
@@ -899,7 +868,7 @@
                         android:paddingHorizontal="6dp"
                         android:paddingVertical="2dp"
                         android:background="@drawable/bg_count_pill"
-                        android:textColor="@color/primary"
+                        android:textColor="@color/text_secondary"
                         android:textSize="10sp"
                         android:fontFamily="@font/inter_semi_bold"
                         android:visibility="gone"
@@ -934,12 +903,8 @@
 
                 <ImageButton
                     android:id="@+id/btn_add_bank"
-                    android:layout_width="28dp"
-                    android:layout_height="28dp"
-                    android:src="@drawable/ic_add"
-                    android:background="?attr/selectableItemBackgroundBorderless"
-                    android:contentDescription="Add bank balance"
-                    android:tint="@color/text_tertiary"/>
+                    style="@style/Widget.App.MarkerAddButton"
+                    android:contentDescription="Add bank balance"/>
             </LinearLayout>
 
             <androidx.recyclerview.widget.RecyclerView
@@ -1016,7 +981,7 @@
             android:layout_width="28dp"
             android:layout_height="28dp"
             android:src="@drawable/ic_delete"
-            app:tint="@color/loss_red"
+            app:tint="@color/danger"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="Delete selected"/>
 

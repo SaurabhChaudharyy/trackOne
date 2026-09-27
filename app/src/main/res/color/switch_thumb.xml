@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <selector xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- Black thumb on the neon track, same ink as the gain pills. -->
-    <item android:color="@color/primary" android:state_checked="true"/>
+    <!-- Inverse-of-ink thumb on the ink track: white on black in light, black on white in dark. -->
+    <item android:color="@color/on_ink" android:state_checked="true"/>
     <item android:color="@color/switch_thumb_off"/>
 </selector>

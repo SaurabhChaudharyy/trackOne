@@ -69,11 +69,11 @@
             android:minWidth="72dp"
             android:text="Add"
             android:textSize="12sp"
-            android:textColor="@color/on_primary"
+            android:textColor="@color/on_ink"
             android:insetTop="0dp"
             android:insetBottom="0dp"
             android:paddingHorizontal="14dp"
-            app:backgroundTint="@color/primary"
+            app:backgroundTint="@color/ink"
             app:cornerRadius="6dp"
             style="@style/Widget.Material3.Button.TonalButton"/>
     </LinearLayout>

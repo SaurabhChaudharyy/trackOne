@@ -22,6 +22,7 @@ import app.trackone.R
 import app.trackone.data.database.StockEntity
 import app.trackone.databinding.FragmentHomeBinding
 import app.trackone.ui.detail.StockDetailActivity
+import app.trackone.ui.util.MoneyColor
 import app.trackone.utils.AnimationUtils.animateNumberFromZero
 import app.trackone.utils.ChartAxis
 import app.trackone.utils.ChartRange
@@ -105,26 +106,26 @@ class HomeFragment : Fragment() {
         val usOpen    = MarketUtils.isUsMarketOpen()
         val indiaOpen = MarketUtils.isIndiaMarketOpen()
 
-        // US chip — inverted black pill for Open, gray pill for Closed
+        // US chip — ink pill for Open (flips with the theme), gray pill for Closed
         binding.tvUsMarketStatus.text = if (usOpen) "Open" else "Closed"
         binding.tvUsMarketStatus.setTextColor(
-            requireContext().getColor(if (usOpen) R.color.on_primary else R.color.text_tertiary)
+            requireContext().getColor(if (usOpen) R.color.on_ink else R.color.text_tertiary)
         )
         binding.tvUsLabel.setTextColor(
-            requireContext().getColor(if (usOpen) R.color.on_primary else R.color.text_tertiary)
+            requireContext().getColor(if (usOpen) R.color.on_ink else R.color.text_tertiary)
         )
         binding.chipUsMarket.background = ContextCompat.getDrawable(
             requireContext(),
             if (usOpen) R.drawable.bg_market_chip_open else R.drawable.bg_market_chip
         )
 
-        // India chip — inverted black pill for Open, gray pill for Closed
+        // India chip — ink pill for Open (flips with the theme), gray pill for Closed
         binding.tvIndiaMarketStatus.text = if (indiaOpen) "Open" else "Closed"
         binding.tvIndiaMarketStatus.setTextColor(
-            requireContext().getColor(if (indiaOpen) R.color.on_primary else R.color.text_tertiary)
+            requireContext().getColor(if (indiaOpen) R.color.on_ink else R.color.text_tertiary)
         )
         binding.tvIndiaLabel.setTextColor(
-            requireContext().getColor(if (indiaOpen) R.color.on_primary else R.color.text_tertiary)
+            requireContext().getColor(if (indiaOpen) R.color.on_ink else R.color.text_tertiary)
         )
         binding.chipIndiaMarket.background = ContextCompat.getDrawable(
             requireContext(),
@@ -152,6 +153,8 @@ class HomeFragment : Fragment() {
     }
 
     private fun setupSwipeRefresh() {
+        // Constant black on purpose: the spinner's disc is always light, so ink (white in dark
+        // mode) would vanish into it.
         binding.swipeRefreshHome.setColorSchemeColors(
             requireContext().getColor(R.color.primary)
         )
@@ -384,13 +387,13 @@ class HomeFragment : Fragment() {
         }
     }
 
-    /** Selected = the app's neon highlighter pill with dark ink (same as the gain pills). */
+    /** Selected = an ink block with inverse text: selection is ink, never the neon. */
     private fun styleRangeChips(selected: ChartRange) {
         if (_binding == null) return
         rangeChips().forEach { (range, chip) ->
             val on = range == selected
-            chip.background = if (on) ContextCompat.getDrawable(requireContext(), R.drawable.bg_gain_pill) else null
-            chip.setTextColor(requireContext().getColor(if (on) R.color.primary else R.color.text_tertiary))
+            chip.background = if (on) ContextCompat.getDrawable(requireContext(), R.drawable.bg_selected_chip) else null
+            chip.setTextColor(requireContext().getColor(if (on) R.color.on_ink else R.color.text_secondary))
             chip.isSelected = on
         }
     }
@@ -427,21 +430,11 @@ class HomeFragment : Fragment() {
     private fun drawPortfolioChart(points: List<PortfolioChartPoint>) {
         if (_binding == null || points.size < 2) return
 
-        val isGain   = points.last().current >= points.first().current
-        val isNight = (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
-            android.content.res.Configuration.UI_MODE_NIGHT_YES
-        // Line sits directly on the chart's (flipping) background, so its ink must flip
-        // with the theme too — unlike the gain/loss pills elsewhere, which sit on a
-        // constant-colored fill and use the constant @color/primary instead.
-        val lineColor = if (isGain) requireContext().getColor(R.color.text_primary) else Color.parseColor("#E74C3C")
-        // Neon fill wash needs more alpha in dark mode to still read as a glow instead
-        // of desaturating into a muddy wash against the near-black background.
-        val fillStartColor = if (isGain) {
-            Color.parseColor(if (isNight) "#80F3FE78" else "#33F3FE78")
-        } else {
-            Color.parseColor("#22E74C3C")
-        }
-        val fillEndColor   = Color.parseColor("#00F3FE78")  // transparent bottom
+        // An ink line over a faint ink wash, whichever way the range went: the coloured P&L above
+        // the chart says up or down. Both colours flip with the theme (values-night).
+        val lineColor      = requireContext().getColor(R.color.text_primary)
+        val fillStartColor = requireContext().getColor(R.color.chart_wash)
+        val fillEndColor   = Color.TRANSPARENT
 
         val currentEntries = points.mapIndexed { i, p -> Entry(i.toFloat(), p.current.toFloat()) }
 
@@ -507,7 +500,6 @@ class HomeFragment : Fragment() {
         when (res) {
             is Resource.Success -> {
                 val data   = res.data
-                val isGain = data.changePercent >= 0
                 val pct    = FormatUtils.formatChangePercent(data.changePercent)
 
                 when (index) {
@@ -521,7 +513,7 @@ class HomeFragment : Fragment() {
                             binding.tvNiftyPrice.text = FormatUtils.formatIndexPrice(data.price, data.currency)
                         }
                         binding.tvNiftyChange.text = pct
-                        styleIndexPill(isGain, binding.pillNifty, binding.tvNiftyChange, binding.ivNiftyTrend)
+                        styleIndexChange(data.changePercent, binding.pillNifty, binding.tvNiftyChange, binding.ivNiftyTrend)
                     }
                     Index.SENSEX -> {
                         if (!sensexAnimated) {
@@ -533,7 +525,7 @@ class HomeFragment : Fragment() {
                             binding.tvSensexPrice.text = FormatUtils.formatIndexPrice(data.price, data.currency)
                         }
                         binding.tvSensexChange.text = pct
-                        styleIndexPill(isGain, binding.pillSensex, binding.tvSensexChange, binding.ivSensexTrend)
+                        styleIndexChange(data.changePercent, binding.pillSensex, binding.tvSensexChange, binding.ivSensexTrend)
                     }
                     Index.SP500 -> {
                         if (!sp500Animated) {
@@ -545,7 +537,7 @@ class HomeFragment : Fragment() {
                             binding.tvSp500Price.text = FormatUtils.formatIndexPrice(data.price, data.currency)
                         }
                         binding.tvSp500Change.text = pct
-                        styleIndexPill(isGain, binding.pillSp500, binding.tvSp500Change, binding.ivSp500Trend)
+                        styleIndexChange(data.changePercent, binding.pillSp500, binding.tvSp500Change, binding.ivSp500Trend)
                     }
                     Index.NASDAQ -> {
                         if (!nasdaqAnimated) {
@@ -557,7 +549,7 @@ class HomeFragment : Fragment() {
                             binding.tvNasdaqPrice.text = FormatUtils.formatIndexPrice(data.price, data.currency)
                         }
                         binding.tvNasdaqChange.text = pct
-                        styleIndexPill(isGain, binding.pillNasdaq, binding.tvNasdaqChange, binding.ivNasdaqTrend)
+                        styleIndexChange(data.changePercent, binding.pillNasdaq, binding.tvNasdaqChange, binding.ivNasdaqTrend)
                     }
                 }
             }
@@ -566,23 +558,20 @@ class HomeFragment : Fragment() {
         }
     }
 
-    private fun styleIndexPill(
-        isGain: Boolean,
+    /** An index's move as coloured text and arrow; money direction never gets a filled pill. */
+    private fun styleIndexChange(
+        changePercent: Double,
         pill: LinearLayout,
         tvChange: TextView,
         ivTrend: ImageView
     ) {
-        pill.background = requireContext().getDrawable(
-            if (isGain) R.drawable.bg_gain_pill else R.drawable.bg_loss_pill
-        )
-        // Pill has a solid neon/red fill in both themes, so its ink stays the
-        // constant near-black @color/primary rather than the flippable text_primary.
-        val blackColor = requireContext().getColor(R.color.primary)
-        tvChange.setTextColor(blackColor)
+        val color = requireContext().getColor(MoneyColor.forChange(changePercent))
+        pill.background = null
+        tvChange.setTextColor(color)
         ivTrend.setImageResource(
-            if (isGain) R.drawable.ic_trending_up else R.drawable.ic_trending_down
+            if (changePercent >= 0) R.drawable.ic_trending_up else R.drawable.ic_trending_down
         )
-        ivTrend.imageTintList = android.content.res.ColorStateList.valueOf(blackColor)
+        ivTrend.imageTintList = android.content.res.ColorStateList.valueOf(color)
     }
 
     // ── Top Movers ───────────────────────────────────────────────────────
@@ -660,13 +649,10 @@ class HomeFragment : Fragment() {
             ellipsize = android.text.TextUtils.TruncateAt.END
         }
 
-        // % change pill
+        // % change: coloured text and arrow, no pill behind it
+        val moveColor = requireContext().getColor(MoneyColor.forChange(stock.changePercent))
         val pill = LinearLayout(requireContext()).apply {
             orientation = LinearLayout.HORIZONTAL
-            background = ContextCompat.getDrawable(
-                requireContext(), if (isGain) R.drawable.bg_gain_pill else R.drawable.bg_loss_pill
-            )
-            setPadding(5.dp, 2.dp, 5.dp, 2.dp)
             gravity = android.view.Gravity.CENTER_VERTICAL
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT,
@@ -675,16 +661,15 @@ class HomeFragment : Fragment() {
         }
         val ivTrend = ImageView(requireContext()).apply {
             setImageResource(if (isGain) R.drawable.ic_trending_up else R.drawable.ic_trending_down)
-            // Ink for the gain/loss pill's solid fill — stays constant across themes.
-            imageTintList = android.content.res.ColorStateList.valueOf(
-                requireContext().getColor(R.color.primary)
-            )
+            imageTintList = android.content.res.ColorStateList.valueOf(moveColor)
             layoutParams = LinearLayout.LayoutParams(9.dp, 9.dp).also { it.marginEnd = 2.dp }
         }
         val tvChange = TextView(requireContext()).apply {
             text = FormatUtils.formatChangePercent(stock.changePercent)
-            textSize = 10f
-            setTextColor(requireContext().getColor(R.color.primary))
+            // A notch larger and semibold: without a fill, the colour alone has to carry it.
+            textSize = 11f
+            typeface = androidx.core.content.res.ResourcesCompat.getFont(requireContext(), R.font.inter_semi_bold)
+            setTextColor(moveColor)
         }
         pill.addView(ivTrend)
         pill.addView(tvChange)
@@ -753,18 +738,13 @@ class HomeFragment : Fragment() {
             val pctStr   = FormatUtils.formatChangePercent(summary.pctChange)
             binding.tvPortfolioPnl.text = "$arrow $absStr ($pctStr)"
 
-            // Highlighter effect: black bold text on neon wash for gain, red on red-tint for loss.
-            // Constant @color/primary, not text_primary — the pill's fill doesn't flip with theme.
-            val textColor = requireContext().getColor(R.color.primary)
-
-            binding.tvPortfolioPnl.setTextColor(textColor)
+            // The move is coloured text; money direction never gets a filled pill.
+            binding.tvPortfolioPnl.setTextColor(requireContext().getColor(MoneyColor.forChange(summary.absChange)))
             binding.tvPortfolioPnl.setTypeface(
                 androidx.core.content.res.ResourcesCompat.getFont(requireContext(), R.font.inter_semi_bold),
                 android.graphics.Typeface.NORMAL
             )
-            binding.tvPortfolioPnl.background = requireContext().getDrawable(
-                if (isGain) R.drawable.bg_gain_pill else R.drawable.bg_loss_pill
-            )
+            binding.tvPortfolioPnl.background = null
             binding.tvPortfolioPnl.visibility = View.VISIBLE
         } else {
             binding.tvPortfolioPnl.visibility = View.GONE
@@ -814,15 +794,12 @@ class HomeFragment : Fragment() {
                 val isOpen = MarketUtils.isUsMarketOpen()
                 tvTitle.text  = "NYSE / NASDAQ"
                 tvStatus.text = if (isOpen) "OPEN" else "CLOSED"
-                // Neon pill (isOpen) needs dark text for contrast — white ("background") is
-                // unreadable on the neon highlight color, so use the constant @color/primary
-                // ink there. The closed pill sits on @color/surface_variant, which flips with
-                // the theme, so it needs the flippable text_primary to stay readable.
+                // Open = ink pill with inverse text, closed = neutral pill. Both flip with the theme.
                 tvStatus.setTextColor(
-                    requireContext().getColor(if (isOpen) R.color.primary else R.color.text_primary)
+                    requireContext().getColor(if (isOpen) R.color.on_ink else R.color.text_primary)
                 )
                 tvStatus.backgroundTintList = android.content.res.ColorStateList.valueOf(
-                    requireContext().getColor(if (isOpen) R.color.neon_highlight else R.color.surface_variant)
+                    requireContext().getColor(if (isOpen) R.color.ink else R.color.surface_variant)
                 )
                 tvRegOpen.text  = toDeviceTime(9,  30, estTz)
                 tvRegClose.text = toDeviceTime(16,  0, estTz)
@@ -834,15 +811,12 @@ class HomeFragment : Fragment() {
                 val isOpen = MarketUtils.isIndiaMarketOpen()
                 tvTitle.text  = "NSE / BSE"
                 tvStatus.text = if (isOpen) "OPEN" else "CLOSED"
-                // Neon pill (isOpen) needs dark text for contrast — white ("background") is
-                // unreadable on the neon highlight color, so use the constant @color/primary
-                // ink there. The closed pill sits on @color/surface_variant, which flips with
-                // the theme, so it needs the flippable text_primary to stay readable.
+                // Open = ink pill with inverse text, closed = neutral pill. Both flip with the theme.
                 tvStatus.setTextColor(
-                    requireContext().getColor(if (isOpen) R.color.primary else R.color.text_primary)
+                    requireContext().getColor(if (isOpen) R.color.on_ink else R.color.text_primary)
                 )
                 tvStatus.backgroundTintList = android.content.res.ColorStateList.valueOf(
-                    requireContext().getColor(if (isOpen) R.color.neon_highlight else R.color.surface_variant)
+                    requireContext().getColor(if (isOpen) R.color.ink else R.color.surface_variant)
                 )
                 tvRegOpen.text  = toDeviceTime(9,  15, istTz)
                 tvRegClose.text = toDeviceTime(15, 30, istTz)

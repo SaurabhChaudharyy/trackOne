@@ -24,6 +24,7 @@ import app.trackone.data.database.AssetType
 import app.trackone.data.database.NetWorthAssetEntity
 import app.trackone.databinding.DialogAddAssetBinding
 import app.trackone.databinding.FragmentNetworthBinding
+import app.trackone.ui.util.MoneyColor
 import app.trackone.data.repository.MatchBasis
 import app.trackone.data.repository.SymbolResolution
 import app.trackone.utils.HoldingIssue
@@ -155,6 +156,7 @@ class NetWorthFragment : Fragment() {
      *  passive-refresh throttle other screens' automatic refreshes are subject to). */
     private fun setupSwipeRefresh() {
         binding.swipeRefreshLayout.setOnRefreshListener { viewModel.refresh() }
+        // Constant black: the spinner's disc is always light, so ink would vanish in dark mode.
         binding.swipeRefreshLayout.setColorSchemeResources(R.color.primary)
         viewModel.isRefreshing.observe(viewLifecycleOwner) { isRefreshing ->
             binding.swipeRefreshLayout.isRefreshing = isRefreshing
@@ -309,18 +311,14 @@ class NetWorthFragment : Fragment() {
             val isGain = absChange >= 0
             val arrow = if (isGain) "↗" else "↘"
             val sign = if (isGain) "+" else "-"
-            // Chip's fill is constant across themes, so its ink stays @color/primary.
-            val textColor = requireContext().getColor(R.color.primary)
             chip.text = "$arrow $sign${inrFormat.format(kotlin.math.abs(absChange))} (${"%.2f".format(kotlin.math.abs(pct))}%)"
-            chip.setTextColor(textColor)
+            // The move is coloured text; money direction never gets a filled pill.
+            chip.setTextColor(requireContext().getColor(MoneyColor.forChange(absChange)))
             chip.setTypeface(
                 androidx.core.content.res.ResourcesCompat.getFont(requireContext(), R.font.inter_semi_bold),
                 android.graphics.Typeface.NORMAL
             )
-            chip.background = androidx.core.content.ContextCompat.getDrawable(
-                requireContext(),
-                if (isGain) R.drawable.bg_gain_pill else R.drawable.bg_loss_pill
-            )
+            chip.background = null
             chip.isVisible = true
         }
     }
@@ -445,7 +443,7 @@ class NetWorthFragment : Fragment() {
                     0, android.widget.LinearLayout.LayoutParams.MATCH_PARENT, value.toFloat()
                 ).apply {
                     if (index < sorted.size - 1) {
-                        marginEnd = (1.5f * resources.displayMetrics.density).toInt()
+                        marginEnd = (2 * resources.displayMetrics.density).toInt()
                     }
                 }
                 setBackgroundColor(color)
@@ -529,7 +527,7 @@ class NetWorthFragment : Fragment() {
 
     /** Update selected/unselected visual state on all chips */
     private fun refreshChipStates() {
-        val selectedColor   = requireContext().getColor(R.color.on_primary) // white
+        val selectedColor   = requireContext().getColor(R.color.on_ink)   // inverse of the ink fill
         val unselectedColor = requireContext().getColor(R.color.text_secondary)
 
         // "All" chip

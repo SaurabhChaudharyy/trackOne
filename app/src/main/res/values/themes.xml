@@ -2,13 +2,43 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
     <style name="Theme.FinanceWidget" parent="Theme.Material3.DayNight.NoActionBar">
 
-        <item name="colorPrimary">@color/primary</item>
-        <item name="colorOnPrimary">@color/on_primary</item>
+        <!-- Every Material 3 colour role is mapped: an unmapped role falls back to M3's baseline
+             purple (the Theme dialog's radios were #CCC2DC). Accent roles use ink, which flips
+             with the theme, so checkboxes, radios, spinners and buttons are never black on black. -->
+        <item name="colorPrimary">@color/ink</item>
+        <item name="colorOnPrimary">@color/on_ink</item>
+        <item name="colorPrimaryContainer">@color/surface_variant</item>
+        <item name="colorOnPrimaryContainer">@color/text_primary</item>
+        <item name="colorPrimaryInverse">@color/on_ink</item>
+        <item name="colorSecondary">@color/ink</item>
+        <item name="colorOnSecondary">@color/on_ink</item>
+        <item name="colorSecondaryContainer">@color/surface_variant</item>
+        <item name="colorOnSecondaryContainer">@color/text_primary</item>
+        <item name="colorTertiary">@color/ink</item>
+        <item name="colorOnTertiary">@color/on_ink</item>
+        <item name="colorTertiaryContainer">@color/surface_variant</item>
+        <item name="colorOnTertiaryContainer">@color/text_primary</item>
+        <item name="colorError">@color/danger</item>
+        <item name="colorOnError">@color/on_danger</item>
+        <item name="colorErrorContainer">@color/error_background</item>
+        <item name="colorOnErrorContainer">@color/danger</item>
+        <item name="android:colorBackground">@color/background</item>
+        <item name="colorOnBackground">@color/text_primary</item>
         <item name="colorSurface">@color/surface_color</item>
         <item name="colorOnSurface">@color/text_primary</item>
         <item name="colorSurfaceVariant">@color/surface_variant</item>
         <item name="colorOnSurfaceVariant">@color/text_secondary</item>
+        <item name="colorSurfaceInverse">@color/ink</item>
+        <item name="colorOnSurfaceInverse">@color/on_ink</item>
+        <item name="colorSurfaceContainerLowest">@color/background</item>
+        <item name="colorSurfaceContainerLow">@color/surface_color</item>
+        <item name="colorSurfaceContainer">@color/surface_color</item>
+        <item name="colorSurfaceContainerHigh">@color/surface_color</item>
+        <item name="colorSurfaceContainerHighest">@color/surface_variant</item>
         <item name="colorOutline">@color/border_color</item>
+        <item name="colorOutlineVariant">@color/divider_color</item>
+        <item name="colorControlActivated">@color/ink</item>
+        <item name="colorControlNormal">@color/text_secondary</item>
 
         <item name="android:windowBackground">@color/background</item>
         <item name="android:statusBarColor">@color/background</item>
@@ -91,21 +121,11 @@
         <item name="android:textColor">@color/text_primary</item>
     </style>
 
-    <style name="TextAppearance.App.Gain" parent="TextAppearance.Material3.BodyMedium">
-        <item name="android:fontFamily">@font/geist_mono</item>
-        <item name="android:textColor">@color/gain_green</item>
-    </style>
-
-    <style name="TextAppearance.App.Loss" parent="TextAppearance.Material3.BodyMedium">
-        <item name="android:fontFamily">@font/geist_mono</item>
-        <item name="android:textColor">@color/loss_red</item>
-    </style>
-
     <style name="Widget.App.Button" parent="Widget.Material3.Button">
         <item name="android:fontFamily">@font/inter_semi_bold</item>
         <item name="cornerRadius">8dp</item>
-        <item name="backgroundTint">@color/primary</item>
-        <item name="android:textColor">@color/on_primary</item>
+        <item name="backgroundTint">@color/ink</item>
+        <item name="android:textColor">@color/on_ink</item>
     </style>
 
     <style name="Widget.App.Button.Tonal" parent="Widget.Material3.Button.TonalButton">
@@ -115,6 +135,18 @@
 
     <style name="Widget.App.Chip" parent="Widget.Material3.Chip.Assist">
         <item name="android:fontFamily">@font/inter</item>
+    </style>
+
+    <!-- Assets section-header "+": a neon square with an ink plus, inside a 44dp touch target. -->
+    <style name="Widget.App.MarkerAddButton" parent="">
+        <item name="android:layout_width">44dp</item>
+        <item name="android:layout_height">44dp</item>
+        <item name="android:padding">13dp</item>
+        <item name="android:scaleType">fitCenter</item>
+        <item name="android:src">@drawable/ic_add</item>
+        <item name="android:background">@drawable/bg_marker_add</item>
+        <item name="android:foreground">?attr/selectableItemBackgroundBorderless</item>
+        <item name="android:tint">@color/on_marker</item>
     </style>
 
     <style name="ThemeOverlay.App.MaterialAlertDialog" parent="ThemeOverlay.Material3.MaterialAlertDialog">
@@ -141,7 +173,7 @@
     <style name="Widget.App.BottomNav" parent="Widget.Material3.BottomNavigationView">
         <item name="itemActiveIndicatorStyle">@style/Widget.App.BottomNav.ActiveIndicator</item>
         <item name="itemIconSize">22dp</item>
-        <item name="android:background">@color/nav_bar_bg</item>
+        <item name="android:background">@drawable/bg_nav_bar</item>
     </style>
 
     <style name="Widget.App.BottomNav.ActiveIndicator" parent="Widget.Material3.BottomNavigationView.ActiveIndicator">

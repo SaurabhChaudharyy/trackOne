@@ -96,10 +96,10 @@
             android:minWidth="88dp"
             android:text="Done"
             android:textSize="13sp"
-            android:textColor="@color/on_primary"
+            android:textColor="@color/on_ink"
             android:insetTop="0dp"
             android:insetBottom="0dp"
-            app:backgroundTint="@color/primary"
+            app:backgroundTint="@color/ink"
             app:cornerRadius="8dp"/>
     </LinearLayout>
 

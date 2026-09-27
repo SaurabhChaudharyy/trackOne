@@ -89,12 +89,9 @@
                         android:id="@+id/tv_portfolio_pnl"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:paddingHorizontal="4dp"
-                        android:paddingVertical="0dp"
                         android:textSize="15sp"
                         android:letterSpacing="-0.02"
                         android:textStyle="bold"
-                        android:background="@drawable/bg_pnl_chip"
                         android:visibility="gone"
                         tools:text="↗ +₹14,200  (+5.9%)"/>
 
@@ -218,7 +215,7 @@
                         android:text="@string/chart_range_1w"
                         android:textSize="12sp"
                         android:fontFamily="@font/inter_semi_bold"
-                        android:textColor="@color/text_tertiary"
+                        android:textColor="@color/text_secondary"
                         android:contentDescription="@string/chart_range_1w_desc"/>
                     <TextView
                         android:id="@+id/tv_range_1m"
@@ -231,7 +228,7 @@
                         android:text="@string/chart_range_1m"
                         android:textSize="12sp"
                         android:fontFamily="@font/inter_semi_bold"
-                        android:textColor="@color/text_tertiary"
+                        android:textColor="@color/text_secondary"
                         android:contentDescription="@string/chart_range_1m_desc"/>
                     <TextView
                         android:id="@+id/tv_range_3m"
@@ -244,7 +241,7 @@
                         android:text="@string/chart_range_3m"
                         android:textSize="12sp"
                         android:fontFamily="@font/inter_semi_bold"
-                        android:textColor="@color/text_tertiary"
+                        android:textColor="@color/text_secondary"
                         android:contentDescription="@string/chart_range_3m_desc"/>
                     <TextView
                         android:id="@+id/tv_range_1y"
@@ -257,7 +254,7 @@
                         android:text="@string/chart_range_1y"
                         android:textSize="12sp"
                         android:fontFamily="@font/inter_semi_bold"
-                        android:textColor="@color/text_tertiary"
+                        android:textColor="@color/text_secondary"
                         android:contentDescription="@string/chart_range_1y_desc"/>
                 </LinearLayout>
 
@@ -508,13 +505,13 @@
 
                     <LinearLayout
                         android:id="@+id/pill_nifty"
+                        tools:ignore="UseCompoundDrawables"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:orientation="horizontal"
                         android:clickable="false"
                         android:focusable="false"
-                        android:background="@drawable/bg_loss_pill"
-                        android:paddingHorizontal="6dp"
+                        android:paddingHorizontal="0dp"
                         android:paddingVertical="2dp"
                         android:gravity="center_vertical"
                         android:layout_marginTop="6dp">
@@ -574,13 +571,13 @@
 
                     <LinearLayout
                         android:id="@+id/pill_sensex"
+                        tools:ignore="UseCompoundDrawables"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:orientation="horizontal"
                         android:clickable="false"
                         android:focusable="false"
-                        android:background="@drawable/bg_gain_pill"
-                        android:paddingHorizontal="6dp"
+                        android:paddingHorizontal="0dp"
                         android:paddingVertical="2dp"
                         android:gravity="center_vertical"
                         android:layout_marginTop="6dp">
@@ -662,13 +659,13 @@
 
                     <LinearLayout
                         android:id="@+id/pill_sp500"
+                        tools:ignore="UseCompoundDrawables"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:orientation="horizontal"
                         android:clickable="false"
                         android:focusable="false"
-                        android:background="@drawable/bg_gain_pill"
-                        android:paddingHorizontal="6dp"
+                        android:paddingHorizontal="0dp"
                         android:paddingVertical="2dp"
                         android:gravity="center_vertical"
                         android:layout_marginTop="6dp">
@@ -728,13 +725,13 @@
 
                     <LinearLayout
                         android:id="@+id/pill_nasdaq"
+                        tools:ignore="UseCompoundDrawables"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:orientation="horizontal"
                         android:clickable="false"
                         android:focusable="false"
-                        android:background="@drawable/bg_loss_pill"
-                        android:paddingHorizontal="6dp"
+                        android:paddingHorizontal="0dp"
                         android:paddingVertical="2dp"
                         android:gravity="center_vertical"
                         android:layout_marginTop="6dp">
@@ -764,7 +761,8 @@
     </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
 
     <!-- ── LIVE UPDATE BANNER ─────────────────────────────────────────── -->
-    <!-- Shown (with slide-up animation) when fresh live prices are ready. -->
+    <!-- Shown (with slide-up animation) when fresh live prices are ready. The neon marks it
+         because it's the one thing on Home that asks for a tap. -->
     <LinearLayout
         android:id="@+id/banner_portfolio_updated"
         android:layout_width="match_parent"
@@ -774,7 +772,8 @@
         android:layout_marginBottom="72dp"
         android:orientation="horizontal"
         android:gravity="center_vertical"
-        android:background="@color/primary"
+        android:background="@color/marker"
+        android:minHeight="48dp"
         android:paddingHorizontal="16dp"
         android:paddingVertical="12dp"
         android:elevation="8dp"
@@ -790,7 +789,7 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:text="Portfolio updated — tap to apply"
-            android:textColor="@color/on_primary"
+            android:textColor="@color/on_marker"
             android:textSize="13sp"
             android:fontFamily="@font/inter_semi_bold"/>
 
@@ -798,7 +797,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="↑"
-            android:textColor="@color/neon_highlight"
+            android:textColor="@color/on_marker"
             android:textSize="18sp"
             android:fontFamily="@font/inter_semi_bold"
             android:layout_marginStart="8dp"/>

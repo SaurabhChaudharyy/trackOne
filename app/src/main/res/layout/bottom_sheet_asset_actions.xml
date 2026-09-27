@@ -79,13 +79,13 @@
             android:layout_width="22dp"
             android:layout_height="22dp"
             android:src="@drawable/ic_close"
-            app:tint="@color/loss_red"/>
+            app:tint="@color/danger"/>
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="16dp"
             android:text="Remove"
-            android:textColor="@color/loss_red"
+            android:textColor="@color/danger"
             android:textSize="16sp"
             android:fontFamily="@font/inter"/>
     </LinearLayout>

@@ -707,7 +707,7 @@
                     android:layout_width="18dp"
                     android:layout_height="18dp"
                     android:src="@drawable/ic_delete"
-                    android:tint="@color/loss_red"
+                    android:tint="@color/danger"
                     tools:ignore="ContentDescription"/>
             </LinearLayout>
 
@@ -721,7 +721,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Clear Local Data"
-                    android:textColor="@color/loss_red"
+                    android:textColor="@color/danger"
                     android:textSize="14sp"
                     android:fontFamily="@font/inter_semi_bold"/>
 

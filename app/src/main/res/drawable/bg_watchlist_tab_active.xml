@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Shown at the bottom of the active watchlist tab as a neon indicator -->
+<!-- Underline for the active watchlist tab: ink, like every other selection. -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
     <item
         android:gravity="bottom">
         <shape android:shape="rectangle">
             <corners android:radius="2dp"/>
-            <solid android:color="#F3FE78"/>
+            <solid android:color="@color/ink"/>
             <size android:height="3dp"/>
         </shape>
     </item>

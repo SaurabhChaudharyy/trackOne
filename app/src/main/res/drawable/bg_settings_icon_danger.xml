@@ -4,6 +4,6 @@
      as dangerous before you even parse the text. -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android"
     android:shape="rectangle">
-    <solid android:color="@color/loss_red_bg"/>
+    <solid android:color="@color/error_background"/>
     <corners android:radius="8dp"/>
 </shape>

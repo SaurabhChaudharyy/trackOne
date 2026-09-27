@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- Highlighter-marker effect: soft neon yellow wash, no border, minimal rounding -->
-<shape xmlns:android="http://schemas.android.com/apk/res/android"
-    android:shape="rectangle">
-    <solid android:color="#F3FE78"/>
-    <corners android:radius="0dp"/>
-</shape>

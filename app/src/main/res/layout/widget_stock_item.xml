@@ -58,7 +58,9 @@
             android:fontFamily="@font/geist_mono_regular"/>
     </LinearLayout>
 
-    <!-- Right column: change pill -->
+    <!-- Right column: the day's move as coloured text, no pill. Three views because RemoteViews
+         can't set a colour that follows the launcher's day/night mode below API 31; colours
+         written here resolve with the launcher's own configuration. -->
     <LinearLayout
         android:layout_width="0dp"
         android:layout_height="wrap_content"
@@ -66,41 +68,52 @@
         android:gravity="end|center_vertical"
         android:orientation="horizontal">
 
-        <!-- Gain pill: neon yellow bg, black text -->
-        <!-- Gain pill: neon yellow bg, black text -->
         <TextView
             android:id="@+id/widget_item_gain"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:minWidth="64dp"
-            android:gravity="center"
+            android:gravity="end"
             android:text="+2.65%"
-            android:textColor="@color/primary"
+            android:textColor="@color/gain"
             android:textSize="12sp"
             android:singleLine="true"
             android:fontFamily="@font/geist_mono_regular"
-            android:background="@drawable/bg_gain_pill"
-            android:paddingLeft="8dp"
-            android:paddingRight="8dp"
+            android:paddingStart="8dp"
+            android:paddingEnd="0dp"
             android:paddingTop="2dp"
             android:paddingBottom="2dp"
             android:visibility="gone"/>
 
-        <!-- Loss pill: red bg, black text -->
         <TextView
             android:id="@+id/widget_item_loss"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:minWidth="64dp"
-            android:gravity="center"
+            android:gravity="end"
             android:text="-4.06%"
-            android:textColor="@color/primary"
+            android:textColor="@color/loss"
             android:textSize="12sp"
             android:singleLine="true"
             android:fontFamily="@font/geist_mono_regular"
-            android:background="@drawable/bg_loss_pill"
-            android:paddingLeft="8dp"
-            android:paddingRight="8dp"
+            android:paddingStart="8dp"
+            android:paddingEnd="0dp"
+            android:paddingTop="2dp"
+            android:paddingBottom="2dp"
+            android:visibility="gone"/>
+
+        <TextView
+            android:id="@+id/widget_item_flat"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:minWidth="64dp"
+            android:gravity="end"
+            android:textColor="@color/text_secondary"
+            android:textSize="12sp"
+            android:singleLine="true"
+            android:fontFamily="@font/geist_mono_regular"
+            android:paddingStart="8dp"
+            android:paddingEnd="0dp"
             android:paddingTop="2dp"
             android:paddingBottom="2dp"
             android:visibility="gone"/>

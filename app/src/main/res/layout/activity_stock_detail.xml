@@ -120,8 +120,6 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:textColor="@color/text_primary"
-                        android:paddingHorizontal="4dp"
-                        android:paddingVertical="0dp"
                         android:textSize="14sp"
                         android:fontFamily="@font/geist_mono"
                         tools:text="↗ $13.14 · 6.00%"/>
@@ -245,7 +243,7 @@
                             android:layout_width="3dp"
                             android:layout_height="24dp"
                             android:layout_marginEnd="10dp"
-                            android:background="@color/neon_highlight"/>
+                            android:background="@color/gain"/>
                         <LinearLayout
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
@@ -286,7 +284,7 @@
                             android:layout_width="3dp"
                             android:layout_height="24dp"
                             android:layout_marginEnd="10dp"
-                            android:background="@color/loss_red"/>
+                            android:background="@color/loss"/>
                         <LinearLayout
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"

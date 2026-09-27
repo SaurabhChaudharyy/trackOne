@@ -1,9 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Dark-mode palette. Only surfaces, text, and soft tinted backgrounds flip here —
-  the brand's constant "ink" (primary/on_primary, nav bar, neon/loss accents,
-  category dots) stays the same in both themes by design and is intentionally
-  left out of this file so it inherits from values/colors.xml unchanged.
+  Dark-mode palette. Surfaces, text, ink, money and category colours flip here.
+  Constant in both themes, so deliberately NOT in this file: marker / on_marker,
+  primary / on_primary (constant black / white), the nav bar and its labels, cat_mf.
 -->
 <resources>
 
@@ -20,7 +19,22 @@
     <color name="text_secondary">#A1A1AA</color>
     <color name="text_tertiary">#8B8B95</color>
 
-    <color name="loss_red_bg">#2A1414</color>
+    <!-- Marker palette -->
+    <color name="ink">#FAFAFA</color>
+    <color name="on_ink">#09090B</color>
+    <color name="gain">#5CD6A6</color>
+    <color name="loss">#FF7452</color>
+    <color name="chart_wash">#1AFAFAFA</color>
+    <color name="nav_bar_divider">#27272A</color>
+
+    <!-- Asset categories, dark steps -->
+    <color name="cat_stock_in">#3987E5</color>
+    <color name="cat_stock_us">#D55181</color>
+    <color name="cat_gold">#C98500</color>
+    <color name="cat_silver">#199E70</color>
+    <color name="cat_crypto">#D95926</color>
+    <color name="cat_cash">#9085E9</color>
+    <color name="cat_bank">#AE6F42</color>
 
     <color name="widget_background">#CC18181B</color>
     <color name="widget_surface">#CC27272A</color>
@@ -28,6 +42,4 @@
     <color name="overlay_scrim">#80000000</color>
     <color name="switch_track_off">#52525B</color>
     <color name="switch_thumb_off">#A1A1AA</color>
-    <!-- amber-400 on near-black = 11:1 -->
-    <color name="warning_text">#FBBF24</color>
 </resources>

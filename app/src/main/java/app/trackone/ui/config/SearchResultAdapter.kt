@@ -85,15 +85,15 @@ class SearchResultAdapter(
                 binding.ivSelected.visibility = View.VISIBLE
                 binding.btnAdd.text = "Added"
                 binding.btnAdd.backgroundTintList =
-                    ColorStateList.valueOf(ContextCompat.getColor(ctx, R.color.gain_green_bg))
+                    ColorStateList.valueOf(ContextCompat.getColor(ctx, R.color.surface_variant))
                 binding.btnAdd.setTextColor(ContextCompat.getColor(ctx, R.color.text_primary))
                 binding.root.alpha = 1f
             } else {
                 binding.ivSelected.visibility = View.GONE
                 binding.btnAdd.text = "Add"
                 binding.btnAdd.backgroundTintList =
-                    ColorStateList.valueOf(ContextCompat.getColor(ctx, R.color.primary))
-                binding.btnAdd.setTextColor(ContextCompat.getColor(ctx, R.color.on_primary))
+                    ColorStateList.valueOf(ContextCompat.getColor(ctx, R.color.ink))
+                binding.btnAdd.setTextColor(ContextCompat.getColor(ctx, R.color.on_ink))
                 binding.root.alpha = 1f
             }
         }

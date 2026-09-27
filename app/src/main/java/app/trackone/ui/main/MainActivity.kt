@@ -126,15 +126,14 @@ class MainActivity : AppCompatActivity() {
     }
 
     /**
-     * Injects a small neon-yellow dot View into each BottomNavigationView menu item.
-     * The dot sits at the bottom-center of each item's FrameLayout.
+     * Injects a small marker (neon) dot View into each BottomNavigationView menu item.
+     * The dot sits above the icon in each item's FrameLayout.
      */
     private fun injectDotIndicators() {
         val navView = binding.bottomNav
         // BottomNavigationView → BottomNavigationMenuView (child 0)
         val menuView = navView.getChildAt(0) as? ViewGroup ?: return
         val dotSize = (6 * resources.displayMetrics.density).toInt()
-        val dotColor = ContextCompat.getColor(this, R.color.neon_highlight)
 
         for (i in 0 until menuView.childCount) {
             val itemView = menuView.getChildAt(i) as? ViewGroup ?: continue
@@ -158,7 +157,7 @@ class MainActivity : AppCompatActivity() {
         updateDotIndicator(binding.bottomNav.selectedItemId)
     }
 
-    /** Show the neon dot only under the active tab. */
+    /** Show the marker dot only on the active tab. */
     private fun updateDotIndicator(selectedId: Int) {
         val activeIndex = navItemIds.indexOf(selectedId)
         dotViews.forEach { (index, dot) ->

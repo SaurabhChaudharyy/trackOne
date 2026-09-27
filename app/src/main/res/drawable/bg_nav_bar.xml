@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The constant-black nav bar with a 1dp hairline on top: the bar's own black in light mode (no
+     line shows), #27272A in dark mode, where the page above is black too. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="@color/nav_bar_divider"/>
+        </shape>
+    </item>
+    <item android:top="1dp">
+        <shape android:shape="rectangle">
+            <solid android:color="@color/nav_bar_bg"/>
+        </shape>
+    </item>
+</layer-list>
