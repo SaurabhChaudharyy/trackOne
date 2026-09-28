@@ -1,7 +1,6 @@
 package app.trackone.data.api
 
 import app.trackone.data.model.YahooChartResponse
-import app.trackone.data.model.YahooQuoteResponse
 import app.trackone.data.model.YahooSearchResponse
 import retrofit2.Response
 import retrofit2.http.GET
@@ -34,10 +33,4 @@ interface YahooFinanceApiService {
         @Query("enableFuzzyQuery") enableFuzzyQuery: Boolean = false,
         @Query("quotesQueryId") quotesQueryId: String = "tss_match_phrase_query"
     ): Response<YahooSearchResponse>
-
-    @GET("v7/finance/quote")
-    suspend fun getQuoteDetails(
-        @Query("symbols") symbol: String,
-        @Query("fields") fields: String = "regularMarketOpen,regularMarketPreviousClose,marketCap,regularMarketChange,regularMarketChangePercent"
-    ): Response<YahooQuoteResponse>
 }

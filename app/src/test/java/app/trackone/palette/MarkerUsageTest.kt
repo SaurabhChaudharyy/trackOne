@@ -15,10 +15,10 @@ class MarkerUsageTest {
 
     private val allowed = setOf(
         "res/values/colors.xml",                                 // defines it
-        "res/layout/fragment_home.xml",                          // "Portfolio updated" banner
+        "res/drawable/bg_marker_banner.xml",                     // "Portfolio updated" banner
         "res/layout/fragment_watchlist.xml",                     // add-stock button
         "res/layout/activity_splash.xml",                        // launch mark
-        "res/drawable/dot_active_tab.xml",                       // active-tab dot
+        "res/values/themes.xml",                                 // active-tab nav pill
         "res/drawable/bg_marker_add.xml",                        // section-header add square
         "java/app/trackone/ui/networth/NetWorthAssetAdapter.kt"  // data-quality warning highlight
     )

@@ -117,27 +117,11 @@ class StockRepository @Inject constructor(
                 val meta = chartResult.meta
                 val inWatchlist = watchlistDao.isInWatchlist(symbol) > 0
 
-                var marketCap = meta.marketCap.toDouble()
-                var supplementalOpen = meta.regularMarketOpen
-                var supplementalPrevClose = meta.effectivePreviousClose
-                if (marketCap == 0.0 || supplementalOpen == 0.0) {
-                    try {
-                        val quoteResp = apiService.getQuoteDetails(symbol)
-                        if (quoteResp.isSuccessful) {
-                            val item = quoteResp.body()?.quoteResponse?.result?.firstOrNull()
-                            if (item != null) {
-                                if (marketCap == 0.0) marketCap = item.marketCap.toDouble()
-                                if (supplementalOpen == 0.0 && item.regularMarketOpen != 0.0)
-                                    supplementalOpen = item.regularMarketOpen
-                                if (supplementalPrevClose == 0.0 && item.regularMarketPreviousClose != 0.0)
-                                    supplementalPrevClose = item.regularMarketPreviousClose
-                            }
-                        }
-                    } catch (_: Exception) { }
-                }
-
-                val openPrice = if (supplementalOpen != 0.0) supplementalOpen
-                                else supplementalPrevClose
+                // Yahoo's v7 quote endpoint (market cap, open) now answers 401 to every call, so it
+                // is not asked: it doubled the round trips for every quote on launch.
+                val marketCap = meta.marketCap.toDouble()
+                val openPrice = if (meta.regularMarketOpen != 0.0) meta.regularMarketOpen
+                                else meta.effectivePreviousClose
 
                 val stock = StockEntity(
                     symbol = symbol,

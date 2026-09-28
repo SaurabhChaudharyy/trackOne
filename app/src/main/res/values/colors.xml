@@ -41,8 +41,8 @@
     <color name="danger">@color/loss</color>
     <color name="on_danger">@color/on_ink</color>
 
-    <!-- Area under a chart's ink line: 7% ink at the top, fading to nothing. -->
-    <color name="chart_wash">#1209090B</color>
+    <!-- Dotted fill under the Home chart: ink dots, faint enough to sit behind the line. -->
+    <color name="chart_dots">#4009090B</color>
 
     <!-- Hairline on top of the black nav bar: the bar's own black in light, #27272A in dark. -->
     <color name="nav_bar_divider">#09090B</color>

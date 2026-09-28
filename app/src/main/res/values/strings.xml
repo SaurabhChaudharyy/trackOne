@@ -43,6 +43,7 @@
     <string name="chart_range_3m_desc">Show 3 months</string>
     <string name="chart_range_1y_desc">Show 1 year</string>
     <string name="chart_caption">Based on your current holdings</string>
+    <string name="tap_for_breakdown">TAP FOR FULL BREAKDOWN</string>
     <string name="chart_empty">Price history isn\'t available for this range yet.</string>
     <string name="settings_digest_title">Portfolio Digest</string>
     <string name="settings_digest_desc">Daily: how your holdings moved today. Sunday: your total gain/loss and best/worst holdings</string>

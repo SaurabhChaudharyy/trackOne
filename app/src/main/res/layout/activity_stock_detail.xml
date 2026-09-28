@@ -17,7 +17,8 @@
         <com.google.android.material.appbar.MaterialToolbar
             android:id="@+id/toolbar"
             android:layout_width="match_parent"
-            android:layout_height="?attr/actionBarSize"
+            android:layout_height="wrap_content"
+            android:minHeight="?attr/actionBarSize"
             android:background="@color/background"
             app:navigationIconTint="@color/text_primary"/>
     </com.google.android.material.appbar.AppBarLayout>
@@ -49,7 +50,6 @@
                     android:textColor="@color/text_primary"
                     android:textSize="18sp"
                     android:fontFamily="@font/inter_bold"
-                    android:textStyle="bold"
                     tools:text="Apple Inc."/>
 
                 <LinearLayout
@@ -103,7 +103,8 @@
                     android:layout_height="wrap_content"
                     android:textColor="@color/text_primary"
                     android:textSize="36sp"
-                    android:fontFamily="@font/geist_pixel_square"
+                    android:fontFamily="@font/inter"
+                    android:fontFeatureSettings="tnum"
                     android:letterSpacing="0.01"
                     android:includeFontPadding="false"
                     tools:text="$187.62"/>
@@ -121,7 +122,7 @@
                         android:layout_height="wrap_content"
                         android:textColor="@color/text_primary"
                         android:textSize="14sp"
-                        android:fontFamily="@font/geist_mono"
+                        android:fontFamily="@font/inter_bold"
                         tools:text="↗ $13.14 · 6.00%"/>
 
                     <TextView
@@ -189,7 +190,6 @@
                     android:textColor="@color/text_primary"
                     android:textSize="15sp"
                     android:fontFamily="@font/inter_bold"
-                    android:textStyle="bold"
                     android:layout_marginBottom="20dp"/>
 
                 <!-- Row 1: Open + High -->

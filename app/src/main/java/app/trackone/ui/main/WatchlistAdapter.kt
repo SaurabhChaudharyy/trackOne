@@ -75,18 +75,11 @@ class WatchlistAdapter(
             else
                 FormatUtils.formatPrice(stock.currentPrice, stock.currency)
             binding.tvChange.text = FormatUtils.formatChange(stock.change)
-            binding.tvChangePercent.text = FormatUtils.formatChangePercent(stock.changePercent)
+            binding.tvChangePercent.text = FormatUtils.formatMovePercent(stock.changePercent)
 
-            // The day's move is coloured text and arrow, with no pill behind it. tvChange (the
-            // absolute change) keeps its neutral layout colour.
-            val moveColor = ContextCompat.getColor(ctx, MoneyColor.forChange(stock.changePercent))
-
-            binding.tvChangePercent.setTextColor(moveColor)
-            binding.ivTrend.setImageResource(
-                if (stock.isPositive) R.drawable.ic_arrow_up else R.drawable.ic_arrow_down
-            )
-            binding.ivTrend.setColorFilter(moveColor)
-            binding.changeContainer.background = null
+            // The day's move is coloured text led by its arrow, with no pill behind it. tvChange
+            // (the absolute change) keeps its neutral layout colour.
+            binding.tvChangePercent.setTextColor(ContextCompat.getColor(ctx, MoneyColor.forChange(stock.changePercent)))
 
             if (stock.isStale) {
                 binding.tvLastUpdated.text = "• ${FormatUtils.formatLastUpdated(stock.lastUpdated)}"

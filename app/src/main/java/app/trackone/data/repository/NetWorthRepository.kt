@@ -46,6 +46,9 @@ class NetWorthRepository @Inject constructor(
          *  wasteful and why portfolio values visibly flickered right after opening the app. */
         private const val MIN_PASSIVE_REFRESH_INTERVAL_MS = 5 * 60 * 1000L
 
+        /** How long a non-USD →INR rate is reused before it is fetched again. */
+        private const val FX_RATE_TTL_MS = 10 * 60 * 1000L
+
         /** Asset types that have a live market price (vs. MF/cash/bank, which are entered by hand). */
         val FETCHABLE_TYPES: Set<AssetType> = AssetType.values().filter { it.hasLivePrice }.toSet()
     }
@@ -57,6 +60,11 @@ class NetWorthRepository @Inject constructor(
      *  the second caller waits, then sees [lastRefreshAt] already fresh and skips outright. */
     private val refreshMutex = Mutex()
     @Volatile private var lastRefreshAt = 0L
+
+    /** Holding id to the value the latest background refresh wrote; empty after one the user asked
+     *  for. Home holds exactly these changes behind its "Portfolio updated" banner. */
+    @Volatile var lastBackgroundWrite: Map<Long, Double> = emptyMap()
+        private set
 
     /** The most recent live USD→INR rate this device successfully fetched, or the hardcoded
      *  [FALLBACK_USD_INR_RATE] if none has ever been cached. */
@@ -110,16 +118,20 @@ class NetWorthRepository @Inject constructor(
                 }
 
                 val currency = meta.currency
-                // Reuse a batch-level rate when the caller already fetched one, instead
-                // of issuing a fresh USDINR=X call per asset.
-                val usdInr = if (currency == "USD" || currency == "USX") {
-                    usdInrRate ?: fetchUsdInrRate()
-                } else 1.0
+                // Reuse a batch-level USD rate when the caller already fetched one, instead
+                // of issuing a fresh USDINR=X call per asset. Any other currency gets its own
+                // rate; with none, the quote fails rather than counting pence or CAD as rupees.
+                val major = CurrencyConversion.majorCurrency(currency)
+                val rateToInr = when (major) {
+                    "USD" -> usdInrRate ?: fetchUsdInrRate()
+                    else  -> fetchRateToInr(major)
+                        ?: return@withContext Resource.Error("No $major to INR rate for $fetchSymbol")
+                }
 
                 // Price and previous close go through the same conversion so their ratio
                 // (the day's move) is unaffected by FX, units or cents-vs-dollars.
                 val isMetal = assetType == AssetType.GOLD || assetType == AssetType.SILVER
-                val toFinalPrice = { native: Double -> CurrencyConversion.perUnitInr(native, currency, usdInr, isMetal) }
+                val toFinalPrice = { native: Double -> CurrencyConversion.perUnitInr(native, currency, rateToInr, isMetal) }
 
                 Resource.Success(
                     LiveQuote(
@@ -165,6 +177,24 @@ class NetWorthRepository @Inject constructor(
         }
     } catch (e: Exception) { lastKnownUsdInrRate() }
 
+    /** Other currencies' live →INR rates, held briefly so a batch of GBP holdings fetches GBPINR once. */
+    private val fxRateCache = java.util.concurrent.ConcurrentHashMap<String, Pair<Long, Double>>()
+
+    /**
+     * The live rate converting one unit of [currency] (a major currency: GBP, not GBp) into INR,
+     * or null when Yahoo has none. INR is 1 and USD uses [fetchUsdInrRate] with its cached fallback.
+     */
+    suspend fun fetchRateToInr(currency: String): Double? {
+        if (currency == "INR") return 1.0
+        if (currency == "USD") return fetchUsdInrRate()
+        val now = System.currentTimeMillis()
+        fxRateCache[currency]?.let { (at, rate) -> if (now - at < FX_RATE_TTL_MS) return rate }
+        val rate = try {
+            apiService.getQuote("${currency}INR=X").body()?.chart?.result?.firstOrNull()?.meta?.regularMarketPrice
+        } catch (e: Exception) { null }
+        return rate?.takeIf { it > 0.0 }?.also { fxRateCache[currency] = now to it }
+    }
+
     /**
      * [asset] with its live price applied. If the row's buyPrice is still in USD (first refresh after
      * an import) it is converted to INR and the currency flipped, so P&L compares like with like.
@@ -201,6 +231,9 @@ class NetWorthRepository @Inject constructor(
      * summary, and its chart) once per asset, which is what looked like the stock list and
      * chart "reloading" repeatedly on every refresh instead of updating once when it's done.
      *
+     * @param userRequested whether the user asked for this refresh. Its prices then show at once
+     * on Home; a background one's are held behind the "Portfolio updated" banner. Defaults to
+     * [force]; the periodic worker is forced but not requested.
      * @param onProgress called after each asset is (attempted to be) refreshed, with
      * (assets refreshed so far, total fetchable assets) — lets a caller like the CSV
      * import flow show a percentage instead of an indefinite spinner while this runs
@@ -208,6 +241,7 @@ class NetWorthRepository @Inject constructor(
      */
     suspend fun refreshNetWorthAssets(
         force: Boolean = false,
+        userRequested: Boolean = force,
         onProgress: (Int, Int) -> Unit = { _, _ -> }
     ): Unit = refreshMutex.withLock {
         // Checked inside the lock: if another caller was already mid-refresh when this one
@@ -258,6 +292,9 @@ class NetWorthRepository @Inject constructor(
                     updatedAssets.add(if (price is Resource.Success) withLivePrice(renamed, price.data, usdInrRate) else renamed)
                 }
             }
+
+            // Set before the write, so it's in place when Home's observer sees the new rows.
+            lastBackgroundWrite = if (userRequested) emptyMap() else updatedAssets.associate { it.id to it.currentValue }
 
             // One transaction for the whole batch — network calls are already done by this
             // point, so this is a fast, purely-local write and doesn't hold the DB lock

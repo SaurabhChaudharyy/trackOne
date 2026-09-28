@@ -189,6 +189,27 @@ class NetWorthRepositoryTest {
     }
 
     @Test
+    fun `fetchQuote converts a pence quote with the GBP rate`() = runTest {
+        coEvery { apiService.getQuote("TSCO.L") } returns chartResponse("GBp", 480.5, 473.2)
+        coEvery { apiService.getQuote("GBPINR=X") } returns chartResponse("INR", 110.0)
+
+        val quote = (repository.fetchQuote("TSCO.L", AssetType.STOCK_US, usdInrRate = 80.0) as Resource.Success).data
+
+        assertEquals(528.55, quote.priceInr, 0.0001)            // £4.805 x 110
+        assertEquals(520.52, quote.previousCloseInr, 0.0001)    // £4.732 x 110
+    }
+
+    @Test
+    fun `fetchQuote is an error when a foreign currency has no rate, never pence counted as rupees`() = runTest {
+        coEvery { apiService.getQuote("TSLA.TO") } returns chartResponse("CAD", 32.19)
+        coEvery { apiService.getQuote("CADINR=X") } throws RuntimeException("network down")
+
+        val result = repository.fetchQuote("TSLA.TO", AssetType.STOCK_US, usdInrRate = 80.0)
+
+        assertTrue(result is Resource.Error)
+    }
+
+    @Test
     fun `a missing previous close is reported as 0, not as an unchanged price`() = runTest {
         coEvery { apiService.getQuote("TCS.NS") } returns chartResponse("INR", 3500.0)
 

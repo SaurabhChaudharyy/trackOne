@@ -37,8 +37,7 @@
                 android:layout_height="wrap_content"
                 android:textColor="@color/text_primary"
                 android:textSize="14sp"
-                android:fontFamily="@font/inter_semi_bold"
-                android:textStyle="bold"/>
+                android:fontFamily="@font/inter_bold"/>
 
             <TextView
                 android:id="@+id/tv_search_name"
@@ -75,7 +74,7 @@
             android:paddingHorizontal="14dp"
             app:backgroundTint="@color/ink"
             app:cornerRadius="6dp"
-            style="@style/Widget.Material3.Button.TonalButton"/>
+            style="@style/Widget.App.Button.Tonal"/>
     </LinearLayout>
 
     <View

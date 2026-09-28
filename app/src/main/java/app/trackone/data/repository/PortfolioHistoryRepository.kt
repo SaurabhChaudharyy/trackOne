@@ -63,18 +63,35 @@ class PortfolioHistoryRepository @Inject constructor(
             fxDeferred.await() to assetDeferred.map { (asset, d) -> asset to d.await() }.toMap()
         }
 
-        val fxPoints = fx?.points.orEmpty()
-        // No FX history (fetch failed): fall back to the last rate this device saw, once.
-        val fallbackRate = if (fxPoints.isEmpty()) netWorthRepository.fetchUsdInrRate() else 0.0
-        fun usdInrOn(day: Long): Double =
-            if (fxPoints.isEmpty()) fallbackRate
-            else (fxPoints.lastOrNull { it.first <= day } ?: fxPoints.first()).second
+        // Each currency a holding is quoted in needs its own →INR history: USD is fetched above
+        // alongside the holdings; any other (GBP for a pence quote, CAD, ...) is fetched now.
+        val majors = rawByAsset.values.mapNotNull { it?.currency?.let(CurrencyConversion::majorCurrency) }
+            .filter { it != "INR" }.toSet()
+        val fxByMajor: Map<String, List<Pair<Long, Double>>> = coroutineScope {
+            majors.map { major ->
+                major to (if (major == "USD") async { fx } else async { fetchRaw("${major}INR=X", range, nowMs) })
+            }.associate { (major, d) -> major to d.await()?.points.orEmpty() }
+        }
+        // No FX history (fetch failed): fall back to the latest live rate, once per currency.
+        // A currency with neither has no rate at all (null), and its holdings stay flat.
+        val fallbackRates: Map<String, Double?> = fxByMajor.filterValues { it.isEmpty() }.keys
+            .associateWith { netWorthRepository.fetchRateToInr(it) }
+        fun rateOn(major: String, day: Long): Double? {
+            if (major == "INR") return 1.0
+            val points = fxByMajor[major].orEmpty()
+            return if (points.isEmpty()) fallbackRates[major]
+            else (points.lastOrNull { it.first <= day } ?: points.first()).second
+        }
 
         val holdings = assets.map { asset ->
             val raw = rawByAsset[asset]
             val isMetal = asset.assetType == AssetType.GOLD || asset.assetType == AssetType.SILVER
-            val closes = raw?.points?.map { (day, native) ->
-                DailyClose(day, CurrencyConversion.perUnitInr(native, raw.currency, usdInrOn(day), isMetal))
+            val closes = raw?.let { series ->
+                val major = CurrencyConversion.majorCurrency(series.currency)
+                series.points.map { (day, native) ->
+                    val rate = rateOn(major, day) ?: return@let null
+                    DailyClose(day, CurrencyConversion.perUnitInr(native, series.currency, rate, isMetal))
+                }
             }
             HistoryHolding(asset.quantity, asset.currentValue, closes)
         }

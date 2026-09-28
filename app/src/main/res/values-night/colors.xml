@@ -24,7 +24,7 @@
     <color name="on_ink">#09090B</color>
     <color name="gain">#5CD6A6</color>
     <color name="loss">#FF7452</color>
-    <color name="chart_wash">#1AFAFAFA</color>
+    <color name="chart_dots">#4DFAFAFA</color>
     <color name="nav_bar_divider">#27272A</color>
 
     <!-- Asset categories, dark steps -->

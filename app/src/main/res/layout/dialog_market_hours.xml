@@ -22,8 +22,7 @@
             android:layout_weight="1"
             android:textColor="@color/text_primary"
             android:textSize="22sp"
-            android:fontFamily="@font/inter_semi_bold"
-            android:textStyle="bold"
+            android:fontFamily="@font/inter_bold"
             tools:text="NYSE / NASDAQ"/>
 
         <TextView
@@ -35,8 +34,7 @@
             android:background="@drawable/bg_count_pill"
             android:textColor="@color/text_primary"
             android:textSize="12sp"
-            android:fontFamily="@font/inter_semi_bold"
-            android:textStyle="bold"
+            android:fontFamily="@font/inter_bold"
             tools:text="Open"/>
     </LinearLayout>
 

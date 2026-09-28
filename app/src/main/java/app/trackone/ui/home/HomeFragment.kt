@@ -5,8 +5,6 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.view.animation.AccelerateInterpolator
-import android.view.animation.DecelerateInterpolator
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -233,30 +231,16 @@ class HomeFragment : Fragment() {
 
     // ── Update banner ─────────────────────────────────────────────────
 
+    // The root's animateLayoutChanges fades the banner in and eases the page down (and back up).
     private fun showUpdateBanner() {
         val banner = binding.bannerPortfolioUpdated
-        if (banner.visibility == View.VISIBLE) return
+        banner.setOnClickListener { viewModel.applyRefreshedPortfolio() }
+        banner.clipToOutline = true   // keep the tap ripple inside the rounded corners
         banner.visibility = View.VISIBLE
-        banner.translationY = banner.height.toFloat().coerceAtLeast(120f)
-        banner.animate()
-            .translationY(0f)
-            .setDuration(300)
-            .setInterpolator(DecelerateInterpolator())
-            .start()
-        banner.setOnClickListener {
-            viewModel.applyRefreshedPortfolio()
-        }
     }
 
     private fun dismissUpdateBanner() {
-        val banner = binding.bannerPortfolioUpdated
-        if (banner.visibility != View.VISIBLE) return
-        banner.animate()
-            .translationY(banner.height.toFloat().coerceAtLeast(120f))
-            .setDuration(250)
-            .setInterpolator(AccelerateInterpolator())
-            .withEndAction { banner.visibility = View.GONE }
-            .start()
+        binding.bannerPortfolioUpdated.visibility = View.GONE
     }
 
     private fun setupPortfolioChart() {
@@ -293,10 +277,13 @@ class HomeFragment : Fragment() {
                 // zinc-100 grid line was invisible on the light background it was tuned for and
                 // glaring against the near-black dark background.
                 textColor  = requireContext().getColor(R.color.text_tertiary)
-                textSize   = 9f
+                textSize   = 10f
+                typeface   = androidx.core.content.res.ResourcesCompat.getFont(requireContext(), R.font.geist_mono)
                 gridColor  = requireContext().getColor(R.color.divider_color)
                 gridLineWidth = 0.5f
-                setPosition(com.github.mikephil.charting.components.YAxis.YAxisLabelPosition.INSIDE_CHART)
+                // Outside the plot, so the line ends before the labels instead of running through them.
+                setPosition(com.github.mikephil.charting.components.YAxis.YAxisLabelPosition.OUTSIDE_CHART)
+                xOffset = 8f
                 // Indian units (₹6L, ₹1.2Cr) — not the Western "₹600K"
                 valueFormatter = object : com.github.mikephil.charting.formatter.ValueFormatter() {
                     override fun getAxisLabel(value: Float, axis: com.github.mikephil.charting.components.AxisBase?): String =
@@ -316,7 +303,8 @@ class HomeFragment : Fragment() {
                 setAvoidFirstLastClipping(true)  // Prevents months from cutting off at edges
                 position  = com.github.mikephil.charting.components.XAxis.XAxisPosition.BOTTOM
                 textColor = requireContext().getColor(R.color.text_tertiary)
-                textSize  = 9f
+                textSize  = 10f
+                typeface  = androidx.core.content.res.ResourcesCompat.getFont(requireContext(), R.font.geist_mono)
                 yOffset   = 4f
             }
 
@@ -430,30 +418,28 @@ class HomeFragment : Fragment() {
     private fun drawPortfolioChart(points: List<PortfolioChartPoint>) {
         if (_binding == null || points.size < 2) return
 
-        // An ink line over a faint ink wash, whichever way the range went: the coloured P&L above
+        // An ink line over a dotted ink fill, whichever way the range went: the coloured P&L above
         // the chart says up or down. Both colours flip with the theme (values-night).
-        val lineColor      = requireContext().getColor(R.color.text_primary)
-        val fillStartColor = requireContext().getColor(R.color.chart_wash)
-        val fillEndColor   = Color.TRANSPARENT
+        val lineColor = requireContext().getColor(R.color.text_primary)
+        val density   = resources.displayMetrics.density
+        val dotFill   = app.trackone.ui.util.DotGridDrawable(
+            color     = requireContext().getColor(R.color.chart_dots),
+            spacingPx = 5f * density,
+            radiusPx  = 0.9f * density
+        )
 
         val currentEntries = points.mapIndexed { i, p -> Entry(i.toFloat(), p.current.toFloat()) }
-
-        // Gradient fill drawable
-        val gradientDrawable = android.graphics.drawable.GradientDrawable(
-            android.graphics.drawable.GradientDrawable.Orientation.TOP_BOTTOM,
-            intArrayOf(fillStartColor, fillEndColor)
-        )
 
         val currentDataSet = LineDataSet(currentEntries, "Current").apply {
             color = lineColor
             setDrawCircles(false)
             setDrawCircleHole(false)
             setDrawValues(false)
-            lineWidth      = 1.5f
+            lineWidth      = 2f
             mode           = LineDataSet.Mode.CUBIC_BEZIER
             cubicIntensity = 0.15f
             setDrawFilled(true)
-            fillDrawable = gradientDrawable
+            fillDrawable = dotFill
             // The visible labels belong to the RIGHT axis. Bound to the (hidden) left axis, the
             // line autoscaled to its own min/max while the labels stayed pinned to a different
             // scale — harmless while the data spanned zero to the total, wrong for a real history.
@@ -482,9 +468,12 @@ class HomeFragment : Fragment() {
         binding.portfolioLineChart.apply {
             // Axis hugs the data: a portfolio moving a couple of percent would otherwise be a flat
             // line at the top of a zero-based axis.
-            val (axisLo, axisHi) = ChartAxis.bounds(points.minOf { it.current }, points.maxOf { it.current })
-            axisRight.axisMinimum = axisLo.toFloat()
-            axisRight.axisMaximum = axisHi.toFloat()
+            // Ends on round gridlines, so the dotted fill stops at the bottom label, not below it.
+            val ticks = ChartAxis.ticks(points.minOf { it.current }, points.maxOf { it.current })
+            axisRight.axisMinimum = ticks.lo.toFloat()
+            axisRight.axisMaximum = ticks.hi.toFloat()
+            axisRight.granularity = ticks.step.toFloat()
+            axisRight.setLabelCount(ticks.count, true)
             data = LineData(currentDataSet)
             animateX(700)
             invalidate()
@@ -500,7 +489,6 @@ class HomeFragment : Fragment() {
         when (res) {
             is Resource.Success -> {
                 val data   = res.data
-                val pct    = FormatUtils.formatChangePercent(data.changePercent)
 
                 when (index) {
                     Index.NIFTY -> {
@@ -512,8 +500,7 @@ class HomeFragment : Fragment() {
                         } else {
                             binding.tvNiftyPrice.text = FormatUtils.formatIndexPrice(data.price, data.currency)
                         }
-                        binding.tvNiftyChange.text = pct
-                        styleIndexChange(data.changePercent, binding.pillNifty, binding.tvNiftyChange, binding.ivNiftyTrend)
+                        styleIndexChange(data.changePercent, binding.tvNiftyChange)
                     }
                     Index.SENSEX -> {
                         if (!sensexAnimated) {
@@ -524,8 +511,7 @@ class HomeFragment : Fragment() {
                         } else {
                             binding.tvSensexPrice.text = FormatUtils.formatIndexPrice(data.price, data.currency)
                         }
-                        binding.tvSensexChange.text = pct
-                        styleIndexChange(data.changePercent, binding.pillSensex, binding.tvSensexChange, binding.ivSensexTrend)
+                        styleIndexChange(data.changePercent, binding.tvSensexChange)
                     }
                     Index.SP500 -> {
                         if (!sp500Animated) {
@@ -536,8 +522,7 @@ class HomeFragment : Fragment() {
                         } else {
                             binding.tvSp500Price.text = FormatUtils.formatIndexPrice(data.price, data.currency)
                         }
-                        binding.tvSp500Change.text = pct
-                        styleIndexChange(data.changePercent, binding.pillSp500, binding.tvSp500Change, binding.ivSp500Trend)
+                        styleIndexChange(data.changePercent, binding.tvSp500Change)
                     }
                     Index.NASDAQ -> {
                         if (!nasdaqAnimated) {
@@ -548,8 +533,7 @@ class HomeFragment : Fragment() {
                         } else {
                             binding.tvNasdaqPrice.text = FormatUtils.formatIndexPrice(data.price, data.currency)
                         }
-                        binding.tvNasdaqChange.text = pct
-                        styleIndexChange(data.changePercent, binding.pillNasdaq, binding.tvNasdaqChange, binding.ivNasdaqTrend)
+                        styleIndexChange(data.changePercent, binding.tvNasdaqChange)
                     }
                 }
             }
@@ -558,20 +542,10 @@ class HomeFragment : Fragment() {
         }
     }
 
-    /** An index's move as coloured text and arrow; money direction never gets a filled pill. */
-    private fun styleIndexChange(
-        changePercent: Double,
-        pill: LinearLayout,
-        tvChange: TextView,
-        ivTrend: ImageView
-    ) {
-        val color = requireContext().getColor(MoneyColor.forChange(changePercent))
-        pill.background = null
-        tvChange.setTextColor(color)
-        ivTrend.setImageResource(
-            if (changePercent >= 0) R.drawable.ic_trending_up else R.drawable.ic_trending_down
-        )
-        ivTrend.imageTintList = android.content.res.ColorStateList.valueOf(color)
+    /** An index's move as coloured text led by its arrow; money direction never gets a filled pill. */
+    private fun styleIndexChange(changePercent: Double, tvChange: TextView) {
+        tvChange.text = FormatUtils.formatMovePercent(changePercent)
+        tvChange.setTextColor(requireContext().getColor(MoneyColor.forChange(changePercent)))
     }
 
     // ── Top Movers ───────────────────────────────────────────────────────
@@ -597,8 +571,7 @@ class HomeFragment : Fragment() {
 
     private fun buildMoverRow(mover: TopMover): View {
         val stock  = mover.stock
-        val isGain = stock.changePercent >= 0
-        val chipW  = (110 * resources.displayMetrics.density).toInt()
+        val chipW  = (116 * resources.displayMetrics.density).toInt()
 
         // Compact vertical card chip
         val card = LinearLayout(requireContext()).apply {
@@ -627,9 +600,9 @@ class HomeFragment : Fragment() {
         // Symbol
         val tvSymbol = TextView(requireContext()).apply {
             text = mover.label
-            textSize = 12f
+            textSize = 14f
             setTextColor(requireContext().getColor(R.color.text_primary))
-            typeface = androidx.core.content.res.ResourcesCompat.getFont(requireContext(), R.font.inter_semi_bold)
+            typeface = androidx.core.content.res.ResourcesCompat.getFont(requireContext(), R.font.inter_bold)
             maxLines = 1
             ellipsize = android.text.TextUtils.TruncateAt.END
         }
@@ -639,7 +612,8 @@ class HomeFragment : Fragment() {
             // Metals: the futures quote is USD per troy ounce, but a holding is in grams — show ₹/g.
             text = mover.unitPriceInr?.let { FormatUtils.formatPrice(it, "INR") + "/g" }
                 ?: FormatUtils.formatPrice(stock.currentPrice, stock.currency)
-            textSize = 11f
+            textSize = 12f
+            typeface = androidx.core.content.res.ResourcesCompat.getFont(requireContext(), R.font.geist_mono)
             setTextColor(requireContext().getColor(R.color.text_secondary))
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT,
@@ -649,38 +623,25 @@ class HomeFragment : Fragment() {
             ellipsize = android.text.TextUtils.TruncateAt.END
         }
 
-        // % change: coloured text and arrow, no pill behind it
-        val moveColor = requireContext().getColor(MoneyColor.forChange(stock.changePercent))
-        val pill = LinearLayout(requireContext()).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = android.view.Gravity.CENTER_VERTICAL
+        // % change: coloured text led by its arrow, no pill behind it
+        val tvChange = TextView(requireContext()).apply {
+            text = FormatUtils.formatMovePercent(stock.changePercent)
+            textSize = 12f
+            typeface = androidx.core.content.res.ResourcesCompat.getFont(requireContext(), R.font.inter_bold)
+            setTextColor(requireContext().getColor(MoneyColor.forChange(stock.changePercent)))
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
-            ).also { it.topMargin = 6.dp }
+            ).also { it.topMargin = 4.dp }
         }
-        val ivTrend = ImageView(requireContext()).apply {
-            setImageResource(if (isGain) R.drawable.ic_trending_up else R.drawable.ic_trending_down)
-            imageTintList = android.content.res.ColorStateList.valueOf(moveColor)
-            layoutParams = LinearLayout.LayoutParams(9.dp, 9.dp).also { it.marginEnd = 2.dp }
-        }
-        val tvChange = TextView(requireContext()).apply {
-            text = FormatUtils.formatChangePercent(stock.changePercent)
-            // A notch larger and semibold: without a fill, the colour alone has to carry it.
-            textSize = 11f
-            typeface = androidx.core.content.res.ResourcesCompat.getFont(requireContext(), R.font.inter_semi_bold)
-            setTextColor(moveColor)
-        }
-        pill.addView(ivTrend)
-        pill.addView(tvChange)
 
         // Optional holding-value sub-line (INR), shown whenever the value is known
         if (mover.currentVal > 0.0) {
             val tvInv = TextView(requireContext()).apply {
                 text = FormatUtils.formatPrice(mover.currentVal, "INR")
-                textSize = 10f
+                textSize = 12f
                 setTextColor(requireContext().getColor(R.color.text_primary))
-                typeface = androidx.core.content.res.ResourcesCompat.getFont(requireContext(), R.font.inter_semi_bold)
+                typeface = androidx.core.content.res.ResourcesCompat.getFont(requireContext(), R.font.geist_mono_bold)
                 maxLines = 1
                 ellipsize = android.text.TextUtils.TruncateAt.END
                 // No background for this sub-line as per user request
@@ -696,12 +657,12 @@ class HomeFragment : Fragment() {
             
             card.addView(tvSymbol)
             card.addView(tvPrice)
-            card.addView(pill)
+            card.addView(tvChange)
             card.addView(invContainer)
         } else {
             card.addView(tvSymbol)
             card.addView(tvPrice)
-            card.addView(pill)
+            card.addView(tvChange)
         }
 
         return card
@@ -741,7 +702,7 @@ class HomeFragment : Fragment() {
             // The move is coloured text; money direction never gets a filled pill.
             binding.tvPortfolioPnl.setTextColor(requireContext().getColor(MoneyColor.forChange(summary.absChange)))
             binding.tvPortfolioPnl.setTypeface(
-                androidx.core.content.res.ResourcesCompat.getFont(requireContext(), R.font.inter_semi_bold),
+                androidx.core.content.res.ResourcesCompat.getFont(requireContext(), R.font.inter_bold),
                 android.graphics.Typeface.NORMAL
             )
             binding.tvPortfolioPnl.background = null

@@ -56,8 +56,10 @@
              TextViews that don't set an explicit textStyle. -->
         <item name="android:forceDarkAllowed" tools:targetApi="29">false</item>
 
+        <!-- Only the framework attribute here. AppCompat's own fontFamily, set on the theme, wins
+             over every view's android:fontFamily, so all layout fonts (Geist Mono, semibold,
+             bold) rendered as plain Inter. Text appearances below carry both. -->
         <item name="android:fontFamily">@font/inter</item>
-        <item name="fontFamily">@font/inter</item>
 
         <item name="textAppearanceDisplayLarge">@style/TextAppearance.App.Display</item>
         <item name="textAppearanceDisplayMedium">@style/TextAppearance.App.Display</item>
@@ -70,7 +72,9 @@
         <item name="textAppearanceTitleSmall">@style/TextAppearance.App.Title</item>
         <item name="textAppearanceBodyLarge">@style/TextAppearance.App.Body</item>
         <item name="textAppearanceBodyMedium">@style/TextAppearance.App.Body</item>
-        <item name="textAppearanceBodySmall">@style/TextAppearance.App.Body</item>
+        <!-- Separate small body: text fields shrink their floating label to this. Mapped to the
+             14sp Body, a typed field's label stayed full size above the text. -->
+        <item name="textAppearanceBodySmall">@style/TextAppearance.App.BodySmall</item>
         <item name="textAppearanceLabelLarge">@style/TextAppearance.App.Label</item>
         <item name="textAppearanceLabelMedium">@style/TextAppearance.App.Label</item>
         <item name="textAppearanceLabelSmall">@style/TextAppearance.App.Label</item>
@@ -80,44 +84,66 @@
         <item name="materialButtonStyle">@style/Widget.App.Button</item>
     </style>
 
+    <!-- Every App text appearance zeroes letterSpacing: Material's values are tuned for Roboto
+         and read loose in Inter. Views that want tracking (overlines) set their own. -->
     <style name="TextAppearance.App.Display" parent="TextAppearance.Material3.DisplayLarge">
+        <item name="android:letterSpacing">0</item>
         <item name="android:fontFamily">@font/inter</item>
+        <item name="fontFamily">@font/inter</item>
         <item name="android:textColor">@color/text_primary</item>
     </style>
 
     <style name="TextAppearance.App.Headline" parent="TextAppearance.Material3.HeadlineMedium">
+        <item name="android:letterSpacing">0</item>
         <item name="android:fontFamily">@font/inter</item>
+        <item name="fontFamily">@font/inter</item>
         <item name="android:textColor">@color/text_primary</item>
     </style>
 
     <style name="TextAppearance.App.Title" parent="TextAppearance.Material3.TitleMedium">
+        <item name="android:letterSpacing">0</item>
         <item name="android:fontFamily">@font/inter</item>
+        <item name="fontFamily">@font/inter</item>
         <item name="android:textColor">@color/text_primary</item>
     </style>
 
     <style name="TextAppearance.App.Body" parent="TextAppearance.Material3.BodyMedium">
+        <item name="android:letterSpacing">0</item>
         <item name="android:fontFamily">@font/inter</item>
+        <item name="fontFamily">@font/inter</item>
         <item name="android:textColor">@color/text_primary</item>
     </style>
 
-    <style name="TextAppearance.App.Label" parent="TextAppearance.Material3.LabelSmall">
+    <style name="TextAppearance.App.BodySmall" parent="TextAppearance.Material3.BodySmall">
+        <item name="android:letterSpacing">0</item>
         <item name="android:fontFamily">@font/inter</item>
+        <item name="fontFamily">@font/inter</item>
+        <item name="android:textColor">@color/text_secondary</item>
+    </style>
+
+    <style name="TextAppearance.App.Label" parent="TextAppearance.Material3.LabelSmall">
+        <item name="android:letterSpacing">0</item>
+        <item name="android:fontFamily">@font/inter</item>
+        <item name="fontFamily">@font/inter</item>
         <item name="android:textColor">@color/text_secondary</item>
     </style>
 
     <style name="TextAppearance.App.Symbol" parent="TextAppearance.Material3.TitleMedium">
         <item name="android:fontFamily">@font/geist_mono_bold</item>
+        <item name="fontFamily">@font/geist_mono_bold</item>
         <item name="android:textColor">@color/text_primary</item>
         <item name="android:textStyle">bold</item>
     </style>
 
     <style name="TextAppearance.App.CompanyName" parent="TextAppearance.Material3.BodySmall">
         <item name="android:fontFamily">@font/inter</item>
+        <item name="fontFamily">@font/inter</item>
         <item name="android:textColor">@color/text_tertiary</item>
     </style>
 
     <style name="TextAppearance.App.Price" parent="TextAppearance.Material3.TitleLarge">
         <item name="android:fontFamily">@font/geist_mono_bold</item>
+        <item name="fontFamily">@font/geist_mono_bold</item>
         <item name="android:textColor">@color/text_primary</item>
     </style>
 
@@ -133,37 +159,64 @@
         <item name="cornerRadius">8dp</item>
     </style>
 
+    <!-- Chart range buttons on stock detail: bold Inter, as on Home. -->
+    <style name="TextAppearance.App.RangeChip" parent="TextAppearance.Material3.LabelLarge">
+        <item name="android:fontFamily">@font/inter_bold</item>
+        <item name="fontFamily">@font/inter_bold</item>
+        <item name="android:textSize">12sp</item>
+        <item name="android:letterSpacing">0</item>
+    </style>
+
     <style name="Widget.App.Chip" parent="Widget.Material3.Chip.Assist">
         <item name="android:fontFamily">@font/inter</item>
     </style>
 
-    <!-- Assets section-header "+": a neon square with an ink plus, inside a 44dp touch target. -->
-    <style name="Widget.App.MarkerAddButton" parent="">
+    <!-- Assets section-header "+": an ink plus inside a 44dp touch target. An empty section's "+"
+         becomes the neon square instead (NetWorthFragment.styleAddButton). -->
+    <style name="Widget.App.AddButton" parent="">
         <item name="android:layout_width">44dp</item>
         <item name="android:layout_height">44dp</item>
         <item name="android:padding">13dp</item>
         <item name="android:scaleType">fitCenter</item>
-        <item name="android:src">@drawable/ic_add</item>
-        <item name="android:background">@drawable/bg_marker_add</item>
+        <item name="android:src">@drawable/ic_plus_stroke</item>
+        <item name="android:background">@null</item>
         <item name="android:foreground">?attr/selectableItemBackgroundBorderless</item>
-        <item name="android:tint">@color/on_marker</item>
+        <item name="android:tint">@color/ink</item>
     </style>
 
     <style name="ThemeOverlay.App.MaterialAlertDialog" parent="ThemeOverlay.Material3.MaterialAlertDialog">
         <item name="android:background">@color/background</item>
         <item name="android:fontFamily">@font/inter</item>
+        <!-- Dialog titles bold, like every other title. Set on the view style, not only its text
+             appearance: this overlay's own android:fontFamily would otherwise win. -->
+        <item name="materialAlertDialogTitleTextStyle">@style/Widget.App.DialogTitle</item>
         <item name="buttonBarPositiveButtonStyle">@style/Widget.App.DialogButton.Positive</item>
         <item name="buttonBarNegativeButtonStyle">@style/Widget.App.DialogButton.Negative</item>
     </style>
 
+    <style name="Widget.App.DialogTitle" parent="MaterialAlertDialog.Material3.Title.Text">
+        <item name="android:textAppearance">@style/TextAppearance.App.DialogTitle</item>
+        <item name="android:fontFamily">@font/inter_bold</item>
+    </style>
+
+    <style name="TextAppearance.App.DialogTitle" parent="TextAppearance.Material3.HeadlineSmall">
+        <item name="android:fontFamily">@font/inter_bold</item>
+        <item name="fontFamily">@font/inter_bold</item>
+        <item name="android:textSize">20sp</item>
+        <item name="android:letterSpacing">0</item>
+        <item name="android:textColor">@color/text_primary</item>
+    </style>
+
     <!-- Dialog positive button: solid black with white text -->
     <style name="Widget.App.DialogButton.Positive" parent="Widget.Material3.Button.TextButton.Dialog">
+        <item name="android:letterSpacing">0</item>
         <item name="android:fontFamily">@font/inter_semi_bold</item>
         <item name="android:textColor">@color/text_primary</item>
     </style>
 
     <!-- Dialog negative button: outlined, black text -->
     <style name="Widget.App.DialogButton.Negative" parent="Widget.Material3.Button.TextButton.Dialog">
+        <item name="android:letterSpacing">0</item>
         <item name="android:fontFamily">@font/inter</item>
         <item name="android:textColor">@color/text_secondary</item>
     </style>
@@ -174,30 +227,41 @@
         <item name="itemActiveIndicatorStyle">@style/Widget.App.BottomNav.ActiveIndicator</item>
         <item name="itemIconSize">22dp</item>
         <item name="android:background">@drawable/bg_nav_bar</item>
+        <item name="itemTextAppearanceActive">@style/TextAppearance.App.BottomNav.Active</item>
+        <item name="itemTextAppearanceInactive">@style/TextAppearance.App.BottomNav.Inactive</item>
+        <item name="itemTextAppearanceActiveBoldEnabled">false</item>
+        <!-- 10 + 32dp pill + 4 + label + 12 fits the 76dp bar without the pill touching the label. -->
+        <item name="itemPaddingTop">10dp</item>
+        <item name="itemPaddingBottom">12dp</item>
     </style>
 
+    <!-- The active tab is marked by a neon pill behind its icon (the highlighter), not a dot. -->
     <style name="Widget.App.BottomNav.ActiveIndicator" parent="Widget.Material3.BottomNavigationView.ActiveIndicator">
         <item name="shapeAppearance">@style/ShapeAppearance.App.BottomNav.Indicator</item>
-        <item name="android:color">@android:color/transparent</item>
-        <item name="android:width">0dp</item>
-        <item name="android:height">0dp</item>
+        <item name="android:color">@color/marker</item>
+        <item name="android:width">56dp</item>
+        <item name="android:height">32dp</item>
     </style>
 
     <style name="ShapeAppearance.App.BottomNav.Indicator" parent="ShapeAppearance.Material3.Corner.Full">
         <item name="cornerSize">50%</item>
     </style>
 
-    <!-- Smaller text so "Net Worth" never truncates -->
+    <!-- Tab labels in Inter (Material's own label style is Roboto with wide tracking) -->
     <style name="TextAppearance.App.BottomNav.Active" parent="TextAppearance.Material3.LabelSmall">
-        <item name="android:fontFamily">@font/inter_semi_bold</item>
-        <item name="android:textSize">11sp</item>
+        <item name="android:fontFamily">@font/inter_bold</item>
+        <item name="fontFamily">@font/inter_bold</item>
+        <item name="android:textSize">12sp</item>
+        <item name="android:letterSpacing">0</item>
         <item name="android:textColor">@color/nav_icon_active</item>
     </style>
 
     <style name="TextAppearance.App.BottomNav.Inactive" parent="TextAppearance.Material3.LabelSmall">
         <item name="android:fontFamily">@font/inter</item>
-        <item name="android:textSize">11sp</item>
-        <item name="android:textColor">@color/nav_icon_inactive</item>
+        <item name="fontFamily">@font/inter</item>
+        <item name="android:textSize">12sp</item>
+        <item name="android:letterSpacing">0</item>
+        <item name="android:textColor">@color/nav_label_inactive</item>
     </style>
 
     <!-- Splash Activity theme — no action bar, white background, invisible system splash icon -->

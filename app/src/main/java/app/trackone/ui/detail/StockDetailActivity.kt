@@ -176,7 +176,12 @@ class StockDetailActivity : AppCompatActivity() {
         val lineColor = getColor(R.color.text_primary)
         // Resolved out here on purpose: inside LineDataSet.apply {}, getColor(Int) is the data
         // set's own getColor(index), which returns the line colour, not a colour resource.
-        val washColor = getColor(R.color.chart_wash)
+        val density = resources.displayMetrics.density
+        val dotFill = app.trackone.ui.util.DotGridDrawable(
+            color     = getColor(R.color.chart_dots),
+            spacingPx = 5f * density,
+            radiusPx  = 0.9f * density
+        )
 
         val entries = points.mapIndexed { i, y -> Entry(i.toFloat(), y) }
 
@@ -189,12 +194,9 @@ class StockDetailActivity : AppCompatActivity() {
             mode = LineDataSet.Mode.CUBIC_BEZIER
             cubicIntensity = 0.12f
 
-            // The same faint ink wash as the Home chart, so the two charts read as one design.
+            // The same dotted ink fill as the Home chart, so the two charts read as one design.
             setDrawFilled(true)
-            fillDrawable = android.graphics.drawable.GradientDrawable(
-                android.graphics.drawable.GradientDrawable.Orientation.TOP_BOTTOM,
-                intArrayOf(washColor, Color.TRANSPARENT)
-            )
+            fillDrawable = dotFill
 
             // Crosshair uses the line's ink so it reads in both themes
             highLightColor = lineColor
@@ -212,12 +214,17 @@ class StockDetailActivity : AppCompatActivity() {
 
     private fun setupTimeframeChips() {
         val inkColor = getColor(R.color.ink)
+        val dp = resources.displayMetrics.density
 
         TIMEFRAME_OPTIONS.keys.forEach { label ->
             val chip = Chip(this).apply {
                 text = label
                 isCheckable = true
-                chipCornerRadius = 0f
+                isCheckedIconVisible = false
+                // A fully rounded ink pill when checked, bold labels: same as the Home range buttons.
+                chipCornerRadius = 999f * dp
+                // A Chip draws its label from its text appearance; set before the colours below.
+                setTextAppearance(R.style.TextAppearance_App_RangeChip)
                 chipStrokeWidth = 0f
                 chipBackgroundColor = android.content.res.ColorStateList(
                     arrayOf(
@@ -244,10 +251,9 @@ class StockDetailActivity : AppCompatActivity() {
                     )
                 )
 
-                textSize = 13f
-                chipMinHeight = 32f
-                chipStartPadding = 10f
-                chipEndPadding = 10f
+                chipMinHeight = 36f * dp
+                chipStartPadding = 6f * dp
+                chipEndPadding = 6f * dp
                 tag = label
             }
             binding.timeframeChipGroup.addView(chip)
@@ -261,6 +267,22 @@ class StockDetailActivity : AppCompatActivity() {
         }
 
         (binding.timeframeChipGroup.getChildAt(0) as? Chip)?.isChecked = true
+        spreadTimeframeChips()
+    }
+
+    /**
+     * Spreads the chips across the full row (1D at the left edge, 5Y at the right), as on Home.
+     * ChipGroup has no weights, so the gap is measured once the chips have their widths.
+     */
+    private fun spreadTimeframeChips() {
+        val group = binding.timeframeChipGroup
+        group.isSingleLine = true
+        group.post {
+            val chips = (0 until group.childCount).map { group.getChildAt(it) }
+            if (chips.size < 2) return@post
+            val free = group.width - group.paddingStart - group.paddingEnd - chips.sumOf { it.width }
+            group.chipSpacingHorizontal = (free / (chips.size - 1)).coerceAtLeast(0)
+        }
     }
 
     private fun observeViewModel() {

@@ -28,6 +28,33 @@ class FormatUtilsTest {
     }
 
     @Test
+    fun `formatMovePercent leads with the direction arrow`() {
+        assertEquals("↗ +4.16%", FormatUtils.formatMovePercent(4.16))
+        assertEquals("↘ -3.89%", FormatUtils.formatMovePercent(-3.89))
+        assertEquals("↗ +0.00%", FormatUtils.formatMovePercent(0.0))
+    }
+
+    @Test
+    fun `formatPrice uses each currency's own symbol, not a dollar sign for everything`() {
+        assertEquals("$100.00", FormatUtils.formatPrice(100.0, "USD"))
+        assertEquals("CA$32.19", FormatUtils.formatPrice(32.19, "CAD"))
+        assertEquals("£1.23", FormatUtils.formatPrice(1.23, "GBP"))
+        assertEquals("€10.00", FormatUtils.formatPrice(10.0, "EUR"))
+    }
+
+    @Test
+    fun `formatPrice shows a pence quote as pence, not as dollars`() {
+        // Yahoo quotes London stocks in pence (GBp): 480.50 is £4.805, never $480.50.
+        assertEquals("480.50p", FormatUtils.formatPrice(480.5, "GBp"))
+        assertEquals("480.50p", FormatUtils.formatPrice(480.5, "GBX"))
+    }
+
+    @Test
+    fun `formatPrice falls back to the code for a currency it doesn't know`() {
+        assertEquals("XYZ 10.00", FormatUtils.formatPrice(10.0, "XYZ"))
+    }
+
+    @Test
     fun `formatVolume abbreviates billions, millions, thousands`() {
         assertEquals("1.50B", FormatUtils.formatVolume(1_500_000_000))
         assertEquals("2.00M", FormatUtils.formatVolume(2_000_000))

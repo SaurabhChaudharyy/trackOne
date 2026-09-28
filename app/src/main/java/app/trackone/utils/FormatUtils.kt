@@ -7,18 +7,33 @@ import kotlin.math.abs
 
 object FormatUtils {
 
+    /**
+     * A price in its own currency: ₹ with Indian grouping, $ for USD, and each other currency's
+     * own symbol (CA$, £, €). Pence quotes (GBp) read as pence, "480.50p"; the value is not
+     * converted, so it stays in step with the day's change shown beside it.
+     */
     fun formatPrice(price: Double, currency: String = "USD"): String {
-        return if (currency == "INR") {
+        if (currency == "INR") {
             val format = NumberFormat.getCurrencyInstance(Locale("en", "IN"))
             format.maximumFractionDigits = 2
             format.minimumFractionDigits = 2
-            format.format(price)
-        } else {
-            val format = NumberFormat.getCurrencyInstance(Locale.US)
-            format.maximumFractionDigits = if (price < 1.0) 4 else 2
-            format.minimumFractionDigits = 2
-            format.format(price)
+            return format.format(price)
         }
+        val decimals = NumberFormat.getNumberInstance(Locale.US).apply {
+            minimumFractionDigits = 2
+            maximumFractionDigits = if (price < 1.0) 4 else 2
+        }
+        if (currency == "GBp" || currency == "GBX") return decimals.format(price) + "p"
+        val iso = try {
+            java.util.Currency.getInstance(currency)
+        } catch (e: IllegalArgumentException) {
+            return "$currency ${decimals.format(price)}"
+        }
+        val format = NumberFormat.getCurrencyInstance(Locale.US)
+        format.currency = iso
+        format.minimumFractionDigits = iso.defaultFractionDigits.coerceAtLeast(0)
+        format.maximumFractionDigits = if (price < 1.0) 4 else iso.defaultFractionDigits.coerceAtLeast(0)
+        return format.format(price)
     }
 
     fun formatIndexPrice(price: Double, currency: String = "USD"): String {
@@ -56,6 +71,10 @@ object FormatUtils {
         val prefix = if (changePercent >= 0) "+" else ""
         return "$prefix${String.format("%.2f", changePercent)}%"
     }
+
+    /** A percentage move led by its direction arrow, as the Marker design shows it: "↗ +4.16%". */
+    fun formatMovePercent(changePercent: Double): String =
+        "${if (changePercent >= 0) "↗" else "↘"} ${formatChangePercent(changePercent)}"
 
     fun formatVolume(volume: Long): String {
         return when {

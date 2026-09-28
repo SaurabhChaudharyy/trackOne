@@ -13,8 +13,7 @@
         android:text="Which file do I upload?"
         android:textColor="@color/text_primary"
         android:textSize="20sp"
-        android:fontFamily="@font/inter_semi_bold"
-        android:textStyle="bold"/>
+        android:fontFamily="@font/inter_bold"/>
 
     <TextView
         android:layout_width="wrap_content"

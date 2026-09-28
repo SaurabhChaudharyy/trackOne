@@ -7,23 +7,46 @@ class CurrencyConversionTest {
 
     @Test
     fun `USD price is converted using the given rate`() {
-        val result = CurrencyConversion.toInr(priceInNativeCurrency = 10.0, currency = "USD", usdInrRate = 83.0)
+        val result = CurrencyConversion.toInr(priceInNativeCurrency = 10.0, currency = "USD", rateToInr = 83.0)
 
         assertEquals(830.0, result, 0.0001)
     }
 
     @Test
     fun `USX price is cents - divided by 100 before applying the USD rate`() {
-        val result = CurrencyConversion.toInr(priceInNativeCurrency = 10.0, currency = "USX", usdInrRate = 83.0)
+        val result = CurrencyConversion.toInr(priceInNativeCurrency = 10.0, currency = "USX", rateToInr = 83.0)
 
         assertEquals(8.3, result, 0.0001)
     }
 
     @Test
     fun `INR price passes through unconverted`() {
-        val result = CurrencyConversion.toInr(priceInNativeCurrency = 250.0, currency = "INR", usdInrRate = 83.0)
+        val result = CurrencyConversion.toInr(priceInNativeCurrency = 250.0, currency = "INR", rateToInr = 83.0)
 
         assertEquals(250.0, result, 0.0001)
+    }
+
+    @Test
+    fun `GBp pence become pounds before the GBP rate is applied`() {
+        // TSCO.L at 480.50p = £4.805; at ₹110/£ that is ₹528.55, not ₹480.50 or ₹52,855.
+        assertEquals(528.55, CurrencyConversion.toInr(480.5, "GBp", rateToInr = 110.0), 1e-9)
+        assertEquals(528.55, CurrencyConversion.toInr(480.5, "GBX", rateToInr = 110.0), 1e-9)
+    }
+
+    @Test
+    fun `any other currency is converted with its own rate, not passed through as rupees`() {
+        assertEquals(1_931.4, CurrencyConversion.toInr(32.19, "CAD", rateToInr = 60.0), 1e-9)
+    }
+
+    @Test
+    fun `majorCurrency names the currency whose rate converts a quote`() {
+        assertEquals("GBP", CurrencyConversion.majorCurrency("GBp"))
+        assertEquals("GBP", CurrencyConversion.majorCurrency("GBX"))
+        assertEquals("USD", CurrencyConversion.majorCurrency("USX"))
+        assertEquals("ZAR", CurrencyConversion.majorCurrency("ZAc"))
+        assertEquals("ILS", CurrencyConversion.majorCurrency("ILA"))
+        assertEquals("CAD", CurrencyConversion.majorCurrency("CAD"))
+        assertEquals("INR", CurrencyConversion.majorCurrency("INR"))
     }
 
     @Test

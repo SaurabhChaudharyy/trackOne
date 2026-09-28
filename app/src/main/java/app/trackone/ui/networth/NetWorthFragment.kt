@@ -315,7 +315,7 @@ class NetWorthFragment : Fragment() {
             // The move is coloured text; money direction never gets a filled pill.
             chip.setTextColor(requireContext().getColor(MoneyColor.forChange(absChange)))
             chip.setTypeface(
-                androidx.core.content.res.ResourcesCompat.getFont(requireContext(), R.font.inter_semi_bold),
+                androidx.core.content.res.ResourcesCompat.getFont(requireContext(), R.font.inter_bold),
                 android.graphics.Typeface.NORMAL
             )
             chip.background = null
@@ -347,7 +347,7 @@ class NetWorthFragment : Fragment() {
                 }
             }
 
-            fun updateCount(countView: android.widget.TextView, type: AssetType) {
+            fun updateCount(countView: android.widget.TextView, addButton: android.widget.ImageButton, type: AssetType) {
                 val count = grouped[type]?.size ?: 0
                 if (count > 0) {
                     countView.text = count.toString()
@@ -355,15 +355,16 @@ class NetWorthFragment : Fragment() {
                 } else {
                     countView.isVisible = false
                 }
+                styleAddButton(addButton, sectionEmpty = count == 0)
             }
-            updateCount(binding.tvCountStockIn, AssetType.STOCK_IN)
-            updateCount(binding.tvCountStockUs, AssetType.STOCK_US)
-            updateCount(binding.tvCountMf,      AssetType.MF)
-            updateCount(binding.tvCountGold,    AssetType.GOLD)
-            updateCount(binding.tvCountSilver,  AssetType.SILVER)
-            updateCount(binding.tvCountCrypto,  AssetType.CRYPTO)
-            updateCount(binding.tvCountCash,    AssetType.CASH)
-            updateCount(binding.tvCountBank,    AssetType.BANK)
+            updateCount(binding.tvCountStockIn, binding.btnAddStockIn, AssetType.STOCK_IN)
+            updateCount(binding.tvCountStockUs, binding.btnAddStockUs, AssetType.STOCK_US)
+            updateCount(binding.tvCountMf,      binding.btnAddMf,      AssetType.MF)
+            updateCount(binding.tvCountGold,    binding.btnAddGold,    AssetType.GOLD)
+            updateCount(binding.tvCountSilver,  binding.btnAddSilver,  AssetType.SILVER)
+            updateCount(binding.tvCountCrypto,  binding.btnAddCrypto,  AssetType.CRYPTO)
+            updateCount(binding.tvCountCash,    binding.btnAddCash,    AssetType.CASH)
+            updateCount(binding.tvCountBank,    binding.btnAddBank,    AssetType.BANK)
         }
 
         viewModel.assetSummary.observe(viewLifecycleOwner) { summary ->
@@ -381,6 +382,19 @@ class NetWorthFragment : Fragment() {
     }
 
     // ─── View All toggle helper ───────────────────────────────────────────────
+
+    /** The neon marks an empty section's "+", the one thing to do there; a section with holdings
+     *  keeps the quiet ink "+" of Widget.App.AddButton. */
+    private fun styleAddButton(button: android.widget.ImageButton, sectionEmpty: Boolean) {
+        button.background =
+            if (sectionEmpty) androidx.core.content.ContextCompat.getDrawable(requireContext(), R.drawable.bg_marker_add) else null
+        button.imageTintList = android.content.res.ColorStateList.valueOf(
+            requireContext().getColor(if (sectionEmpty) R.color.on_marker else R.color.ink)
+        )
+        // On the 30dp neon square the plus shrinks to 14dp so it sits inside with room around it.
+        val pad = ((if (sectionEmpty) 15 else 13) * resources.displayMetrics.density).toInt()
+        button.setPadding(pad, pad, pad, pad)
+    }
 
     private fun viewAllButtonFor(type: AssetType): TextView? = when (type) {
         AssetType.STOCK_IN -> binding.tvViewAllStockIn

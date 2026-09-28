@@ -39,6 +39,7 @@ class PortfolioHistoryRepositoryTest {
         api = mockk()
         netWorth = mockk()
         coEvery { netWorth.fetchUsdInrRate() } returns 80.0
+        coEvery { netWorth.fetchRateToInr("USD") } returns 80.0
         repo = PortfolioHistoryRepository(api, netWorth)
     }
 
@@ -93,6 +94,37 @@ class PortfolioHistoryRepositoryTest {
 
         // day1: 100 USD x 80 = 8000; day2: 100 x 90 = 9000; then the live point for day 3
         assertEquals(listOf(8000.0, 9000.0, 9000.0), points.map { it.current })
+    }
+
+    @Test
+    fun `a pence-quoted stock is converted with that day's GBP to INR rate`() = runTest {
+        stub("USDINR=X", failure())
+        stub("TSCO.L", chart("GBp", listOf(day1, day2), listOf(500.0, 500.0)))
+        stub("GBPINR=X", chart("INR", listOf(day1, day2), listOf(100.0, 110.0)))
+
+        val points = repo.history(listOf(asset("TSCO.L", AssetType.STOCK_US, qty = 1.0, value = 560.0)), ChartRange.MONTH, now)
+
+        // 500p = £5; day1 x 100 = 500, day2 x 110 = 550; then the live point
+        assertEquals(listOf(500.0, 550.0, 560.0), points.map { it.current })
+    }
+
+    @Test
+    fun `a foreign-currency holding with no rate at all stays flat instead of counting pence as rupees`() = runTest {
+        stub("USDINR=X", failure())
+        stub("TCS.NS", chart("INR", listOf(day1, day2), listOf(100.0, 200.0)))
+        stub("TSCO.L", chart("GBp", listOf(day1, day2), listOf(500.0, 900.0)))
+        stub("GBPINR=X", failure())
+        coEvery { netWorth.fetchRateToInr("GBP") } returns null
+
+        val points = repo.history(
+            listOf(
+                asset("TCS", AssetType.STOCK_IN, qty = 1.0, value = 200.0),
+                asset("TSCO.L", AssetType.STOCK_US, qty = 1.0, value = 560.0)
+            ),
+            ChartRange.MONTH, now
+        )
+
+        assertEquals(listOf(660.0, 760.0, 760.0), points.map { it.current })
     }
 
     @Test

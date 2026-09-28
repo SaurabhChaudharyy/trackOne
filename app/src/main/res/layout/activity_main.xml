@@ -31,8 +31,7 @@
                 android:text="TrackOne"
                 android:textSize="18sp"
                 android:textColor="@color/text_primary"
-                android:fontFamily="@font/inter_semi_bold"
-                android:textStyle="bold"
+                android:fontFamily="@font/inter_bold"
                 android:letterSpacing="-0.02"/>
         </com.google.android.material.appbar.MaterialToolbar>
 
@@ -47,13 +46,13 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         app:layout_behavior="@string/appbar_scrolling_view_behavior"
-        android:paddingBottom="56dp"
+        android:paddingBottom="68dp"
         android:clipToPadding="false"/>
 
     <com.google.android.material.bottomnavigation.BottomNavigationView
         android:id="@+id/bottom_nav"
         android:layout_width="match_parent"
-        android:layout_height="64dp"
+        android:layout_height="76dp"
         android:layout_gravity="bottom"
         android:background="@drawable/bg_nav_bar"
         app:menu="@menu/bottom_nav_menu"

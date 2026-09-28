@@ -84,7 +84,6 @@
             android:textColor="@color/text_primary"
             android:textSize="22sp"
             android:fontFamily="@font/inter_bold"
-            android:textStyle="bold"
             android:visibility="gone"/>
 
         <TextView

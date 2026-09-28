@@ -91,8 +91,7 @@
                     android:text="No stocks yet"
                     android:textColor="@color/text_primary"
                     android:textSize="16sp"
-                    android:fontFamily="@font/inter_semi_bold"
-                    android:textStyle="bold"/>
+                    android:fontFamily="@font/inter_bold"/>
 
                 <TextView
                     android:layout_width="wrap_content"

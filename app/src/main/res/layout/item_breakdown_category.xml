@@ -27,7 +27,7 @@
         android:layout_weight="1"
         android:layout_marginStart="12dp"
         android:textColor="@color/text_primary"
-        android:textSize="13sp"
+        android:textSize="14sp"
         android:fontFamily="@font/inter"
         tools:text="Indian Stocks"/>
 

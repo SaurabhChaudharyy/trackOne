@@ -1,17 +1,11 @@
 package app.trackone.ui.main
 
 import android.os.Bundle
-import android.view.Gravity
-import android.view.View
-import android.view.ViewGroup
-import android.widget.FrameLayout
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import com.google.android.material.transition.MaterialFadeThrough
 import com.google.android.material.transition.platform.MaterialContainerTransformSharedElementCallback
-import com.google.android.material.bottomnavigation.BottomNavigationView
 import app.trackone.R
 import app.trackone.databinding.ActivityMainBinding
 import app.trackone.ui.home.HomeFragment
@@ -45,9 +39,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     private lateinit var activeFragment: Fragment
-
-    /** Neon dot views mapped by menu item position. */
-    private val dotViews = mutableMapOf<Int, View>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         // Container-transform start side (row/card -> stock detail). Overlay off so the tapped
@@ -88,20 +79,15 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private val navItemIds = listOf(R.id.nav_home, R.id.nav_watchlist, R.id.nav_networth, R.id.nav_settings)
-
     private fun setupBottomNav() {
         // Fixed branding — "TrackOne" stays on toolbar always
         binding.tvToolbarTitle.apply {
             text = "TrackOne"
-            val interSemiBold = androidx.core.content.res.ResourcesCompat.getFont(context, R.font.inter_semi_bold)
+            val interBold = androidx.core.content.res.ResourcesCompat.getFont(context, R.font.inter_bold)
             textSize = 28f
-            letterSpacing = -0.03f
-            setTypeface(interSemiBold, android.graphics.Typeface.NORMAL)
+            letterSpacing = -0.01f
+            setTypeface(interBold, android.graphics.Typeface.NORMAL)
         }
-
-        // Inject neon dot indicators after layout
-        binding.bottomNav.post { injectDotIndicators() }
 
         binding.bottomNav.setOnItemSelectedListener { item ->
             binding.bottomNav.performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY)
@@ -114,7 +100,6 @@ class MainActivity : AppCompatActivity() {
             }
             binding.tvToolbarTitle.text = title
             showFragment(fragment)
-            updateDotIndicator(item.itemId)
             true
         }
         binding.bottomNav.selectedItemId = when (activeFragment) {
@@ -122,46 +107,6 @@ class MainActivity : AppCompatActivity() {
             netWorthFragment  -> R.id.nav_networth
             settingsFragment  -> R.id.nav_settings
             else              -> R.id.nav_home
-        }
-    }
-
-    /**
-     * Injects a small marker (neon) dot View into each BottomNavigationView menu item.
-     * The dot sits above the icon in each item's FrameLayout.
-     */
-    private fun injectDotIndicators() {
-        val navView = binding.bottomNav
-        // BottomNavigationView → BottomNavigationMenuView (child 0)
-        val menuView = navView.getChildAt(0) as? ViewGroup ?: return
-        val dotSize = (6 * resources.displayMetrics.density).toInt()
-
-        for (i in 0 until menuView.childCount) {
-            val itemView = menuView.getChildAt(i) as? ViewGroup ?: continue
-
-            val dot = View(this).apply {
-                layoutParams = FrameLayout.LayoutParams(dotSize, dotSize).apply {
-                    // Above the icon: the label now occupies the bottom of the item.
-                    gravity = Gravity.CENTER_HORIZONTAL or Gravity.TOP
-                    topMargin = (3 * resources.displayMetrics.density).toInt()
-                }
-                background = ContextCompat.getDrawable(this@MainActivity, R.drawable.dot_active_tab)
-                visibility = View.GONE
-            }
-
-            // The item view is a FrameLayout — we can add child views
-            itemView.addView(dot)
-            dotViews[i] = dot
-        }
-
-        // Show the dot for the initially selected item
-        updateDotIndicator(binding.bottomNav.selectedItemId)
-    }
-
-    /** Show the marker dot only on the active tab. */
-    private fun updateDotIndicator(selectedId: Int) {
-        val activeIndex = navItemIds.indexOf(selectedId)
-        dotViews.forEach { (index, dot) ->
-            dot.visibility = if (index == activeIndex) View.VISIBLE else View.GONE
         }
     }
 

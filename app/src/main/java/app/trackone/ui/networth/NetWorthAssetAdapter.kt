@@ -113,7 +113,7 @@ class NetWorthAssetAdapter(
                 val gain     = perAsset.absChange
                 val gainPct  = perAsset.pctChange
                 val isGain   = gain >= 0
-                val arrow    = if (isGain) "▲" else "▼"
+                val arrow    = if (isGain) "↗" else "↘"
 
                 binding.tvAssetPl.text = "%s %s (%+.2f%%)".format(
                     arrow, fmt.format(gain), gainPct

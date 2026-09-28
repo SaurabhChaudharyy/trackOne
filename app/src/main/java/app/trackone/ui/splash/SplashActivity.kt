@@ -15,6 +15,8 @@ import app.trackone.ui.main.MainActivity
 import app.trackone.ui.util.applyEdgeToEdge
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.launch
 
 @SuppressLint("CustomSplashScreen")
@@ -85,15 +87,13 @@ class SplashActivity : AppCompatActivity() {
             val minimumMs = 1_400L
             val startTime = System.currentTimeMillis()
 
-            // Wait until ViewModel signals data is ready
-            viewModel.isReady.collect { ready ->
-                if (ready) {
-                    val elapsed = System.currentTimeMillis() - startTime
-                    val remaining = (minimumMs - elapsed).coerceAtLeast(0)
-                    delay(remaining)
-                    navigateToMain()
-                }
-            }
+            // Wait for the prefetch, but never longer than maximumMs: a cold network connection took
+            // over 4 s, and Home shows its cached data and loads the rest itself.
+            val maximumMs = 2_500L
+            withTimeoutOrNull(maximumMs) { viewModel.isReady.first { it } }
+            val elapsed = System.currentTimeMillis() - startTime
+            delay((minimumMs - elapsed).coerceAtLeast(0))
+            navigateToMain()
         }
     }
 

@@ -37,6 +37,14 @@ class ThemeRolesTest {
     }
 
     @Test
+    fun `the theme leaves each view's own font alone`() {
+        // AppCompat's fontFamily on the theme outranks every view's android:fontFamily, so all
+        // layout fonts (Geist Mono numbers, semibold labels) rendered as plain Inter.
+        assertTrue("Theme sets AppCompat's fontFamily", "fontFamily" !in theme)
+        assertEquals("@font/inter", theme["android:fontFamily"])
+    }
+
+    @Test
     fun `filled buttons are ink with inverse text`() {
         // Widget.App.Button used the constant black: invisible on the dark background.
         val button = ColorResources.styleItems("Widget.App.Button")

@@ -1,14 +1,58 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout
+<LinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:animateLayoutChanges="true">
+
+    <!-- ── LIVE UPDATE BANNER ─────────────────────────────────────────── -->
+    <!-- Pinned under the header, above the value it updates (the Marker design). Shown while a
+         background price move is held for the user to apply. The neon marks it because it's the
+         one thing on Home that asks for a tap. -->
+    <LinearLayout
+        android:id="@+id/banner_portfolio_updated"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="20dp"
+        android:layout_marginTop="12dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:background="@drawable/bg_marker_banner"
+        android:minHeight="46dp"
+        android:paddingStart="16dp"
+        android:paddingEnd="14dp"
+        android:paddingVertical="8dp"
+        android:clickable="true"
+        android:focusable="true"
+        android:foreground="?attr/selectableItemBackground"
+        android:visibility="gone"
+        tools:visibility="visible">
+
+        <TextView
+            android:id="@+id/tv_banner_text"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Portfolio updated — tap to apply"
+            android:textColor="@color/on_marker"
+            android:textSize="13sp"
+            android:fontFamily="@font/inter_semi_bold"/>
+
+        <ImageView
+            android:layout_width="18dp"
+            android:layout_height="18dp"
+            android:layout_marginStart="12dp"
+            android:src="@drawable/ic_arrow_up_right"
+            android:importantForAccessibility="no"/>
+    </LinearLayout>
 
     <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
         android:id="@+id/swipe_refresh_home"
         android:layout_width="match_parent"
-        android:layout_height="match_parent">
+        android:layout_height="0dp"
+        android:layout_weight="1">
 
     <ScrollView
         android:layout_width="match_parent"
@@ -52,7 +96,7 @@
                         android:text="Portfolio Value"
                         android:textColor="@color/text_secondary"
                         android:textSize="14sp"
-                        android:letterSpacing="0.04"/>
+                        android:letterSpacing="0.02"/>
 
                     <TextView
                         android:id="@+id/tv_date"
@@ -72,7 +116,8 @@
                     android:layout_marginTop="6dp"
                     android:textColor="@color/text_primary"
                     android:textSize="36sp"
-                    android:fontFamily="@font/geist_pixel_square"
+                    android:fontFamily="@font/inter"
+                    android:fontFeatureSettings="tnum"
                     android:letterSpacing="0.01"
                     android:singleLine="true"
                     tools:text="₹12,34,567"/>
@@ -90,8 +135,8 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:textSize="15sp"
-                        android:letterSpacing="-0.02"
-                        android:textStyle="bold"
+                        android:fontFamily="@font/inter_bold"
+                        android:fontFeatureSettings="tnum"
                         android:visibility="gone"
                         tools:text="↗ +₹14,200  (+5.9%)"/>
 
@@ -114,7 +159,7 @@
                             android:text="Invested "
                             android:textColor="@color/text_tertiary"
                             android:textSize="11sp"
-                            android:fontFamily="@font/inter"/>
+                            android:fontFamily="@font/geist_mono"/>
 
                         <TextView
                             android:id="@+id/tv_invested_amount"
@@ -138,11 +183,12 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
-                    android:text="TAP FOR FULL BREAKDOWN  →"
+                    android:text="@string/tap_for_breakdown"
                     android:textColor="@color/text_tertiary"
-                    android:textSize="9sp"
-                    android:fontFamily="@font/inter_semi_bold"
-                    android:letterSpacing="0.08"
+                    android:textSize="10sp"
+                    tools:ignore="SmallSp"
+                    android:fontFamily="@font/inter"
+                    android:letterSpacing="0.1"
                     android:textAllCaps="true"/>
             </LinearLayout>
 
@@ -197,11 +243,13 @@
                     android:textSize="12sp"
                     android:visibility="gone"/>
 
-                <!-- Range selector -->
+                <!-- Range selector: spread across the full width (1W at the left edge, 1Y at the
+                     right), with equal gaps from the weighted Spaces between the chips. -->
                 <LinearLayout
-                    android:layout_width="wrap_content"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="10dp"
+                    android:layout_marginEnd="20dp"
                     android:orientation="horizontal">
 
                     <TextView
@@ -214,9 +262,13 @@
                         android:paddingHorizontal="12dp"
                         android:text="@string/chart_range_1w"
                         android:textSize="12sp"
-                        android:fontFamily="@font/inter_semi_bold"
+                        android:fontFamily="@font/inter_bold"
                         android:textColor="@color/text_secondary"
                         android:contentDescription="@string/chart_range_1w_desc"/>
+                    <Space
+                        android:layout_width="0dp"
+                        android:layout_height="0dp"
+                        android:layout_weight="1"/>
                     <TextView
                         android:id="@+id/tv_range_1m"
                         android:layout_width="wrap_content"
@@ -227,9 +279,13 @@
                         android:paddingHorizontal="12dp"
                         android:text="@string/chart_range_1m"
                         android:textSize="12sp"
-                        android:fontFamily="@font/inter_semi_bold"
+                        android:fontFamily="@font/inter_bold"
                         android:textColor="@color/text_secondary"
                         android:contentDescription="@string/chart_range_1m_desc"/>
+                    <Space
+                        android:layout_width="0dp"
+                        android:layout_height="0dp"
+                        android:layout_weight="1"/>
                     <TextView
                         android:id="@+id/tv_range_3m"
                         android:layout_width="wrap_content"
@@ -240,9 +296,13 @@
                         android:paddingHorizontal="12dp"
                         android:text="@string/chart_range_3m"
                         android:textSize="12sp"
-                        android:fontFamily="@font/inter_semi_bold"
+                        android:fontFamily="@font/inter_bold"
                         android:textColor="@color/text_secondary"
                         android:contentDescription="@string/chart_range_3m_desc"/>
+                    <Space
+                        android:layout_width="0dp"
+                        android:layout_height="0dp"
+                        android:layout_weight="1"/>
                     <TextView
                         android:id="@+id/tv_range_1y"
                         android:layout_width="wrap_content"
@@ -253,7 +313,7 @@
                         android:paddingHorizontal="12dp"
                         android:text="@string/chart_range_1y"
                         android:textSize="12sp"
-                        android:fontFamily="@font/inter_semi_bold"
+                        android:fontFamily="@font/inter_bold"
                         android:textColor="@color/text_secondary"
                         android:contentDescription="@string/chart_range_1y_desc"/>
                 </LinearLayout>
@@ -266,7 +326,7 @@
                     android:layout_marginBottom="16dp"
                     android:text="@string/chart_caption"
                     android:textColor="@color/text_tertiary"
-                    android:textSize="11sp"
+                    android:textSize="12sp"
                     android:fontFamily="@font/inter"/>
             </LinearLayout>
 
@@ -288,9 +348,10 @@
                     android:layout_height="wrap_content"
                     android:text="TODAY'S MOVERS"
                     android:textColor="@color/text_tertiary"
-                    android:textSize="9sp"
+                    android:textSize="10sp"
+                    tools:ignore="SmallSp"
                     android:fontFamily="@font/inter_semi_bold"
-                    android:letterSpacing="0.16"
+                    android:letterSpacing="0.1"
                     android:textAllCaps="true"
                     android:paddingHorizontal="20dp"/>
 
@@ -408,8 +469,7 @@
                         android:text="Closed"
                         android:textColor="@color/text_tertiary"
                         android:textSize="11sp"
-                        android:fontFamily="@font/inter_semi_bold"
-                        android:textStyle="bold"
+                        android:fontFamily="@font/inter_bold"
                         tools:text="Open"/>
                 </LinearLayout>
 
@@ -442,8 +502,7 @@
                         android:text="Closed"
                         android:textColor="@color/text_tertiary"
                         android:textSize="11sp"
-                        android:fontFamily="@font/inter_semi_bold"
-                        android:textStyle="bold"
+                        android:fontFamily="@font/inter_bold"
                         tools:text="Closed"/>
                 </LinearLayout>
             </LinearLayout>
@@ -503,36 +562,16 @@
                         android:singleLine="true"
                         tools:text="23,408"/>
 
-                    <LinearLayout
-                        android:id="@+id/pill_nifty"
-                        tools:ignore="UseCompoundDrawables"
+                    <TextView
+                        android:id="@+id/tv_nifty_change"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:clickable="false"
-                        android:focusable="false"
-                        android:paddingHorizontal="0dp"
+                        android:layout_marginTop="6dp"
                         android:paddingVertical="2dp"
-                        android:gravity="center_vertical"
-                        android:layout_marginTop="6dp">
-
-                        <ImageView
-                            android:id="@+id/iv_nifty_trend"
-                            android:layout_width="10dp"
-                            android:layout_height="10dp"
-                            android:layout_marginEnd="2dp"
-                            android:src="@drawable/ic_trending_down"
-                            android:contentDescription="trend"/>
-
-                        <TextView
-                            android:id="@+id/tv_nifty_change"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:textColor="@color/text_primary"
-                            android:textSize="11sp"
-                            android:fontFamily="@font/geist_mono"
-                            tools:text="-0.73%"/>
-                    </LinearLayout>
+                        android:textColor="@color/text_primary"
+                        android:textSize="11sp"
+                        android:fontFamily="@font/geist_mono"
+                        tools:text="↘ -0.73%"/>
                 </LinearLayout>
 
                 <LinearLayout
@@ -569,36 +608,16 @@
                         android:singleLine="true"
                         tools:text="76,985"/>
 
-                    <LinearLayout
-                        android:id="@+id/pill_sensex"
-                        tools:ignore="UseCompoundDrawables"
+                    <TextView
+                        android:id="@+id/tv_sensex_change"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:clickable="false"
-                        android:focusable="false"
-                        android:paddingHorizontal="0dp"
+                        android:layout_marginTop="6dp"
                         android:paddingVertical="2dp"
-                        android:gravity="center_vertical"
-                        android:layout_marginTop="6dp">
-
-                        <ImageView
-                            android:id="@+id/iv_sensex_trend"
-                            android:layout_width="10dp"
-                            android:layout_height="10dp"
-                            android:layout_marginEnd="2dp"
-                            android:src="@drawable/ic_trending_up"
-                            android:contentDescription="trend"/>
-
-                        <TextView
-                            android:id="@+id/tv_sensex_change"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:textColor="@color/text_primary"
-                            android:textSize="11sp"
-                            android:fontFamily="@font/geist_mono"
-                            tools:text="+0.42%"/>
-                    </LinearLayout>
+                        android:textColor="@color/text_primary"
+                        android:textSize="11sp"
+                        android:fontFamily="@font/geist_mono"
+                        tools:text="↗ +0.42%"/>
                 </LinearLayout>
             </LinearLayout>
 
@@ -657,36 +676,16 @@
                         android:singleLine="true"
                         tools:text="5,667"/>
 
-                    <LinearLayout
-                        android:id="@+id/pill_sp500"
-                        tools:ignore="UseCompoundDrawables"
+                    <TextView
+                        android:id="@+id/tv_sp500_change"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:clickable="false"
-                        android:focusable="false"
-                        android:paddingHorizontal="0dp"
+                        android:layout_marginTop="6dp"
                         android:paddingVertical="2dp"
-                        android:gravity="center_vertical"
-                        android:layout_marginTop="6dp">
-
-                        <ImageView
-                            android:id="@+id/iv_sp500_trend"
-                            android:layout_width="10dp"
-                            android:layout_height="10dp"
-                            android:layout_marginEnd="2dp"
-                            android:src="@drawable/ic_trending_up"
-                            android:contentDescription="trend"/>
-
-                        <TextView
-                            android:id="@+id/tv_sp500_change"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:textColor="@color/text_primary"
-                            android:textSize="11sp"
-                            android:fontFamily="@font/geist_mono"
-                            tools:text="+0.22%"/>
-                    </LinearLayout>
+                        android:textColor="@color/text_primary"
+                        android:textSize="11sp"
+                        android:fontFamily="@font/geist_mono"
+                        tools:text="↗ +0.22%"/>
                 </LinearLayout>
 
                 <LinearLayout
@@ -723,36 +722,16 @@
                         android:singleLine="true"
                         tools:text="17,754"/>
 
-                    <LinearLayout
-                        android:id="@+id/pill_nasdaq"
-                        tools:ignore="UseCompoundDrawables"
+                    <TextView
+                        android:id="@+id/tv_nasdaq_change"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:clickable="false"
-                        android:focusable="false"
-                        android:paddingHorizontal="0dp"
+                        android:layout_marginTop="6dp"
                         android:paddingVertical="2dp"
-                        android:gravity="center_vertical"
-                        android:layout_marginTop="6dp">
-
-                        <ImageView
-                            android:id="@+id/iv_nasdaq_trend"
-                            android:layout_width="10dp"
-                            android:layout_height="10dp"
-                            android:layout_marginEnd="2dp"
-                            android:src="@drawable/ic_trending_down"
-                            android:contentDescription="trend"/>
-
-                        <TextView
-                            android:id="@+id/tv_nasdaq_change"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:textColor="@color/text_primary"
-                            android:textSize="11sp"
-                            android:fontFamily="@font/geist_mono"
-                            tools:text="-0.18%"/>
-                    </LinearLayout>
+                        android:textColor="@color/text_primary"
+                        android:textSize="11sp"
+                        android:fontFamily="@font/geist_mono"
+                        tools:text="↘ -0.18%"/>
                 </LinearLayout>
             </LinearLayout>
 
@@ -760,47 +739,4 @@
     </ScrollView>
     </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
 
-    <!-- ── LIVE UPDATE BANNER ─────────────────────────────────────────── -->
-    <!-- Shown (with slide-up animation) when fresh live prices are ready. The neon marks it
-         because it's the one thing on Home that asks for a tap. -->
-    <LinearLayout
-        android:id="@+id/banner_portfolio_updated"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_gravity="bottom"
-        android:layout_marginHorizontal="16dp"
-        android:layout_marginBottom="72dp"
-        android:orientation="horizontal"
-        android:gravity="center_vertical"
-        android:background="@color/marker"
-        android:minHeight="48dp"
-        android:paddingHorizontal="16dp"
-        android:paddingVertical="12dp"
-        android:elevation="8dp"
-        android:clickable="true"
-        android:focusable="true"
-        android:foreground="?attr/selectableItemBackground"
-        android:visibility="gone"
-        tools:visibility="visible">
-
-        <TextView
-            android:id="@+id/tv_banner_text"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="Portfolio updated — tap to apply"
-            android:textColor="@color/on_marker"
-            android:textSize="13sp"
-            android:fontFamily="@font/inter_semi_bold"/>
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="↑"
-            android:textColor="@color/on_marker"
-            android:textSize="18sp"
-            android:fontFamily="@font/inter_semi_bold"
-            android:layout_marginStart="8dp"/>
-    </LinearLayout>
-
-</FrameLayout>
+</LinearLayout>

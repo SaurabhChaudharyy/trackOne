@@ -10,7 +10,8 @@
     <com.google.android.material.appbar.MaterialToolbar
         android:id="@+id/config_toolbar"
         android:layout_width="match_parent"
-        android:layout_height="?attr/actionBarSize"
+        android:layout_height="wrap_content"
+        android:minHeight="?attr/actionBarSize"
         android:background="@color/background"
         app:navigationIconTint="@color/text_primary"/>
 
@@ -33,12 +34,15 @@
         app:hintTextColor="@color/text_tertiary"
         app:boxStrokeColor="@color/border_color"
         app:boxStrokeWidth="1dp"
+        app:hintEnabled="false"
         style="@style/Widget.Material3.TextInputLayout.FilledBox">
 
         <com.google.android.material.textfield.TextInputEditText
             android:id="@+id/et_search"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:paddingTop="14dp"
+            android:paddingBottom="14dp"
             android:hint="Search symbol or company…"
             android:inputType="text"
             android:imeOptions="actionSearch"

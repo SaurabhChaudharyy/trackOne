@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <selector xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:color="@color/nav_icon_active" android:state_checked="true"/>
+    <!-- Active icon sits on the neon pill, so it takes the ink that reads on neon. -->
+    <item android:color="@color/on_marker" android:state_checked="true"/>
     <item android:color="@color/nav_icon_inactive"/>
 </selector>

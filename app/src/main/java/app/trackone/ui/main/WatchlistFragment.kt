@@ -2,7 +2,6 @@ package app.trackone.ui.main
 
 import android.graphics.Canvas
 import android.graphics.Paint
-import android.graphics.Typeface
 import android.os.Bundle
 import android.view.HapticFeedbackConstants
 import android.view.LayoutInflater
@@ -372,7 +371,7 @@ class WatchlistFragment : Fragment() {
                         val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
                             color     = ContextCompat.getColor(ctx, R.color.on_danger)
                             textSize  = 13f * density
-                            typeface  = Typeface.DEFAULT_BOLD
+                            typeface  = androidx.core.content.res.ResourcesCompat.getFont(ctx, R.font.inter_semi_bold)
                             textAlign = Paint.Align.CENTER
                         }
                         val cx = itemView.right - revealed / 2f

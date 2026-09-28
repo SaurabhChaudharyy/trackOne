@@ -26,8 +26,7 @@
                 android:layout_height="wrap_content"
                 android:textColor="@color/text_primary"
                 android:textSize="14sp"
-                android:fontFamily="@font/inter_semi_bold"
-                android:textStyle="bold"
+                android:fontFamily="@font/inter_bold"
                 android:singleLine="true"
                 android:ellipsize="end"
                 android:letterSpacing="-0.01"
@@ -82,6 +81,7 @@
                 android:layout_height="wrap_content"
                 android:textColor="@color/text_secondary"
                 android:textSize="13sp"
+                android:fontFamily="@font/geist_mono"
                 android:singleLine="true"
                 android:ellipsize="end"
                 tools:text="-7.94"/>
@@ -94,32 +94,16 @@
             android:orientation="horizontal"
             android:gravity="end|center_vertical">
 
-            <LinearLayout
-                android:id="@+id/change_container"
-                tools:ignore="UseCompoundDrawables"
+            <TextView
+                android:id="@+id/tv_change_percent"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical"
                 android:paddingHorizontal="8dp"
-                android:paddingVertical="3dp">
-
-                <TextView
-                    android:id="@+id/tv_change_percent"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:textColor="@color/text_primary"
-                    android:textSize="12sp"
-                    tools:text="-4.06%"/>
-
-                <ImageView
-                    android:id="@+id/iv_trend"
-                    android:layout_width="12dp"
-                    android:layout_height="12dp"
-                    android:layout_marginStart="2dp"
-                    android:src="@drawable/ic_trending_down"
-                    android:contentDescription="Trend"/>
-            </LinearLayout>
+                android:paddingVertical="3dp"
+                android:textColor="@color/text_primary"
+                android:textSize="12sp"
+                android:fontFamily="@font/inter_bold"
+                tools:text="↘ -4.06%"/>
         </LinearLayout>
 
         <ImageButton

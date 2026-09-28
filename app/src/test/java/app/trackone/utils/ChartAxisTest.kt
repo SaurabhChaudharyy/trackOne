@@ -30,4 +30,33 @@ class ChartAxisTest {
         assertEquals(15.0, 100.0 - lo, 1e-9)     // 15% of the 100-wide swing
         assertEquals(15.0, hi - 200.0, 1e-9)
     }
+
+    @Test
+    fun `ticks put round labels on both chart edges and contain the data`() {
+        val t = ChartAxis.ticks(952_000.0, 991_000.0)
+
+        assertTrue(t.lo <= 952_000.0 && t.hi >= 991_000.0)
+        assertEquals(0.0, t.lo % t.step, 1e-6)          // bottom edge is a label
+        assertEquals(0.0, t.hi % t.step, 1e-6)          // top edge is a label
+        assertTrue(t.count in 3..6)
+    }
+
+    @Test
+    fun `ticks pick the finest round step, not a coarse one that leaves empty chart`() {
+        // Real 1Y case: 8.1L..9.95L. A 1L step put the floor at 7L, a band of empty chart.
+        val t = ChartAxis.ticks(810_000.0, 995_000.0)
+
+        assertEquals(50_000.0, t.step, 1e-6)
+        assertEquals(800_000.0, t.lo, 1e-6)
+        assertEquals(1_050_000.0, t.hi, 1e-6)
+    }
+
+    @Test
+    fun `ticks on a flat series still span a visible range`() {
+        val t = ChartAxis.ticks(100_000.0, 100_000.0)
+
+        assertTrue(t.hi > t.lo)
+        assertTrue(t.lo <= 100_000.0 && t.hi >= 100_000.0)
+        assertTrue(t.count >= 2)
+    }
 }

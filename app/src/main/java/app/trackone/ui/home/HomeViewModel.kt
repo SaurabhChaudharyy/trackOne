@@ -10,6 +10,7 @@ import app.trackone.data.database.AssetType
 import app.trackone.data.database.NetWorthAssetEntity
 import app.trackone.data.database.NetWorthDao
 import app.trackone.data.database.StockEntity
+import app.trackone.data.repository.ChartSnapshotStore
 import app.trackone.data.repository.NetWorthRepository
 import app.trackone.data.repository.PortfolioHistoryRepository
 import app.trackone.data.repository.StockRepository
@@ -72,6 +73,28 @@ internal fun buildTopMover(asset: NetWorthAssetEntity, stock: StockEntity): TopM
 )
 
 /**
+ * Whether Home holds [latest] behind its "Portfolio updated" banner instead of showing it: only
+ * when the sole difference from what's on screen ([shown]) is prices a background refresh wrote
+ * ([backgroundWrite], holding id to value) and the total moved by more than ₹1. An edit, an
+ * import, a rename or a refresh the user asked for shows at once.
+ */
+internal fun holdBehindBanner(
+    shown: List<NetWorthAssetEntity>,
+    latest: List<NetWorthAssetEntity>,
+    backgroundWrite: Map<Long, Double>
+): Boolean {
+    if (shown.size != latest.size) return false
+    val before = shown.associateBy { it.id }
+    val onlyBackgroundPrices = latest.all { now ->
+        val then = before[now.id] ?: return false
+        now.copy(currentValue = then.currentValue, updatedAt = then.updatedAt) == then &&
+            (now.currentValue == then.currentValue || backgroundWrite[now.id] == now.currentValue)
+    }
+    val moved = kotlin.math.abs(PortfolioGainLoss.compute(latest).current - PortfolioGainLoss.compute(shown).current)
+    return onlyBackgroundPrices && moved > 1.0
+}
+
+/**
  * Aggregated portfolio summary for the Home screen card.
  */
 data class PortfolioSummary(
@@ -96,7 +119,8 @@ class HomeViewModel @Inject constructor(
     private val repository: StockRepository,
     private val netWorthRepository: NetWorthRepository,
     private val netWorthDao: NetWorthDao,
-    private val portfolioHistoryRepository: PortfolioHistoryRepository
+    private val portfolioHistoryRepository: PortfolioHistoryRepository,
+    private val chartSnapshots: ChartSnapshotStore
 ) : ViewModel() {
 
     companion object {
@@ -144,12 +168,16 @@ class HomeViewModel @Inject constructor(
     val chartLoading: LiveData<Boolean> = _chartLoading
 
     private var chartJob: Job? = null
-    private var latestAssets: List<NetWorthAssetEntity> = emptyList()
+
+    /** The holdings the summary and chart on screen were built from; null until the first load. */
+    private var shownAssets: List<NetWorthAssetEntity>? = null
+    /** A background price move held behind the "Portfolio updated" banner until the user taps it. */
+    private var heldAssets: List<NetWorthAssetEntity>? = null
 
     fun setChartRange(range: ChartRange) {
         if (range == _chartRange.value) return
         _chartRange.value = range
-        rebuildChart(latestAssets)
+        rebuildChart(shownAssets.orEmpty())
     }
 
     /**
@@ -158,7 +186,6 @@ class HomeViewModel @Inject constructor(
      * newer one. The fetches themselves are cached per symbol+range by the repository.
      */
     private fun rebuildChart(assets: List<NetWorthAssetEntity>) {
-        latestAssets = assets
         chartJob?.cancel()
         if (assets.isEmpty()) {
             _chartLoading.value = false
@@ -166,16 +193,32 @@ class HomeViewModel @Inject constructor(
             return
         }
         val range = _chartRange.value ?: ChartRange.MONTH
+        // First draw of this range: show the last chart saved for it right away, ending on today's
+        // total, while the fresh one downloads. A later rebuild of the same range keeps what's drawn.
+        if (drawnRange != range) {
+            chartSnapshots.load(range)?.let { saved ->
+                val total = assets.sumOf { it.currentValue }
+                _portfolioChartData.value = saved.dropLast(1) + saved.last().copy(current = total)
+                drawnRange = range
+            }
+        }
+        // A chart already drawn for this range refreshes quietly; only an empty one shows loading.
+        val quiet = drawnRange == range
         chartJob = viewModelScope.launch {
-            _chartLoading.value = true
+            _chartLoading.value = !quiet
             val points = portfolioHistoryRepository.history(assets, range)
             _portfolioChartData.value = points
+            drawnRange = range
+            if (points.size >= 2) chartSnapshots.save(range, points)
             _chartLoading.value = false
         }
     }
 
-    // ── Portfolio refresh event (fires when live data differs from cached) ─────
-    /** Carries the fresh PortfolioSummary so the Fragment can show a "Updated" banner. */
+    /** The range whose chart is on screen, so a rebuild knows whether a saved snapshot helps. */
+    private var drawnRange: ChartRange? = null
+
+    // ── Held background move (shows the "Portfolio updated" banner) ─────
+    /** The held move's summary while the banner is up; null otherwise. */
     private val _portfolioRefreshed = MutableLiveData<PortfolioSummary?>()
     val portfolioRefreshed: LiveData<PortfolioSummary?> = _portfolioRefreshed
 
@@ -190,24 +233,30 @@ class HomeViewModel @Inject constructor(
     // back here. Without this, Home only ever recomputed on init or swipe-to-refresh,
     // so those actions left it showing stale numbers until the user manually refreshed.
     private val netWorthAssetsLiveData: LiveData<List<NetWorthAssetEntity>> = netWorthDao.getAllAssets()
+    // A background price refresh is the exception: it's held behind the banner (holdBehindBanner),
+    // so the total doesn't change under the user.
     private val netWorthAssetsObserver = Observer<List<NetWorthAssetEntity>> { assets ->
-        _portfolioSummary.value = buildPortfolioSummary(assets)
-        rebuildChart(assets)
+        val shown = shownAssets
+        if (shown != null && holdBehindBanner(shown, assets, netWorthRepository.lastBackgroundWrite)) {
+            heldAssets = assets
+            _portfolioRefreshed.value = buildPortfolioSummary(assets)
+        } else {
+            show(assets)
+        }
     }
 
     init {
         // Recompute the summary/chart whenever the underlying table changes, for as
         // long as this ViewModel is alive — not just while the Fragment's view exists.
+        // Its first delivery is the cached data (instant — no network).
         netWorthAssetsLiveData.observeForever(netWorthAssetsObserver)
-        // 1️⃣ Show cached data immediately (instant — no network)
-        viewModelScope.launch { loadCachedPortfolio() }
-        // 2️⃣ Refresh live prices in background; emit banner event if values changed.
+        // Refresh live prices in background; a move is held behind the banner (see above).
         // Delayed slightly so this doesn't compete with the cached data above for CPU/IO
-        // while the screen is still laying out and animating in — a network refresh landing
-        // mid-launch was the main cause of values visibly changing right after opening the app.
+        // while the screen is still laying out and animating in.
         viewModelScope.launch { delay(STARTUP_REFRESH_DELAY_MS); refreshLivePricesQuietly() }
-        // 3️⃣ Fetch indexes + top movers (also background)
-        viewModelScope.launch { fetchIndexes(); fetchTopMovers() }
+        // Fetch indexes + top movers (also background)
+        viewModelScope.launch { fetchIndexes() }
+        viewModelScope.launch { fetchTopMovers() }
     }
 
     override fun onCleared() {
@@ -238,47 +287,35 @@ class HomeViewModel @Inject constructor(
                 launch { fetchIndexes() }
                 launch { fetchTopMovers() }
             }
-            // Both read the DB values netWorthRepository just wrote above, so these must
-            // wait for the whole coroutineScope block (and therefore all three) to finish.
-            computePortfolioSummary()
-            computePortfolioChartData()
+            // Reads the DB values netWorthRepository just wrote above, so this must wait for
+            // the whole coroutineScope block (and therefore all three) to finish. Also applies
+            // any move held behind the banner.
+            show(netWorthDao.getAllAssetsSync())
             _isLoading.value = false
         }
     }
 
     /**
-     * Reads asset values from Room cache and immediately posts them to the UI.
-     * No network calls — runs in milliseconds.
-     */
-    private suspend fun loadCachedPortfolio() {
-        computePortfolioSummary()
-        computePortfolioChartData()
-    }
-
-    /**
-     * Silently refreshes live prices from the network.
-     * If the resulting portfolio value differs from the current cached value by > ₹1,
-     * emits [portfolioRefreshed] so the Fragment can show an "Updated" banner.
-     * Does NOT auto-apply — the user taps the banner to accept the new value.
+     * Silently refreshes live prices from the network. Doesn't touch the screen: when it writes,
+     * the observer holds a move of more than ₹1 behind the "Portfolio updated" banner, and the
+     * user taps it to apply.
      */
     private suspend fun refreshLivePricesQuietly() {
-        val cachedSummary = _portfolioSummary.value
-        netWorthRepository.refreshNetWorthAssets()  // updates currentValue in DB
-        val freshSummary = buildPortfolioSummary() ?: return
-        // Emit only if the value changed meaningfully (> ₹1 delta)
-        if (cachedSummary == null ||
-            kotlin.math.abs(freshSummary.totalCurrent - cachedSummary.totalCurrent) > 1.0) {
-            _portfolioRefreshed.postValue(freshSummary)
-        }
+        netWorthRepository.refreshNetWorthAssets()
     }
 
-    /** Called from the Fragment when the user taps the "Updated" banner. */
+    /** Called from the Fragment when the user taps the "Portfolio updated" banner. */
     fun applyRefreshedPortfolio() {
-        val fresh = _portfolioRefreshed.value ?: return
-        _portfolioSummary.postValue(fresh)
-        _portfolioRefreshed.postValue(null)          // dismiss banner
-        // Rebuild chart with the now-updated DB values
-        viewModelScope.launch { computePortfolioChartData() }
+        show(heldAssets ?: return)
+    }
+
+    /** Puts [assets] on screen (summary and chart) and drops any held move, which [assets] supersedes. */
+    private fun show(assets: List<NetWorthAssetEntity>) {
+        shownAssets = assets
+        heldAssets = null
+        _portfolioRefreshed.value = null
+        _portfolioSummary.value = buildPortfolioSummary(assets)
+        rebuildChart(assets)
     }
 
     private suspend fun fetchIndexes() {
@@ -333,29 +370,30 @@ class HomeViewModel @Inject constructor(
             return
         }
 
+        fun symbolOf(asset: NetWorthAssetEntity) = when (asset.assetType) {
+            AssetType.GOLD     -> "GC=F"
+            AssetType.SILVER   -> "SI=F"
+            // Same NSE-suffix fix as NetWorthRepository — a bare broker-imported
+            // ticker like "IEX" would otherwise resolve to an unrelated US company.
+            AssetType.STOCK_IN -> SymbolUtils.normaliseIndianSymbol(asset.name)
+            else               -> asset.name
+        }
+        fun topFive(movers: List<TopMover>) = movers.sortedByDescending { kotlin.math.abs(it.stock.changePercent) }.take(5)
+
+        // The last quotes saved on this device first, so the cards show at once; live ones replace them.
+        val cached = assets.mapNotNull { asset -> repository.getStockSync(symbolOf(asset))?.let { buildTopMover(asset, it) } }
+        if (cached.isNotEmpty()) _topMovers.postValue(topFive(cached))
+
         val results = coroutineScope {
             assets.map { asset ->
                 async {
-                    val symbol = when (asset.assetType) {
-                        AssetType.GOLD     -> "GC=F"
-                        AssetType.SILVER   -> "SI=F"
-                        // Same NSE-suffix fix as NetWorthRepository — a bare broker-imported
-                        // ticker like "IEX" would otherwise resolve to an unrelated US company.
-                        AssetType.STOCK_IN -> SymbolUtils.normaliseIndianSymbol(asset.name)
-                        else               -> asset.name
-                    }
-                    val result = repository.fetchAndCacheStock(symbol)
-                    if (result is Resource.Success) {
-                        val stock = result.data
-                        buildTopMover(asset, stock)
-                    } else null
+                    val result = repository.fetchAndCacheStock(symbolOf(asset))
+                    if (result is Resource.Success) buildTopMover(asset, result.data) else null
                 }
             }.awaitAll()
         }.filterNotNull()
 
-        // Sort by absolute % change descending, take top 5
-        val top5 = results.sortedByDescending { kotlin.math.abs(it.stock.changePercent) }.take(5)
-        _topMovers.postValue(top5)
+        if (results.isNotEmpty() || cached.isEmpty()) _topMovers.postValue(topFive(results))
     }
 
     /**
@@ -363,7 +401,6 @@ class HomeViewModel @Inject constructor(
      * Assets with buyPrice == 0 are counted as break-even.
      * Returns null if there are no assets.
      */
-    /** Pure — no DB access — so both the reactive observer and the suspend callers can share it. */
     private fun buildPortfolioSummary(assets: List<NetWorthAssetEntity>): PortfolioSummary? {
         if (assets.isEmpty()) return null
         val gainLoss = PortfolioGainLoss.compute(assets)
@@ -373,16 +410,5 @@ class HomeViewModel @Inject constructor(
             absChange     = gainLoss.absChange,
             pctChange     = gainLoss.pctChange
         )
-    }
-
-    private suspend fun buildPortfolioSummary(): PortfolioSummary? =
-        buildPortfolioSummary(netWorthDao.getAllAssetsSync())
-
-    private suspend fun computePortfolioSummary() {
-        _portfolioSummary.postValue(buildPortfolioSummary())
-    }
-
-    private suspend fun computePortfolioChartData() {
-        rebuildChart(netWorthDao.getAllAssetsSync())
     }
 }
