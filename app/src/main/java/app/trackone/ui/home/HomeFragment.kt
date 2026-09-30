@@ -56,6 +56,9 @@ class HomeFragment : Fragment() {
     /** Once a chart has shown, the range chips stay put even when a range has no data, so the
      *  person can always switch away from it. */
     private var chartEverShown = false
+
+    /** The range whose left-to-right sweep has already played on this chart view. */
+    private var sweptRange: ChartRange? = null
     /** Mover card that launched the stock detail screen, so a rebuilt card keeps its transition name. */
     private var sharedMoverSymbol: String? = null
 
@@ -245,6 +248,8 @@ class HomeFragment : Fragment() {
 
     private fun setupPortfolioChart() {
         binding.portfolioLineChart.apply {
+            revealRenderer = app.trackone.ui.util.RevealLineChartRenderer(this, animator, viewPortHandler)
+                .also { renderer = it }
             description.isEnabled = false
             legend.isEnabled      = false
             setBackgroundColor(Color.TRANSPARENT)
@@ -475,8 +480,35 @@ class HomeFragment : Fragment() {
             axisRight.granularity = ticks.step.toFloat()
             axisRight.setLabelCount(ticks.count, true)
             data = LineData(currentDataSet)
-            animateX(700)
-            invalidate()
+            // The sweep plays for a new range (and the first draw), not on every delivery: the
+            // saved chart followed by the fresh download, or a price refresh, would otherwise wipe
+            // the line and re-draw it from the left each time, which reads as choppy flicker.
+            val range = viewModel.chartRange.value
+            if (range != sweptRange) {
+                sweptRange = range
+                playReveal()
+            } else {
+                invalidate()
+            }
+        }
+    }
+
+    private var revealRenderer: app.trackone.ui.util.RevealLineChartRenderer? = null
+    private var revealAnimator: android.animation.ValueAnimator? = null
+
+    /** Sweeps the line in from the left, a pixel at a time (see [RevealLineChartRenderer]). */
+    private fun playReveal() {
+        val renderer = revealRenderer ?: return
+        revealAnimator?.cancel()
+        renderer.reveal = 0f
+        revealAnimator = android.animation.ValueAnimator.ofFloat(0f, 1f).apply {
+            duration = 700
+            interpolator = android.view.animation.PathInterpolator(0.2f, 0f, 0f, 1f)
+            addUpdateListener {
+                renderer.reveal = it.animatedValue as Float
+                _binding?.portfolioLineChart?.invalidate()
+            }
+            start()
         }
     }
 
@@ -798,6 +830,10 @@ class HomeFragment : Fragment() {
         // An infinite animator would otherwise keep the destroyed view tree alive.
         skeletonAnimator?.cancel()
         skeletonAnimator = null
+        revealAnimator?.cancel()
+        revealAnimator = null
+        revealRenderer = null
+        sweptRange = null   // a re-created view gets its entrance sweep again
         _binding = null
     }
 

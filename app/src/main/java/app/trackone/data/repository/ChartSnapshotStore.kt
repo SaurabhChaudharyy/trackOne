@@ -2,6 +2,7 @@ package app.trackone.data.repository
 
 import android.content.Context
 import androidx.core.content.edit
+import app.trackone.data.database.NetWorthAssetEntity
 import app.trackone.ui.home.PortfolioChartPoint
 import app.trackone.utils.ChartRange
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -17,14 +18,34 @@ class ChartSnapshotStore @Inject constructor(@ApplicationContext context: Contex
 
     private val prefs = context.getSharedPreferences("chart_snapshots", Context.MODE_PRIVATE)
 
-    fun load(range: ChartRange): List<PortfolioChartPoint>? =
-        prefs.getString(range.name, null)?.let(::decode)?.takeIf { it.size >= 2 }
-
-    fun save(range: ChartRange, points: List<PortfolioChartPoint>) {
-        prefs.edit { putString(range.name, encode(points)) }
+    /**
+     * The saved chart for [range], or null when there is none OR it was drawn for different
+     * holdings ([fingerprint] mismatch). A chart is quantity x price history, so one saved before an
+     * import describes a smaller portfolio: showing it ends the old history on today's larger total,
+     * a sharp jump on the latest day that only corrects itself once the fresh download lands.
+     */
+    fun load(range: ChartRange, fingerprint: String): List<PortfolioChartPoint>? {
+        if (prefs.getString(fingerprintKey(range), null) != fingerprint) return null
+        return prefs.getString(range.name, null)?.let(::decode)?.takeIf { it.size >= 2 }
     }
 
+    fun save(range: ChartRange, points: List<PortfolioChartPoint>, fingerprint: String) {
+        prefs.edit {
+            putString(range.name, encode(points))
+            putString(fingerprintKey(range), fingerprint)
+        }
+    }
+
+    private fun fingerprintKey(range: ChartRange) = "${range.name}_holdings"
+
     companion object {
+        /**
+         * Identifies what a chart was built from: which holdings, and how many of each. Prices are left
+         * out on purpose: they move all day, and the last point is re-anchored to the live total anyway.
+         */
+        fun fingerprint(assets: List<NetWorthAssetEntity>): String =
+            assets.map { "${it.name}|${it.assetType}|${it.quantity}" }.sorted().joinToString(";").hashCode().toString(16)
+
         fun encode(points: List<PortfolioChartPoint>): String =
             points.joinToString(";") { "${it.timestamp},${it.invested},${it.current}" }
 

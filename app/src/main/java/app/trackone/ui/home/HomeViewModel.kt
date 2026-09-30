@@ -128,6 +128,11 @@ class HomeViewModel @Inject constructor(
          *  passive live-price refresh (which does a network call per asset) starts competing
          *  for CPU/IO. */
         private const val STARTUP_REFRESH_DELAY_MS = 1200L
+
+        /** An import writes one row at a time, and every write re-triggers the observer below. Waiting
+         *  this long for the writes to stop means the chart is rebuilt once for the finished import,
+         *  not once per row, each for a half-imported portfolio. */
+        private const val CHART_SETTLE_DELAY_MS = 400L
     }
 
     // ── Market Indexes ──────────────────────────────────────────────────
@@ -185,7 +190,7 @@ class HomeViewModel @Inject constructor(
      * run of range taps (or a price refresh landing mid-fetch) can't apply a stale result over a
      * newer one. The fetches themselves are cached per symbol+range by the repository.
      */
-    private fun rebuildChart(assets: List<NetWorthAssetEntity>) {
+    private fun rebuildChart(assets: List<NetWorthAssetEntity>, settle: Boolean = false) {
         chartJob?.cancel()
         if (assets.isEmpty()) {
             _chartLoading.value = false
@@ -195,8 +200,9 @@ class HomeViewModel @Inject constructor(
         val range = _chartRange.value ?: ChartRange.MONTH
         // First draw of this range: show the last chart saved for it right away, ending on today's
         // total, while the fresh one downloads. A later rebuild of the same range keeps what's drawn.
+        val fingerprint = ChartSnapshotStore.fingerprint(assets)
         if (drawnRange != range) {
-            chartSnapshots.load(range)?.let { saved ->
+            chartSnapshots.load(range, fingerprint)?.let { saved ->
                 val total = assets.sumOf { it.currentValue }
                 _portfolioChartData.value = saved.dropLast(1) + saved.last().copy(current = total)
                 drawnRange = range
@@ -205,11 +211,13 @@ class HomeViewModel @Inject constructor(
         // A chart already drawn for this range refreshes quietly; only an empty one shows loading.
         val quiet = drawnRange == range
         chartJob = viewModelScope.launch {
+            // Each new write cancels this job, so only the last one in a burst gets past the delay.
+            if (settle) delay(CHART_SETTLE_DELAY_MS)
             _chartLoading.value = !quiet
             val points = portfolioHistoryRepository.history(assets, range)
             _portfolioChartData.value = points
             drawnRange = range
-            if (points.size >= 2) chartSnapshots.save(range, points)
+            if (points.size >= 2) chartSnapshots.save(range, points, fingerprint)
             _chartLoading.value = false
         }
     }
@@ -241,7 +249,8 @@ class HomeViewModel @Inject constructor(
             heldAssets = assets
             _portfolioRefreshed.value = buildPortfolioSummary(assets)
         } else {
-            show(assets)
+            // Not the first delivery: rows may be arriving one by one (an import), so let them settle.
+            show(assets, settleChart = shown != null)
         }
     }
 
@@ -310,12 +319,12 @@ class HomeViewModel @Inject constructor(
     }
 
     /** Puts [assets] on screen (summary and chart) and drops any held move, which [assets] supersedes. */
-    private fun show(assets: List<NetWorthAssetEntity>) {
+    private fun show(assets: List<NetWorthAssetEntity>, settleChart: Boolean = false) {
         shownAssets = assets
         heldAssets = null
         _portfolioRefreshed.value = null
         _portfolioSummary.value = buildPortfolioSummary(assets)
-        rebuildChart(assets)
+        rebuildChart(assets, settleChart)
     }
 
     private suspend fun fetchIndexes() {
