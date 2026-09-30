@@ -282,6 +282,32 @@ class BrokerCsvParserTest {
     }
 
     @Test
+    fun `a position sold back to zero through fractional shares is dropped despite floating-point residue`() {
+        // 0.1 + 0.2 - 0.3 is 5.55e-17 in doubles, not 0 — that residue used to slip past a `<= 0.0`
+        // check and produce a phantom holding with an absurd average price (costBasis / ~0).
+        val (holdings, _) = BrokerCsvParser.aggregateVestedTrades(
+            vestedTradesHeader,
+            listOf(
+                vestedTradeRow("AMD", "buy", "0.1", "150.0"),
+                vestedTradeRow("AMD", "buy", "0.2", "160.0"),
+                vestedTradeRow("AMD", "sell", "0.3", "170.0")
+            )
+        )
+
+        assertTrue(holdings.isEmpty())
+    }
+
+    @Test
+    fun `a genuinely tiny fractional position is kept`() {
+        val (holdings, _) = BrokerCsvParser.aggregateVestedTrades(
+            vestedTradesHeader, listOf(vestedTradeRow("MU", "buy", "0.0063", "83370.0"))
+        )
+
+        assertEquals(1, holdings.size)
+        assertEquals(0.0063, holdings[0].quantity, 1e-12)
+    }
+
+    @Test
     fun `a partial sell reduces quantity but keeps the position`() {
         val (holdings, _) = BrokerCsvParser.aggregateVestedTrades(
             vestedTradesHeader,

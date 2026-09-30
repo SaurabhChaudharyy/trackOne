@@ -171,6 +171,26 @@ data class UniversalHolding(
     )
 }
 
+/**
+ * Folds other brokers' current positions in the same asset into this holding: quantities add, the
+ * buy price becomes the quantity-weighted average (total cost ÷ total shares), and current value is
+ * the combined shares at this import's per-share value. Returns the holding unchanged when no other
+ * broker holds it.
+ */
+internal fun UniversalHolding.reconciledWith(others: List<NetWorthTransactionEntity>): UniversalHolding {
+    val otherQty = others.sumOf { it.quantity }
+    val totalQty = quantity + otherQty
+    if (others.isEmpty() || totalQty <= 0.0) return this
+    val otherCost = others.sumOf { it.quantity * it.price }
+    val perShare = if (quantity > 0.0) currentValue / quantity else otherCost / otherQty
+    return copy(
+        quantity = totalQty,
+        avgBuyPrice = (quantity * avgBuyPrice + otherCost) / totalQty,
+        currentValue = currentValue + otherQty * perShare,
+        brokerSource = (others.mapNotNull { it.brokerSource } + brokerSource).distinct().sorted().joinToString(" + ")
+    )
+}
+
 // ─── Universal trade — canonical shape for a real, dated buy/sell ─────────────
 //
 // Distinct from UniversalHolding: a holdings-statement import is a snapshot with no real
@@ -386,24 +406,30 @@ class BrokerCsvRepository @Inject constructor(
      * an updated broker export. Each import also records a transaction snapshot
      * (see [UniversalHolding.toTransaction]) so the holding's history isn't lost
      * on the next re-import overwriting its current quantity/price.
+     *
+     * One ticker is one row even when several brokers hold it: the row carries the combined
+     * quantity and quantity-weighted average buy price. Each broker's latest snapshot is its
+     * contribution, so re-importing broker A replaces A's share and leaves B's alone
+     * (see [reconciledWith]).
      */
     private suspend fun persist(holdings: List<UniversalHolding>, onProgress: (Int, Int) -> Unit) {
         val now = System.currentTimeMillis()
         for ((index, holding) in holdings.withIndex()) {
             val entity = holding.toEntity(now)
-            val existing = netWorthDao.findAssetByNameAndType(entity.name, entity.assetType)
+            val existing = findExisting(entity.name, entity.assetType)
             val assetId = if (existing != null) {
+                val merged = holding.reconciledWith(otherBrokerLots(existing.id, holding))
                 netWorthDao.updateAsset(
                     existing.copy(
-                        quantity     = entity.quantity,
-                        buyPrice     = entity.buyPrice,
-                        currentValue = entity.currentValue,
+                        quantity     = merged.quantity,
+                        buyPrice     = merged.avgBuyPrice,
+                        currentValue = merged.currentValue,
                         // buyPrice/currentValue above are in the file's currency; a prior live
                         // refresh may have relabelled this row "INR", so the label must follow.
-                        currency     = entity.currency,
+                        currency     = merged.currency,
                         updatedAt    = entity.updatedAt,
-                        isin         = entity.isin,
-                        brokerSource = entity.brokerSource
+                        isin         = entity.isin ?: existing.isin,
+                        brokerSource = merged.brokerSource
                     )
                 )
                 existing.id
@@ -414,6 +440,32 @@ class BrokerCsvRepository @Inject constructor(
             onProgress(index + 1, holdings.size)
         }
     }
+
+    /**
+     * The row this ticker is already stored under. Indian stocks are looked up bare and with the
+     * ".NS" suffix, since the same NSE listing is stored either way depending on how it was added
+     * or repaired — without this, Zerodha's "INFY" and a "INFY.NS" row would sit side by side.
+     */
+    private suspend fun findExisting(name: String, type: AssetType): NetWorthAssetEntity? {
+        netWorthDao.findAssetByNameAndType(name, type)?.let { return it }
+        if (type != AssetType.STOCK_IN) return null
+        val bare = name.removeSuffix(".NS")
+        val alternate = if (name.endsWith(".NS")) bare else "$name.NS"
+        return netWorthDao.findAssetByNameAndType(alternate, type)
+    }
+
+    /**
+     * The latest import snapshot from every *other* broker that holds this asset, in the same
+     * currency as [holding]. Snapshots are newest-first, so the first per broker is its current
+     * position; older ones are superseded.
+     */
+    private suspend fun otherBrokerLots(assetId: Long, holding: UniversalHolding): List<NetWorthTransactionEntity> =
+        netWorthTransactionDao.getTransactionsForAssetSync(assetId)
+            .filter {
+                it.transactionType == TransactionType.BUY && it.brokerSource != null &&
+                    it.brokerSource != holding.brokerSource && it.currency == holding.currency
+            }
+            .distinctBy { it.brokerSource }
 
     // ── File hash helpers ─────────────────────────────────────────────────────
 
@@ -1028,6 +1080,9 @@ internal object BrokerCsvParser {
     // Fractional-share buys/sells are common in Vested exports and are handled the same
     // way as whole shares. currentValue is set to quantity * avgBuyPrice (break-even) and
     // will be overwritten by the next live price refresh, same convention as Format C.
+    /** Below this many shares a netted position is treated as fully sold (finer than any broker's fractional precision). */
+    private const val FULLY_EXITED_EPSILON = 1e-8
+
     internal fun aggregateVestedTrades(header: List<String>, rows: List<RawRow>): Pair<List<UniversalHolding>, Int> {
         val tickerIdx = header.indexOf("ticker")
         val activityIdx = header.indexOf("activity")
@@ -1060,9 +1115,11 @@ internal object BrokerCsvParser {
         }
 
         val holdings = byTicker.mapNotNull { (ticker, position) ->
-            // A fully-exited position (or a rounding artifact) nets to ~0 — drop it
-            // rather than showing a phantom holding.
-            if (position.quantity <= 0.0) return@mapNotNull null
+            // A fully-exited position nets to ~0 — drop it rather than showing a phantom holding.
+            // Compared against an epsilon, not 0.0: fractional buys/sells that cancel exactly on
+            // paper (0.1 + 0.2 - 0.3) leave a ~1e-17 residue in doubles, which would otherwise pass
+            // a `<= 0.0` check and make costBasis / quantity explode into a nonsense average price.
+            if (position.quantity <= FULLY_EXITED_EPSILON) return@mapNotNull null
             val avgPrice = position.costBasis / position.quantity
             UniversalHolding(
                 symbol = ticker, quantity = position.quantity, avgBuyPrice = avgPrice,

@@ -7,6 +7,7 @@ import android.net.Uri
 import app.trackone.data.database.AssetType
 import app.trackone.data.database.NetWorthAssetEntity
 import app.trackone.data.database.NetWorthDao
+import app.trackone.data.database.NetWorthTransactionEntity
 import app.trackone.data.database.NetWorthTransactionDao
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -76,6 +77,7 @@ class BrokerCsvRepositoryTest {
     fun `a recognised CSV with a brand-new holding is inserted, not updated`() = runTest {
         stubFileContents(validCsvBytes)
         coEvery { netWorthDao.findAssetByNameAndType("INFY", AssetType.STOCK_IN) } returns null
+        coEvery { netWorthDao.findAssetByNameAndType("INFY.NS", AssetType.STOCK_IN) } returns null
         coEvery { netWorthDao.insertAsset(any()) } returns 42L
 
         val result = repository.importFromUri(uri)
@@ -109,6 +111,101 @@ class BrokerCsvRepositoryTest {
             netWorthDao.updateAsset(match { it.id == 7L && it.quantity == 5.0 && it.buyPrice == 1500.0 })
         }
         coVerify(exactly = 1) { netWorthTransactionDao.insert(match { it.assetId == 7L }) }
+    }
+
+    private val ibkrAmdFile = (
+        "Open Positions,Header,DataDiscriminator,Asset Category,Currency,Symbol,Quantity,Mult,Cost Price,Cost Basis,Close Price,Value,Unrealized P/L,Code\n" +
+            "Open Positions,Data,Summary,Stocks,USD,AMD,2,1,200.0,400.0,250.0,500.0,100.0,\n"
+        ).toByteArray()
+
+    private fun vestedAmdRow() = NetWorthAssetEntity(
+        id = 7, name = "AMD", assetType = AssetType.STOCK_US,
+        quantity = 10.0, buyPrice = 100.0, currentValue = 2000.0, currency = "USD", brokerSource = "Vested"
+    )
+
+    private fun snapshot(broker: String, qty: Double, price: Double, at: Long) = NetWorthTransactionEntity(
+        assetId = 7, symbol = "AMD", assetType = AssetType.STOCK_US,
+        quantity = qty, price = price, currency = "USD", brokerSource = broker, transactionDate = at, createdAt = at
+    )
+
+    @Test
+    fun `the same ticker from a second broker is reconciled into one row with a weighted average price`() = runTest {
+        stubFileContents(ibkrAmdFile)
+        coEvery { netWorthDao.findAssetByNameAndType("AMD", AssetType.STOCK_US) } returns vestedAmdRow()
+        coEvery { netWorthTransactionDao.getTransactionsForAssetSync(7L) } returns
+            listOf(snapshot("Vested", 10.0, 100.0, at = 1L))
+        val updated = slot<NetWorthAssetEntity>()
+        coEvery { netWorthDao.updateAsset(capture(updated)) } returns Unit
+
+        repository.importFromUri(uri)
+
+        coVerify(exactly = 0) { netWorthDao.insertAsset(any()) }
+        assertEquals(12.0, updated.captured.quantity, 1e-9)                       // 10 + 2
+        assertEquals((10 * 100.0 + 2 * 200.0) / 12.0, updated.captured.buyPrice, 1e-9)   // 116.67
+        assertEquals(500.0 + 10 * 250.0, updated.captured.currentValue, 1e-9)     // 12 sh @ IBKR close
+        assertEquals("Interactive Brokers + Vested", updated.captured.brokerSource)
+        // The stored snapshot is this broker's own position, not the merged total.
+        coVerify { netWorthTransactionDao.insert(match { it.brokerSource == "Interactive Brokers" && it.quantity == 2.0 }) }
+    }
+
+    @Test
+    fun `re-importing one broker replaces its own earlier contribution instead of adding to it`() = runTest {
+        stubFileContents(ibkrAmdFile)
+        // Row already merged Vested(10@100) + an older IBKR import (1@150). The new IBKR file says 2@200.
+        coEvery { netWorthDao.findAssetByNameAndType("AMD", AssetType.STOCK_US) } returns
+            vestedAmdRow().copy(quantity = 11.0, brokerSource = "Interactive Brokers + Vested")
+        coEvery { netWorthTransactionDao.getTransactionsForAssetSync(7L) } returns listOf(
+            snapshot("Interactive Brokers", 1.0, 150.0, at = 2L),
+            snapshot("Vested", 10.0, 100.0, at = 1L)
+        )
+        val updated = slot<NetWorthAssetEntity>()
+        coEvery { netWorthDao.updateAsset(capture(updated)) } returns Unit
+
+        repository.importFromUri(uri)
+
+        assertEquals(12.0, updated.captured.quantity, 1e-9)   // 10 Vested + 2 IBKR, not 10 + 1 + 2
+    }
+
+    private fun growwInfyRow(name: String) = NetWorthAssetEntity(
+        id = 21, name = name, assetType = AssetType.STOCK_IN,
+        quantity = 4.0, buyPrice = 1400.0, currentValue = 6400.0, currency = "INR",
+        brokerSource = "HDFC Securities / Angel One"
+    )
+
+    private fun growwSnapshot() = NetWorthTransactionEntity(
+        assetId = 21, symbol = "INFY", assetType = AssetType.STOCK_IN,
+        quantity = 4.0, price = 1400.0, currency = "INR", brokerSource = "HDFC Securities / Angel One",
+        transactionDate = 1L, createdAt = 1L
+    )
+
+    @Test
+    fun `an Indian stock held at Groww and Zerodha reconciles into one row`() = runTest {
+        stubFileContents(validCsvBytes)   // INFY x5 @ 1500 from the Zerodha/Groww-format file
+        coEvery { netWorthDao.findAssetByNameAndType("INFY", AssetType.STOCK_IN) } returns growwInfyRow("INFY")
+        coEvery { netWorthTransactionDao.getTransactionsForAssetSync(21L) } returns listOf(growwSnapshot())
+        val updated = slot<NetWorthAssetEntity>()
+        coEvery { netWorthDao.updateAsset(capture(updated)) } returns Unit
+
+        repository.importFromUri(uri)
+
+        coVerify(exactly = 0) { netWorthDao.insertAsset(any()) }
+        assertEquals(9.0, updated.captured.quantity, 1e-9)                          // 4 + 5
+        assertEquals((4 * 1400.0 + 5 * 1500.0) / 9.0, updated.captured.buyPrice, 1e-9)
+    }
+
+    @Test
+    fun `an Indian stock stored with a dot-NS suffix still matches the bare ticker from another broker`() = runTest {
+        stubFileContents(validCsvBytes)
+        coEvery { netWorthDao.findAssetByNameAndType("INFY", AssetType.STOCK_IN) } returns null
+        coEvery { netWorthDao.findAssetByNameAndType("INFY.NS", AssetType.STOCK_IN) } returns growwInfyRow("INFY.NS")
+        coEvery { netWorthTransactionDao.getTransactionsForAssetSync(21L) } returns listOf(growwSnapshot())
+        val updated = slot<NetWorthAssetEntity>()
+        coEvery { netWorthDao.updateAsset(capture(updated)) } returns Unit
+
+        repository.importFromUri(uri)
+
+        coVerify(exactly = 0) { netWorthDao.insertAsset(any()) }
+        assertEquals(9.0, updated.captured.quantity, 1e-9)
     }
 
     @Test
