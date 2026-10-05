@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Empty-state art: a torn-paper neon blob behind line art, drawn in the marker style (ink outline,
+     white fill). Colours are constant in both themes. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="160dp"
+    android:height="160dp"
+    android:viewportWidth="160"
+    android:viewportHeight="160">
+    <path android:fillColor="@color/marker" android:pathData="M26,36 L104,16 L148,46 L140,116 L92,146 L30,128 L12,80 Z"/>
+    <path android:fillColor="@color/marker" android:pathData="M40,24 L120,30 L146,84 L118,142 L52,146 L18,102 Z"/>
+    <path android:fillColor="#FFFFFF" android:strokeColor="@color/on_marker" android:strokeWidth="4" android:strokeLineJoin="round" android:strokeLineCap="round" android:pathData="M57,72 a27,27 0 1,0 54,0 a27,27 0 1,0 -54,0 Z"/>
+    <path android:fillColor="#FFFFFF" android:strokeColor="@color/on_marker" android:strokeWidth="3" android:strokeLineJoin="round" android:strokeLineCap="round" android:pathData="M65,72 a19,19 0 1,0 38,0 a19,19 0 1,0 -38,0 Z"/>
+    <path android:fillColor="#FFFFFF" android:strokeColor="@color/on_marker" android:strokeWidth="3.5" android:strokeLineJoin="round" android:strokeLineCap="round" android:pathData="M42,100 L118,100 L106,86 L54,86 Z"/>
+    <path android:fillColor="#FFFFFF" android:strokeColor="@color/on_marker" android:strokeWidth="3.5" android:strokeLineJoin="round" android:strokeLineCap="round" android:pathData="M34,128 L126,128 L118,100 L42,100 Z"/>
+    <path android:fillColor="#00000000" android:strokeColor="@color/on_marker" android:strokeWidth="3" android:strokeLineJoin="round" android:strokeLineCap="round" android:pathData="M50,111.76 H110"/>
+    <path android:fillColor="#00000000" android:strokeColor="@color/on_marker" android:strokeWidth="3.5" android:strokeLineJoin="round" android:strokeLineCap="round" android:pathData="M120,40 L126,34 M130,50 L138,48"/>
+    <path android:fillColor="#00000000" android:strokeColor="@color/on_marker" android:strokeWidth="3" android:strokeLineJoin="round" android:strokeLineCap="round" android:pathData="M30,44 V56 M24,50 H36"/>
+</vector>

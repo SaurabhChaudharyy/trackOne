@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- A card resting on the page: the sheet colour, no border, 16dp corners. Clip children with
+     android:clipToOutline when rows inside have their own backgrounds. -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android"
     android:shape="rectangle">
     <solid android:color="@color/surface_color"/>

@@ -159,14 +159,6 @@
         <item name="cornerRadius">8dp</item>
     </style>
 
-    <!-- Chart range buttons on stock detail: bold Inter, as on Home. -->
-    <style name="TextAppearance.App.RangeChip" parent="TextAppearance.Material3.LabelLarge">
-        <item name="android:fontFamily">@font/inter_bold</item>
-        <item name="fontFamily">@font/inter_bold</item>
-        <item name="android:textSize">12sp</item>
-        <item name="android:letterSpacing">0</item>
-    </style>
-
     <style name="Widget.App.Chip" parent="Widget.Material3.Chip.Assist">
         <item name="android:fontFamily">@font/inter</item>
     </style>
@@ -222,6 +214,13 @@
     </style>
 
     <!-- ── Bottom Navigation ──────────────────────────────── -->
+
+    <!-- The tab bar's selection pill takes its duration from the library's motionDurationLong2 (500 ms
+         by default). Pointing that at the app's selection token makes the tabs move exactly like the
+         chips and tab underlines. Applied to the BottomNavigationView only, so nothing else changes. -->
+    <style name="ThemeOverlay.App.BottomNavMotion" parent="">
+        <item name="motionDurationLong2">@integer/motion_duration_selection</item>
+    </style>
 
     <style name="Widget.App.BottomNav" parent="Widget.Material3.BottomNavigationView">
         <item name="itemActiveIndicatorStyle">@style/Widget.App.BottomNav.ActiveIndicator</item>

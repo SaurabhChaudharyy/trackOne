@@ -9,6 +9,7 @@ import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
 import android.view.View
+import android.widget.TextView
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import com.github.mikephil.charting.components.XAxis
@@ -18,7 +19,8 @@ import com.github.mikephil.charting.data.LineDataSet
 import com.github.mikephil.charting.formatter.ValueFormatter
 import com.github.mikephil.charting.highlight.Highlight
 import com.github.mikephil.charting.listener.OnChartValueSelectedListener
-import com.google.android.material.chip.Chip
+import app.trackone.ui.util.PillSelector
+import app.trackone.ui.util.SelectionPillDrawable
 import app.trackone.R
 import app.trackone.data.database.PriceHistoryEntity
 import app.trackone.data.database.StockEntity
@@ -103,8 +105,10 @@ class StockDetailActivity : AppCompatActivity() {
         setIntent(intent)
         val symbol = intent.getStringExtra(EXTRA_SYMBOL) ?: return
         
-        (binding.timeframeChipGroup.getChildAt(0) as? Chip)?.isChecked = true
+        val wasOn1D = currentResolution == "1D"
         currentResolution = "1D"
+        timeframeSelector?.select("1D")
+        if (!wasOn1D) viewModel.loadPriceHistory("1D")
         
         viewModel.loadStock(symbol)
     }
@@ -212,77 +216,58 @@ class StockDetailActivity : AppCompatActivity() {
         }
     }
 
-    private fun setupTimeframeChips() {
-        val inkColor = getColor(R.color.ink)
-        val dp = resources.displayMetrics.density
-
-        TIMEFRAME_OPTIONS.keys.forEach { label ->
-            val chip = Chip(this).apply {
-                text = label
-                isCheckable = true
-                isCheckedIconVisible = false
-                // A fully rounded ink pill when checked, bold labels: same as the Home range buttons.
-                chipCornerRadius = 999f * dp
-                // A Chip draws its label from its text appearance; set before the colours below.
-                setTextAppearance(R.style.TextAppearance_App_RangeChip)
-                chipStrokeWidth = 0f
-                chipBackgroundColor = android.content.res.ColorStateList(
-                    arrayOf(
-                        intArrayOf(android.R.attr.state_checked),
-                        intArrayOf()
-                    ),
-                    intArrayOf(
-                        inkColor,
-                        Color.TRANSPARENT
-                    )
-                )
-
-                setTextColor(
-                    android.content.res.ColorStateList(
-                        arrayOf(
-                            intArrayOf(android.R.attr.state_checked),
-                            intArrayOf()
-                        ),
-                        intArrayOf(
-                            // Checked chip is an ink block (flips with the theme); its label is the inverse.
-                            getColor(R.color.on_ink),
-                            getColor(R.color.text_secondary)
-                        )
-                    )
-                )
-
-                chipMinHeight = 36f * dp
-                chipStartPadding = 6f * dp
-                chipEndPadding = 6f * dp
-                tag = label
-            }
-            binding.timeframeChipGroup.addView(chip)
-        }
-
-        binding.timeframeChipGroup.setOnCheckedStateChangeListener { group, _ ->
-            val checkedChip = group.findViewById<Chip>(group.checkedChipId)
-            val label = checkedChip?.tag as? String ?: "1D"
-            currentResolution = label
-            viewModel.loadPriceHistory(label)
-        }
-
-        (binding.timeframeChipGroup.getChildAt(0) as? Chip)?.isChecked = true
-        spreadTimeframeChips()
-    }
+    private var timeframeSelector: PillSelector<String>? = null
 
     /**
-     * Spreads the chips across the full row (1D at the left edge, 5Y at the right), as on Home.
-     * ChipGroup has no weights, so the gap is measured once the chips have their widths.
+     * The timeframe buttons, built like Home's range buttons: equal-width labels sharing the row, the
+     * selected one an ink pill that moves like the bottom tabs' (see [PillSelector]).
      */
-    private fun spreadTimeframeChips() {
-        val group = binding.timeframeChipGroup
-        group.isSingleLine = true
-        group.post {
-            val chips = (0 until group.childCount).map { group.getChildAt(it) }
-            if (chips.size < 2) return@post
-            val free = group.width - group.paddingStart - group.paddingEnd - chips.sumOf { it.width }
-            group.chipSpacingHorizontal = (free / (chips.size - 1)).coerceAtLeast(0)
+    private fun setupTimeframeChips() {
+        val dp = resources.displayMetrics.density
+        val selector = PillSelector<String>(
+            this,
+            labelOff = getColor(R.color.text_secondary),
+            labelOn = getColor(R.color.on_ink)
+        ) {
+            SelectionPillDrawable(
+                androidx.core.content.ContextCompat.getDrawable(this, R.drawable.bg_range_chip)!!,
+                getColor(R.color.ink)
+            )
         }
+        timeframeSelector = selector
+
+        binding.timeframeChipGroup.removeAllViews()
+        TIMEFRAME_OPTIONS.keys.forEach { label ->
+            val chip = TextView(this).apply {
+                text = label
+                gravity = android.view.Gravity.CENTER
+                textSize = 12f
+                typeface = androidx.core.content.res.ResourcesCompat.getFont(this@StockDetailActivity, R.font.inter_bold)
+                minHeight = (44 * dp).toInt()
+                setPadding((8 * dp).toInt(), 0, (8 * dp).toInt(), 0)
+                contentDescription = label
+                setOnClickListener {
+                    it.performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY)
+                    if (currentResolution == label) return@setOnClickListener
+                    currentResolution = label
+                    selector.select(label)
+                    viewModel.loadPriceHistory(label)
+                }
+                layoutParams = android.widget.LinearLayout.LayoutParams(0, android.view.ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+                    .apply { marginStart = (4 * dp).toInt(); marginEnd = (4 * dp).toInt() }
+            }
+            binding.timeframeChipGroup.addView(chip)
+            selector.add(label, chip, chip)
+        }
+        // Opens on 1D, and fetches it: checking the first chip used to do that through its listener.
+        currentResolution = "1D"
+        selector.select("1D")
+        viewModel.loadPriceHistory("1D")
+    }
+
+    override fun onDestroy() {
+        timeframeSelector?.release()
+        super.onDestroy()
     }
 
     private fun observeViewModel() {

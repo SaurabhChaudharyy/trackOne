@@ -5,14 +5,14 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/background"
+    android:background="@color/page"
     tools:context=".ui.main.MainActivity">
 
     <com.google.android.material.appbar.AppBarLayout
         android:id="@+id/app_bar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="@color/background"
+        android:background="@color/surface_color"
         app:elevation="0dp">
 
         <com.google.android.material.appbar.MaterialToolbar
@@ -20,7 +20,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:minHeight="?attr/actionBarSize"
-            android:background="@color/background"
+            android:background="@color/surface_color"
             android:paddingHorizontal="4dp"
             android:paddingVertical="8dp">
 
@@ -34,11 +34,6 @@
                 android:fontFamily="@font/inter_bold"
                 android:letterSpacing="-0.02"/>
         </com.google.android.material.appbar.MaterialToolbar>
-
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:background="@color/divider_color"/>
     </com.google.android.material.appbar.AppBarLayout>
 
     <FrameLayout
@@ -60,6 +55,7 @@
         app:itemTextColor="@color/nav_label"
         app:itemIconTint="@drawable/selector_nav_icon"
         app:itemActiveIndicatorStyle="@style/Widget.App.BottomNav.ActiveIndicator"
+        android:theme="@style/ThemeOverlay.App.BottomNavMotion"
         app:elevation="0dp"
         style="@style/Widget.App.BottomNav"/>
 

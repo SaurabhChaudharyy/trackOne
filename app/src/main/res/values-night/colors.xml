@@ -10,6 +10,7 @@
     <color name="background_dark">#09090B</color>
     <color name="surface_color">#18181B</color>
     <color name="surface_variant">#27272A</color>
+    <color name="page">#09090B</color>
     <color name="error_background">#2A1414</color>
 
     <color name="divider_color">#27272A</color>
@@ -17,7 +18,7 @@
 
     <color name="text_primary">#FAFAFA</color>
     <color name="text_secondary">#A1A1AA</color>
-    <color name="text_tertiary">#8B8B95</color>
+    <color name="text_tertiary">#8F8F99</color>
 
     <!-- Marker palette -->
     <color name="ink">#FAFAFA</color>

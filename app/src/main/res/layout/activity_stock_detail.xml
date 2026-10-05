@@ -158,16 +158,14 @@
             </FrameLayout>
 
             <!-- TIMEFRAME CHIPS -->
-            <com.google.android.material.chip.ChipGroup
+            <LinearLayout
                 android:id="@+id/timeframe_chip_group"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:paddingHorizontal="20dp"
+                android:orientation="horizontal"
+                android:paddingHorizontal="16dp"
                 android:paddingTop="8dp"
-                android:paddingBottom="16dp"
-                app:singleSelection="true"
-                app:selectionRequired="true"
-                app:chipSpacingHorizontal="8dp"/>
+                android:paddingBottom="16dp"/>
 
             <View
                 android:layout_width="match_parent"

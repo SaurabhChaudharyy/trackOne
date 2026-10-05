@@ -20,8 +20,12 @@ class MarkerUsageTest {
         "res/layout/activity_splash.xml",                        // launch mark
         "res/values/themes.xml",                                 // active-tab nav pill
         "res/drawable/bg_marker_add.xml",                        // section-header add square
+        "res/drawable/bg_marker_pill.xml",                       // empty-state call to action
         "java/app/trackone/ui/networth/NetWorthAssetAdapter.kt"  // data-quality warning highlight
     )
+
+    /** Empty-state illustrations (res/drawable/ill_*.xml) all draw their neon blob: one job, one rule. */
+    private fun isEmptyStateArt(path: String) = path.startsWith("res/drawable/ill_") && path.endsWith(".xml")
 
     private fun sourceFiles() = listOf(File(main, "res"), File(main, "java")).flatMap { root ->
         root.walkTopDown().filter { it.isFile && it.extension in setOf("xml", "kt") }.toList()
@@ -52,7 +56,7 @@ class MarkerUsageTest {
 
     @Test
     fun `marker appears only where something needs the user`() {
-        val found = linesMatching(Regex("""@color/marker\b|R\.color\.marker\b""")) { it in allowed }
+        val found = linesMatching(Regex("""@color/marker\b|R\.color\.marker\b""")) { it in allowed || isEmptyStateArt(it) }
         assertTrue("Marker outside its jobs:\n" + found.joinToString("\n"), found.isEmpty())
     }
 }

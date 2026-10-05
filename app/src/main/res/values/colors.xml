@@ -5,6 +5,10 @@
     <color name="background_dark">#FFFFFF</color>
     <color name="surface_color">#FFFFFF</color>
     <color name="surface_variant">#F4F4F5</color>
+    <!-- The layered look: `page` is the floor, `surface_color` the sheets and cards resting on it,
+         `surface_variant` the chips and tiles inside a sheet. Light: grey floor, white sheets.
+         Dark (values-night): black floor, #18181B sheets. -->
+    <color name="page">#F4F4F5</color>
     <color name="error_background">#FEF2F2</color>
 
     <color name="divider_color">#E4E4E7</color>

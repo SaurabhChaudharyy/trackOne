@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A neon pill button: the one thing to do on an empty screen. Label uses @color/on_marker. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="@color/marker"/>
+    <corners android:radius="999dp"/>
+</shape>

@@ -1,5 +1,7 @@
 package app.trackone.ui.home
 
+import app.trackone.ui.util.LargeText
+import app.trackone.ui.util.MotionSpec
 import android.graphics.Color
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -21,10 +23,13 @@ import app.trackone.data.database.StockEntity
 import app.trackone.databinding.FragmentHomeBinding
 import app.trackone.ui.detail.StockDetailActivity
 import app.trackone.ui.util.MoneyColor
+import app.trackone.ui.util.PillSelector
+import app.trackone.ui.util.SelectionPillDrawable
 import app.trackone.utils.AnimationUtils.animateNumberFromZero
 import app.trackone.utils.ChartAxis
 import app.trackone.utils.ChartRange
 import app.trackone.utils.FormatUtils
+import app.trackone.utils.GainLoss
 import app.trackone.utils.MarketUtils
 import app.trackone.utils.Resource
 import dagger.hilt.android.AndroidEntryPoint
@@ -74,6 +79,8 @@ class HomeFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         setupDateTime()
+        LargeText.stackIfLarge(binding.rowPnlInvested, resources.configuration.fontScale)
+        setupLayoutMotion()
         setupPortfolioChart()
         setupRangeChips()
         setupMarketStatusChips()
@@ -188,6 +195,12 @@ class HomeFragment : Fragment() {
 
         viewModel.chartRange.observe(viewLifecycleOwner) { styleRangeChips(it) }
 
+        // The gain/loss line follows the chart on screen: its window, not the whole holding period.
+        viewModel.periodChange.observe(viewLifecycleOwner) { change ->
+            periodChange = change
+            lastSummary?.let { renderPnlChip(it) }
+        }
+
         viewModel.chartLoading.observe(viewLifecycleOwner) { loading ->
             // First load: reserve the chart's space with a pulsing placeholder instead of leaving a
             // gap that the chart later pushes everything below it out of. Later loads (range
@@ -239,11 +252,11 @@ class HomeFragment : Fragment() {
         val banner = binding.bannerPortfolioUpdated
         banner.setOnClickListener { viewModel.applyRefreshedPortfolio() }
         banner.clipToOutline = true   // keep the tap ripple inside the rounded corners
-        banner.visibility = View.VISIBLE
+        binding.bannerWrap.visibility = View.VISIBLE
     }
 
     private fun dismissUpdateBanner() {
-        binding.bannerPortfolioUpdated.visibility = View.GONE
+        binding.bannerWrap.visibility = View.GONE
     }
 
     private fun setupPortfolioChart() {
@@ -365,10 +378,12 @@ class HomeFragment : Fragment() {
 
     // Built on demand, never cached: the binding's views are recreated with the fragment's view.
     private fun rangeChips() = mapOf(
+        ChartRange.DAY     to binding.tvRange1d,
         ChartRange.WEEK    to binding.tvRange1w,
         ChartRange.MONTH   to binding.tvRange1m,
         ChartRange.QUARTER to binding.tvRange3m,
-        ChartRange.YEAR    to binding.tvRange1y
+        ChartRange.YEAR    to binding.tvRange1y,
+        ChartRange.ALL     to binding.tvRangeAll
     )
 
     private fun setupRangeChips() {
@@ -380,20 +395,51 @@ class HomeFragment : Fragment() {
         }
     }
 
-    /** Selected = an ink block with inverse text: selection is ink, never the neon. */
+    private var rangeSelector: PillSelector<ChartRange>? = null
+
+    /**
+     * The root's animateLayoutChanges (the banner fading in and the page easing down and back) runs
+     * on the app's one motion, not Android's default 300 ms: same duration and easing as the tabs, and
+     * every part moving together instead of one after another.
+     */
+    private fun setupLayoutMotion() {
+        val transition = (binding.root as? ViewGroup)?.layoutTransition ?: return
+        val interpolator = MotionSpec.interpolator(requireContext())
+        transition.setDuration(MotionSpec.layoutDuration(requireContext()))
+        listOf(
+            android.animation.LayoutTransition.APPEARING, android.animation.LayoutTransition.DISAPPEARING,
+            android.animation.LayoutTransition.CHANGE_APPEARING, android.animation.LayoutTransition.CHANGE_DISAPPEARING,
+            android.animation.LayoutTransition.CHANGING
+        ).forEach {
+            transition.setInterpolator(it, interpolator)
+            transition.setStartDelay(it, 0)
+        }
+    }
+
+    /**
+     * Selected = an ink pill with inverse text: selection is ink, never the neon. The pill moves like
+     * the bottom tabs' (see [PillSelector]); the first styling just sets the state.
+     */
     private fun styleRangeChips(selected: ChartRange) {
         if (_binding == null) return
-        rangeChips().forEach { (range, chip) ->
-            val on = range == selected
-            chip.background = if (on) ContextCompat.getDrawable(requireContext(), R.drawable.bg_selected_chip) else null
-            chip.setTextColor(requireContext().getColor(if (on) R.color.on_ink else R.color.text_secondary))
-            chip.isSelected = on
-        }
+        val selector = rangeSelector ?: PillSelector<ChartRange>(
+            requireContext(),
+            labelOff = requireContext().getColor(R.color.text_secondary),
+            labelOn = requireContext().getColor(R.color.on_ink)
+        ) {
+            SelectionPillDrawable(
+                ContextCompat.getDrawable(requireContext(), R.drawable.bg_range_chip)!!,
+                requireContext().getColor(R.color.ink)
+            )
+        }.also { rangeSelector = it }
+        rangeChips().forEach { (range, chip) -> selector.add(range, chip, chip) }
+        selector.select(selected)
     }
 
     // ── Chart scrubbing ──────────────────────────────────────────────────
 
     private val scrubDateFmt = SimpleDateFormat("EEE, d MMM yyyy", Locale.getDefault())
+    private val scrubDateTimeFmt = SimpleDateFormat("EEE, d MMM, h:mm a", Locale.getDefault())
 
     /** Header shows the highlighted day's value + date while a finger is down on the chart. */
     private fun showScrubbedPoint(index: Int) {
@@ -410,7 +456,8 @@ class HomeFragment : Fragment() {
         // A count-up may still be running on this view; stop it so it doesn't overwrite the scrub.
         (binding.tvPortfolioCurrent.tag as? android.animation.ValueAnimator)?.cancel()
         binding.tvPortfolioCurrent.text = FormatUtils.formatPrice(point.current, "INR")
-        binding.tvDate.text = scrubDateFmt.format(java.util.Date(point.timestamp))
+        val fmt = if (viewModel.chartRange.value?.intraday == true) scrubDateTimeFmt else scrubDateFmt
+        binding.tvDate.text = fmt.format(java.util.Date(point.timestamp))
     }
 
     private fun restoreScrubHeader() {
@@ -458,11 +505,9 @@ class HomeFragment : Fragment() {
 
         // Date formatter for xAxis labels
         val span = points.last().timestamp - points.first().timestamp
-        val dateFmt = if (span < 200L * 24 * 60 * 60 * 1000) {
-            SimpleDateFormat("d MMM", Locale.getDefault())
-        } else {
-            SimpleDateFormat("MMM ''yy", Locale.getDefault())   // Sep '25 — "Sep 25" reads as a day
-        }
+        val dateFmt = SimpleDateFormat(
+            ChartAxis.labelPattern(span, viewModel.chartRange.value?.intraday == true), Locale.getDefault()
+        )
         binding.portfolioLineChart.xAxis.valueFormatter = object : com.github.mikephil.charting.formatter.ValueFormatter() {
             override fun getAxisLabel(value: Float, axis: com.github.mikephil.charting.components.AxisBase?): String {
                 val idx = value.toInt().coerceIn(0, points.size - 1)
@@ -603,7 +648,8 @@ class HomeFragment : Fragment() {
 
     private fun buildMoverRow(mover: TopMover): View {
         val stock  = mover.stock
-        val chipW  = (116 * resources.displayMetrics.density).toInt()
+        // Wider as the system text grows, so a mover's price and value are never cut off.
+        val chipW  = (LargeText.scaledWidth(116f, resources.configuration.fontScale) * resources.displayMetrics.density).toInt()
 
         // Compact vertical card chip
         val card = LinearLayout(requireContext()).apply {
@@ -711,6 +757,7 @@ class HomeFragment : Fragment() {
 
         binding.cardPortfolioSummary.visibility = View.VISIBLE
         currentPortfolioTotal = summary.totalCurrent
+        lastSummary = summary
 
         // Animate total on first load
         if (!portfolioAnimated) {
@@ -722,29 +769,11 @@ class HomeFragment : Fragment() {
             binding.tvPortfolioCurrent.text = FormatUtils.formatPrice(summary.totalCurrent, "INR")
         }
 
-        // P&L chip
-        val hasPnL = kotlin.math.abs(summary.absChange) > 0.01
-        if (hasPnL) {
-            val isGain   = summary.absChange >= 0
-            val arrow    = if (isGain) "↗" else "↘"
-            val absStr   = FormatUtils.formatPrice(kotlin.math.abs(summary.absChange), "INR")
-            val pctStr   = FormatUtils.formatChangePercent(summary.pctChange)
-            binding.tvPortfolioPnl.text = "$arrow $absStr ($pctStr)"
+        renderPnlChip(summary)
 
-            // The move is coloured text; money direction never gets a filled pill.
-            binding.tvPortfolioPnl.setTextColor(requireContext().getColor(MoneyColor.forChange(summary.absChange)))
-            binding.tvPortfolioPnl.setTypeface(
-                androidx.core.content.res.ResourcesCompat.getFont(requireContext(), R.font.inter_bold),
-                android.graphics.Typeface.NORMAL
-            )
-            binding.tvPortfolioPnl.background = null
-            binding.tvPortfolioPnl.visibility = View.VISIBLE
-        } else {
-            binding.tvPortfolioPnl.visibility = View.GONE
-        }
-
-        // Invested → Now row (only when at least one buy price is known)
-        val hasInvestedData = summary.totalInvested > 0.01 && hasPnL
+        // Invested → Now row (only when at least one buy price is known). It describes the whole
+        // holding period, so it keys off the all-time gain whatever chart window is selected.
+        val hasInvestedData = summary.totalInvested > 0.01 && kotlin.math.abs(summary.absChange) > 0.01
         if (hasInvestedData) {
             binding.llInvestedRow.visibility = View.VISIBLE
             binding.tvInvestedAmount.text    = FormatUtils.formatPrice(summary.totalInvested, "INR")
@@ -754,6 +783,39 @@ class HomeFragment : Fragment() {
         }
     }
 
+
+    /** The portfolio summary last drawn, so the gain/loss line can be redrawn when the chart window changes. */
+    private var lastSummary: PortfolioSummary? = null
+    /** The move across the chart window on screen; null until a chart has data (or when it can't be measured). */
+    private var periodChange: GainLoss? = null
+
+    /**
+     * The gain/loss line: the move across the selected chart window, or the all-time gain from cost
+     * while there is no chart to measure (loading, no history, nothing held that has prices).
+     */
+    private fun renderPnlChip(summary: PortfolioSummary) {
+        if (_binding == null) return
+        val absChange = periodChange?.absChange ?: summary.absChange
+        val pctChange = periodChange?.pctChange ?: summary.pctChange
+
+        if (kotlin.math.abs(absChange) > 0.01) {
+            val arrow  = if (absChange >= 0) "↗" else "↘"
+            val absStr = FormatUtils.formatPrice(kotlin.math.abs(absChange), "INR")
+            val pctStr = FormatUtils.formatChangePercent(pctChange)
+            binding.tvPortfolioPnl.text = "$arrow $absStr ($pctStr)"
+
+            // The move is coloured text; money direction never gets a filled pill.
+            binding.tvPortfolioPnl.setTextColor(requireContext().getColor(MoneyColor.forChange(absChange)))
+            binding.tvPortfolioPnl.setTypeface(
+                androidx.core.content.res.ResourcesCompat.getFont(requireContext(), R.font.inter_bold),
+                android.graphics.Typeface.NORMAL
+            )
+            binding.tvPortfolioPnl.background = null
+            binding.tvPortfolioPnl.visibility = View.VISIBLE
+        } else {
+            binding.tvPortfolioPnl.visibility = View.GONE
+        }
+    }
 
     // ── Market Hours Dialog ──────────────────────────────────────────────
 
@@ -834,6 +896,8 @@ class HomeFragment : Fragment() {
         revealAnimator = null
         revealRenderer = null
         sweptRange = null   // a re-created view gets its entrance sweep again
+        rangeSelector?.release()
+        rangeSelector = null
         _binding = null
     }
 

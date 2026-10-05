@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Empty-state art: a torn-paper neon blob behind line art, drawn in the marker style (ink outline,
+     white fill). Colours are constant in both themes. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="160dp"
+    android:height="160dp"
+    android:viewportWidth="160"
+    android:viewportHeight="160">
+    <path android:fillColor="@color/marker" android:pathData="M26,36 L104,16 L148,46 L140,116 L92,146 L30,128 L12,80 Z"/>
+    <path android:fillColor="@color/marker" android:pathData="M40,24 L120,30 L146,84 L118,142 L52,146 L18,102 Z"/>
+    <group android:rotation="-8" android:pivotX="80" android:pivotY="84">
+        <path android:fillColor="#FFFFFF" android:strokeColor="@color/on_marker" android:strokeWidth="3.5" android:strokeLineJoin="round" android:strokeLineCap="round" android:pathData="M36,48 h88 a6,6 0 0,1 6,6 v48 a6,6 0 0,1 -6,6 h-88 a6,6 0 0,1 -6,-6 v-48 a6,6 0 0,1 6,-6 Z"/>
+    </group>
+    <path android:fillColor="#FFFFFF" android:strokeColor="@color/on_marker" android:strokeWidth="4" android:strokeLineJoin="round" android:strokeLineCap="round" android:pathData="M32,56 h96 a6,6 0 0,1 6,6 v52 a6,6 0 0,1 -6,6 h-96 a6,6 0 0,1 -6,-6 v-52 a6,6 0 0,1 6,-6 Z"/>
+    <path android:fillColor="#FFFFFF" android:strokeColor="@color/on_marker" android:strokeWidth="3.5" android:strokeLineJoin="round" android:strokeLineCap="round" android:pathData="M63,88 a17,17 0 1,0 34,0 a17,17 0 1,0 -34,0 Z"/>
+    <path android:fillColor="#00000000" android:strokeColor="@color/on_marker" android:strokeWidth="3" android:strokeLineJoin="round" android:strokeLineCap="round" android:pathData="M72.8,79.0 H87.2 M72.8,85.3 H87.2 M73.7,79.0 C85.4,79.0 85.4,91.6 73.7,91.6 L85.4,102.4"/>
+    <path android:fillColor="@color/on_marker" android:pathData="M38.5,70 a3.5,3.5 0 1,0 7.0,0 a3.5,3.5 0 1,0 -7.0,0 Z"/>
+    <path android:fillColor="@color/on_marker" android:pathData="M114.5,70 a3.5,3.5 0 1,0 7.0,0 a3.5,3.5 0 1,0 -7.0,0 Z"/>
+    <path android:fillColor="@color/on_marker" android:pathData="M38.5,106 a3.5,3.5 0 1,0 7.0,0 a3.5,3.5 0 1,0 -7.0,0 Z"/>
+    <path android:fillColor="@color/on_marker" android:pathData="M114.5,106 a3.5,3.5 0 1,0 7.0,0 a3.5,3.5 0 1,0 -7.0,0 Z"/>
+</vector>

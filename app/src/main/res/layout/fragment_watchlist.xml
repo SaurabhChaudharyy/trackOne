@@ -6,7 +6,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="@color/background">
+    android:background="@color/page">
 
     <!-- ── Watchlist tab strip ──────────────────────────────────────────────── -->
     <LinearLayout
@@ -14,10 +14,9 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:background="@color/background"
-        android:elevation="2dp"
+        android:background="@drawable/bg_sheet_bottom"
         android:paddingTop="8dp"
-        android:paddingBottom="0dp">
+        android:paddingBottom="10dp">
 
         <HorizontalScrollView
             android:id="@+id/hsv_tabs"
@@ -52,12 +51,6 @@
 
     </LinearLayout>
 
-    <!-- thin divider under tab strip -->
-    <View
-        android:layout_width="match_parent"
-        android:layout_height="1dp"
-        android:background="@color/border_color"/>
-
     <!-- ── Body: SwipeRefresh + list ───────────────────────────────────────── -->
     <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
         android:id="@+id/swipe_refresh_layout"
@@ -72,9 +65,13 @@
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/recycler_view_watchlist"
                 android:layout_width="match_parent"
-                android:layout_height="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="16dp"
+                android:layout_marginTop="12dp"
+                android:layout_marginBottom="12dp"
+                android:background="@drawable/bg_card"
+                android:clipToOutline="true"
                 android:clipToPadding="false"
-                android:paddingBottom="8dp"
                 tools:listitem="@layout/item_stock"/>
 
             <LinearLayout
@@ -83,35 +80,52 @@
                 android:layout_height="match_parent"
                 android:orientation="vertical"
                 android:gravity="center"
+                android:layout_marginHorizontal="16dp"
+                android:layout_marginTop="12dp"
+                android:layout_marginBottom="12dp"
+                android:paddingHorizontal="24dp"
+                android:background="@drawable/bg_card"
                 android:visibility="gone">
+
+                <ImageView
+                    android:layout_width="200dp"
+                    android:layout_height="200dp"
+                    android:src="@drawable/ill_empty_list"
+                    android:importantForAccessibility="no"/>
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="No stocks yet"
+                    android:layout_marginTop="8dp"
+                    android:text="Your watchlist is empty"
                     android:textColor="@color/text_primary"
-                    android:textSize="16sp"
+                    android:textSize="22sp"
                     android:fontFamily="@font/inter_bold"/>
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="6dp"
-                    android:text="Add a symbol to start tracking"
-                    android:textColor="@color/text_tertiary"
-                    android:textSize="13sp"/>
+                    android:layout_marginTop="8dp"
+                    android:gravity="center"
+                    android:text="Add stocks you follow but don’t own yet. Their prices refresh with the rest of your portfolio."
+                    android:textColor="@color/text_secondary"
+                    android:textSize="14sp"
+                    android:fontFamily="@font/inter"/>
 
-                <com.google.android.material.button.MaterialButton
+                <TextView
                     android:id="@+id/btn_add_stock"
-                    android:layout_width="wrap_content"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="24dp"
-                    android:text="Add stock"
-                    android:textSize="13sp"
-                    android:textColor="@color/on_ink"
-                    android:paddingHorizontal="20dp"
-                    app:backgroundTint="@color/ink"
-                    app:cornerRadius="8dp"/>
+                    android:minHeight="52dp"
+                    android:gravity="center"
+                    android:background="@drawable/bg_marker_pill"
+                    android:text="Add a stock"
+                    android:textColor="@color/on_marker"
+                    android:textSize="16sp"
+                    android:fontFamily="@font/inter_semi_bold"
+                    android:clickable="true"
+                    android:focusable="true"/>
             </LinearLayout>
 
             <LinearLayout

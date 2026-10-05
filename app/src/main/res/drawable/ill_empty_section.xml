@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Empty-state art: a torn-paper neon blob behind a stack of coins, drawn in the marker style
+     (ink outline, white fill). Colours are constant in both themes. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="160dp"
+    android:height="160dp"
+    android:viewportWidth="160"
+    android:viewportHeight="160">
+    <path android:fillColor="@color/marker" android:pathData="M18,50 L90,14 L146,40 L150,104 L104,148 L40,140 L14,92 Z"/>
+    <path android:fillColor="@color/marker" android:pathData="M34,30 L128,24 L142,90 L110,144 L44,128 L16,76 Z"/>
+    <!-- bottom coin -->
+    <path android:fillColor="#FFFFFF" android:strokeColor="@color/on_marker" android:strokeWidth="4" android:strokeLineJoin="round"
+        android:pathData="M44,108 L44,124 C44,133 60,138 80,138 C100,138 116,133 116,124 L116,108"/>
+    <path android:fillColor="#FFFFFF" android:strokeColor="@color/on_marker" android:strokeWidth="4"
+        android:pathData="M44,108 C44,100.8 60,95 80,95 C100,95 116,100.8 116,108 C116,115.2 100,121 80,121 C60,121 44,115.2 44,108 Z"/>
+    <!-- middle coin -->
+    <path android:fillColor="#FFFFFF" android:strokeColor="@color/on_marker" android:strokeWidth="4" android:strokeLineJoin="round"
+        android:pathData="M44,84 L44,100 C44,109 60,114 80,114 C100,114 116,109 116,100 L116,84"/>
+    <path android:fillColor="#FFFFFF" android:strokeColor="@color/on_marker" android:strokeWidth="4"
+        android:pathData="M44,84 C44,76.8 60,71 80,71 C100,71 116,76.8 116,84 C116,91.2 100,97 80,97 C60,97 44,91.2 44,84 Z"/>
+    <!-- top coin -->
+    <path android:fillColor="#FFFFFF" android:strokeColor="@color/on_marker" android:strokeWidth="4" android:strokeLineJoin="round"
+        android:pathData="M44,60 L44,76 C44,85 60,90 80,90 C100,90 116,85 116,76 L116,60"/>
+    <path android:fillColor="#FFFFFF" android:strokeColor="@color/on_marker" android:strokeWidth="4"
+        android:pathData="M44,60 C44,52.8 60,47 80,47 C100,47 116,52.8 116,60 C116,67.2 100,73 80,73 C60,73 44,67.2 44,60 Z"/>
+</vector>

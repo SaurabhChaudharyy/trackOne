@@ -1,5 +1,7 @@
 package app.trackone.ui.main
 
+import app.trackone.ui.util.SelectionPillDrawable
+import app.trackone.ui.util.PillSelector
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.os.Bundle
@@ -39,6 +41,7 @@ class WatchlistFragment : Fragment() {
 
     /** Map groupId → tab view for quick lookup. */
     private val tabViews = mutableMapOf<Long, View>()
+    private var tabSelector: PillSelector<Long>? = null
 
     companion object {
         private const val MAX_WATCHLISTS = 5
@@ -96,6 +99,20 @@ class WatchlistFragment : Fragment() {
             tabViews.remove(removedId)
         }
 
+        val selector = tabSelector ?: PillSelector<Long>(
+            requireContext(),
+            labelOff = ContextCompat.getColor(requireContext(), R.color.text_tertiary),
+            labelOn = ContextCompat.getColor(requireContext(), R.color.text_primary)
+        ) {
+            // The active tab's ink underline grows in and out like the bottom tabs' indicator.
+            SelectionPillDrawable(
+                android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT),
+                ContextCompat.getColor(requireContext(), R.color.ink),
+                underlinePx = 3 * resources.displayMetrics.density
+            )
+        }.also { tabSelector = it }
+        selector.retainOnly(newIds)
+
         groups.forEach { group ->
             val tabView = tabViews.getOrPut(group.id) {
                 val tabBinding = ItemWatchlistTabBinding.inflate(
@@ -118,24 +135,16 @@ class WatchlistFragment : Fragment() {
             // Update label
             tabView.findViewById<TextView>(R.id.tv_tab_name).text = group.name
 
-            // Active indicator
+            // Active indicator: the underline and label colour animate (see PillSelector)
             val isActive = group.id == activeId
-            val tabLabel = tabView.findViewById<TextView>(R.id.tv_tab_name)
-            tabLabel.setTextColor(
-                ContextCompat.getColor(
-                    requireContext(),
-                    if (isActive) R.color.text_primary else R.color.text_tertiary
-                )
-            )
-            tabView.background = if (isActive)
-                ContextCompat.getDrawable(requireContext(), R.drawable.bg_watchlist_tab_active)
-            else null
+            selector.add(group.id, tabView, tabView.findViewById(R.id.tv_tab_name))
 
             // Scroll active tab into view
             if (isActive) {
                 binding.hsvTabs.post { binding.hsvTabs.smoothScrollTo(tabView.left - 12, 0) }
             }
         }
+        selector.select(activeId)
     }
 
     private fun showTabOptionsMenu(anchor: View, group: WatchlistGroupEntity) {
@@ -467,6 +476,8 @@ class WatchlistFragment : Fragment() {
 
     override fun onDestroyView() {
         super.onDestroyView()
+        tabSelector?.release()
+        tabSelector = null
         tabViews.clear()
         _binding = null
     }

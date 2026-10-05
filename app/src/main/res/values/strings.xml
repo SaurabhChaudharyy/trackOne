@@ -34,17 +34,26 @@
     <string name="trackone_logo">TrackOne logo</string>
     <string name="trackone">TrackOne</string>
     <string name="nav_assets">Assets</string>
+    <string name="chart_range_1d">1D</string>
     <string name="chart_range_1w">1W</string>
     <string name="chart_range_1m">1M</string>
     <string name="chart_range_3m">3M</string>
     <string name="chart_range_1y">1Y</string>
+    <string name="chart_range_all">ALL</string>
+    <string name="chart_range_1d_desc">Show 1 day</string>
     <string name="chart_range_1w_desc">Show 1 week</string>
     <string name="chart_range_1m_desc">Show 1 month</string>
     <string name="chart_range_3m_desc">Show 3 months</string>
     <string name="chart_range_1y_desc">Show 1 year</string>
+    <string name="chart_range_all_desc">Show all history</string>
     <string name="chart_caption">Based on your current holdings</string>
     <string name="tap_for_breakdown">TAP FOR FULL BREAKDOWN</string>
     <string name="chart_empty">Price history isn\'t available for this range yet.</string>
     <string name="settings_digest_title">Portfolio Digest</string>
     <string name="settings_digest_desc">Daily: how your holdings moved today. Sunday: your total gain/loss and best/worst holdings</string>
+
+    <!-- Account deletion -->
+    <string name="account_delete_title">Delete Account</string>
+    <string name="account_delete_subtitle">Permanently delete your account and cloud backup</string>
+    <string name="confirm_password_hint">Password</string>
 </resources>

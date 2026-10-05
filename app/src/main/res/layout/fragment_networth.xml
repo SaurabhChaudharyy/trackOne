@@ -5,7 +5,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/background">
+    android:background="@color/page">
 
     <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
         android:id="@+id/swipe_refresh_layout"
@@ -24,13 +24,21 @@
         android:orientation="vertical"
         android:paddingBottom="16dp">
 
+        <!-- ── HEADER SHEET ─────────────────────────────────────────────── -->
+        <!-- Net worth + allocation share the toolbar's colour and end in a round bottom edge. -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@drawable/bg_sheet_bottom">
+
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
             android:paddingHorizontal="16dp"
-            android:paddingTop="32dp"
-            android:paddingBottom="24dp">
+            android:paddingTop="12dp"
+            android:paddingBottom="8dp">
 
             <TextView
                 android:id="@+id/tv_total_networth_label"
@@ -56,6 +64,7 @@
 
             <!-- P&L chip + spacer + Invested (right) -->
             <LinearLayout
+                android:id="@+id/row_pnl_invested"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
@@ -81,6 +90,7 @@
 
                 <LinearLayout
                     android:id="@+id/ll_invested_row"
+                    android:tag="invested"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:orientation="horizontal"
@@ -109,19 +119,14 @@
 
         </LinearLayout>
 
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:background="@color/divider_color"/>
-
         <!-- Net Worth Breakdown Module -->
         <LinearLayout
             android:id="@+id/ll_breakdown_container"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:layout_marginTop="20dp"
-            android:layout_marginBottom="8dp"
+            android:layout_marginTop="12dp"
+            android:layout_marginBottom="20dp"
             android:visibility="gone"
             tools:visibility="visible">
 
@@ -161,7 +166,7 @@
                 android:layout_marginTop="16dp"
                 app:cardCornerRadius="4dp"
                 app:cardElevation="0dp"
-                app:cardBackgroundColor="@color/surface_variant">
+                app:cardBackgroundColor="@android:color/transparent">
 
                 <LinearLayout
                     android:id="@+id/ll_segmented_bar"
@@ -178,17 +183,79 @@
                 android:layout_marginHorizontal="16dp"
                 android:layout_marginTop="8dp"/>
         </LinearLayout>
+        </LinearLayout>
 
-        <View
+        <!-- ── EMPTY PORTFOLIO ──────────────────────────────────────────── -->
+        <!-- Only while nothing at all is tracked; empty sections otherwise stay compact. -->
+        <LinearLayout
+            android:id="@+id/card_assets_empty"
             android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:layout_marginTop="8dp"
-            android:background="@color/divider_color"/>
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="16dp"
+            android:layout_marginTop="12dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:padding="16dp"
+            android:background="@drawable/bg_card"
+            android:visibility="gone"
+            tools:visibility="visible">
+
+            <ImageView
+                android:layout_width="88dp"
+                android:layout_height="88dp"
+                android:src="@drawable/ill_empty_section"
+                android:importantForAccessibility="no"/>
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="14dp"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Nothing tracked yet"
+                    android:textColor="@color/text_primary"
+                    android:textSize="15sp"
+                    android:fontFamily="@font/inter_bold"/>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="Add your first holding to see your net worth here."
+                    android:textColor="@color/text_secondary"
+                    android:textSize="13sp"
+                    android:fontFamily="@font/inter"/>
+
+                <TextView
+                    android:id="@+id/btn_add_first_holding"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:minHeight="44dp"
+                    android:gravity="center"
+                    android:paddingHorizontal="16dp"
+                    android:background="@drawable/bg_marker_pill"
+                    android:text="Add a holding"
+                    android:textColor="@color/on_marker"
+                    android:textSize="13sp"
+                    android:fontFamily="@font/inter_semi_bold"
+                    android:clickable="true"
+                    android:focusable="true"/>
+            </LinearLayout>
+        </LinearLayout>
 
         <LinearLayout
             android:id="@+id/section_stock_in"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginHorizontal="16dp"
+            android:layout_marginTop="12dp"
+            android:background="@drawable/bg_card"
+            android:clipToOutline="true"
             android:orientation="vertical">
 
             <LinearLayout
@@ -272,16 +339,19 @@
                 android:visibility="visible"
                 tools:listitem="@layout/item_networth_asset"/>
 
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:background="@color/divider_color"/>
+            <include
+                android:id="@+id/empty_stock_in"
+                layout="@layout/include_empty_section"/>
         </LinearLayout>
 
         <LinearLayout
             android:id="@+id/section_stock_us"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginHorizontal="16dp"
+            android:layout_marginTop="12dp"
+            android:background="@drawable/bg_card"
+            android:clipToOutline="true"
             android:orientation="vertical">
 
             <LinearLayout
@@ -364,16 +434,19 @@
                 android:visibility="visible"
                 tools:listitem="@layout/item_networth_asset"/>
 
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:background="@color/divider_color"/>
+            <include
+                android:id="@+id/empty_stock_us"
+                layout="@layout/include_empty_section"/>
         </LinearLayout>
 
         <LinearLayout
             android:id="@+id/section_mf"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginHorizontal="16dp"
+            android:layout_marginTop="12dp"
+            android:background="@drawable/bg_card"
+            android:clipToOutline="true"
             android:orientation="vertical">
 
             <LinearLayout
@@ -456,16 +529,19 @@
                 android:visibility="visible"
                 tools:listitem="@layout/item_networth_asset"/>
 
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:background="@color/divider_color"/>
+            <include
+                android:id="@+id/empty_mf"
+                layout="@layout/include_empty_section"/>
         </LinearLayout>
 
         <LinearLayout
             android:id="@+id/section_gold"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginHorizontal="16dp"
+            android:layout_marginTop="12dp"
+            android:background="@drawable/bg_card"
+            android:clipToOutline="true"
             android:orientation="vertical">
 
             <LinearLayout
@@ -548,16 +624,19 @@
                 android:visibility="visible"
                 tools:listitem="@layout/item_networth_asset"/>
 
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:background="@color/divider_color"/>
+            <include
+                android:id="@+id/empty_gold"
+                layout="@layout/include_empty_section"/>
         </LinearLayout>
 
         <LinearLayout
             android:id="@+id/section_silver"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginHorizontal="16dp"
+            android:layout_marginTop="12dp"
+            android:background="@drawable/bg_card"
+            android:clipToOutline="true"
             android:orientation="vertical">
 
             <LinearLayout
@@ -640,16 +719,19 @@
                 android:visibility="visible"
                 tools:listitem="@layout/item_networth_asset"/>
 
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:background="@color/divider_color"/>
+            <include
+                android:id="@+id/empty_silver"
+                layout="@layout/include_empty_section"/>
         </LinearLayout>
 
         <LinearLayout
             android:id="@+id/section_crypto"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginHorizontal="16dp"
+            android:layout_marginTop="12dp"
+            android:background="@drawable/bg_card"
+            android:clipToOutline="true"
             android:orientation="vertical">
 
             <LinearLayout
@@ -732,16 +814,19 @@
                 android:visibility="visible"
                 tools:listitem="@layout/item_networth_asset"/>
 
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:background="@color/divider_color"/>
+            <include
+                android:id="@+id/empty_crypto"
+                layout="@layout/include_empty_section"/>
         </LinearLayout>
 
         <LinearLayout
             android:id="@+id/section_cash"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginHorizontal="16dp"
+            android:layout_marginTop="12dp"
+            android:background="@drawable/bg_card"
+            android:clipToOutline="true"
             android:orientation="vertical">
 
             <LinearLayout
@@ -824,16 +909,19 @@
                 android:visibility="visible"
                 tools:listitem="@layout/item_networth_asset"/>
 
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:background="@color/divider_color"/>
+            <include
+                android:id="@+id/empty_cash"
+                layout="@layout/include_empty_section"/>
         </LinearLayout>
 
         <LinearLayout
             android:id="@+id/section_bank"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginHorizontal="16dp"
+            android:layout_marginTop="12dp"
+            android:background="@drawable/bg_card"
+            android:clipToOutline="true"
             android:orientation="vertical">
 
             <LinearLayout
@@ -915,6 +1003,10 @@
                 android:nestedScrollingEnabled="false"
                 android:visibility="visible"
                 tools:listitem="@layout/item_networth_asset"/>
+
+            <include
+                android:id="@+id/empty_bank"
+                layout="@layout/include_empty_section"/>
         </LinearLayout>
 
     </LinearLayout>

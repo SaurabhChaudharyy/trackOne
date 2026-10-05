@@ -124,13 +124,17 @@ class SettingsFragment : Fragment() {
     private val googleSignInLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
+        // A Google sign-in started to confirm "it's me" for account deletion is not a normal sign-in.
+        val confirmingDeletion = reauthForDeletion
+        reauthForDeletion = false
         if (result.resultCode == Activity.RESULT_OK) {
             try {
                 val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
                 val account = task.getResult(ApiException::class.java)
                 val idToken = account.idToken
                 if (idToken != null) {
-                    authViewModel.handleGoogleSignInResult(idToken)
+                    if (confirmingDeletion) authViewModel.confirmGoogleAndDelete(idToken)
+                    else authViewModel.handleGoogleSignInResult(idToken)
                 } else {
                     Toast.makeText(requireContext(), "Sign-in failed: no ID token", Toast.LENGTH_SHORT).show()
                 }
@@ -144,9 +148,15 @@ class SettingsFragment : Fragment() {
             }
         } else {
             android.util.Log.w("SettingsFragment", "Google Sign-In: unexpected resultCode=${result.resultCode}")
-            Toast.makeText(requireContext(), "Sign-in was interrupted, please try again", Toast.LENGTH_SHORT).show()
+            val message = if (confirmingDeletion) "Account not deleted: you didn't confirm it's you"
+                          else "Sign-in was interrupted, please try again"
+            Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
         }
     }
+
+    /** Set when a Google sign-in is started only to confirm identity before deleting the account. */
+    private var reauthForDeletion = false
+    private var confirmPasswordDialog: androidx.appcompat.app.AlertDialog? = null
 
     // ── Lifecycle ─────────────────────────────────────────────────────────
 
@@ -167,6 +177,7 @@ class SettingsFragment : Fragment() {
         updatePortfolioReminderRow()
         observeAuthState()
         observeGoogleSignInState()
+        observeAccountDeletion()
         observeCloudBackupState()
         observeCsvImportState()
     }
@@ -197,6 +208,12 @@ class SettingsFragment : Fragment() {
         binding.btnSignOut.setOnDebouncedClickListener {
             it.performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY)
             showSignOutConfirmation()
+        }
+
+        // Delete Account (signed-in only): removes the cloud backup and the account, never local data.
+        binding.rowDeleteAccount.setOnDebouncedClickListener {
+            it.performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY)
+            showDeleteAccountConfirmation()
         }
 
         // Backup to Cloud
@@ -450,18 +467,21 @@ class SettingsFragment : Fragment() {
         when (state) {
             is AuthState.Unknown -> {
                 // Initial state — hide everything until resolved
+                binding.rowDeleteAccount.isVisible = false
                 binding.cardSignIn.isVisible = false
                 binding.cardProfile.isVisible = false
                 binding.tvCloudBackupHeader.isVisible = false
                 binding.cardCloudBackup.isVisible = false
             }
             is AuthState.SignedOut -> {
+                binding.rowDeleteAccount.isVisible = false
                 binding.cardSignIn.isVisible = true
                 binding.cardProfile.isVisible = false
                 binding.tvCloudBackupHeader.isVisible = false
                 binding.cardCloudBackup.isVisible = false
             }
             is AuthState.SignedIn -> {
+                binding.rowDeleteAccount.isVisible = true
                 binding.cardSignIn.isVisible = false
                 binding.cardProfile.isVisible = true
                 binding.tvCloudBackupHeader.isVisible = true
@@ -828,6 +848,83 @@ class SettingsFragment : Fragment() {
             .show()
     }
 
+    private fun showDeleteAccountConfirmation() {
+        if (!isAdded) return
+        if (activeDialog?.isShowing == true) return
+        activeDialog = MaterialAlertDialogBuilder(requireContext())
+            .setTitle("Delete your account?")
+            .setMessage(
+                "This permanently deletes your TrackOne account and the cloud backup saved with it.\n\n" +
+                "The watchlists and investments on this device are not affected.\n\n" +
+                "This can't be undone."
+            )
+            .setPositiveButton("Delete account") { dlg, _ -> dlg.dismiss(); authViewModel.deleteAccount() }
+            .setNegativeButton("Cancel") { dlg, _ -> dlg.dismiss() }
+            .setOnDismissListener { activeDialog = null }
+            .show()
+    }
+
+    /** Firebase wants the password again before it will delete an account that signed in a while ago. */
+    private fun showConfirmPasswordDialog(error: String?) {
+        if (!isAdded) return
+        if (confirmPasswordDialog?.isShowing == true) return
+        val content = layoutInflater.inflate(R.layout.dialog_confirm_password, null)
+        val til = content.findViewById<com.google.android.material.textfield.TextInputLayout>(R.id.til_confirm_password)
+        val field = content.findViewById<com.google.android.material.textfield.TextInputEditText>(R.id.et_confirm_password)
+        til.error = error
+        confirmPasswordDialog = MaterialAlertDialogBuilder(requireContext())
+            .setTitle("Confirm it's you")
+            .setMessage("Enter your password to finish deleting your account.")
+            .setView(content)
+            .setPositiveButton("Delete account") { dlg, _ ->
+                dlg.dismiss()
+                authViewModel.confirmPasswordAndDelete(field.text?.toString().orEmpty())
+            }
+            .setNegativeButton("Cancel") { dlg, _ -> dlg.dismiss(); authViewModel.resetAccountDeletion() }
+            .setOnCancelListener { authViewModel.resetAccountDeletion() }
+            .setOnDismissListener { confirmPasswordDialog = null }
+            .show()
+    }
+
+    private fun observeAccountDeletion() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                authViewModel.accountDeletion.collect { state ->
+                    when (state) {
+                        is AccountDeletionUiState.Idle -> Unit
+                        is AccountDeletionUiState.Deleting -> showBlockingProgress("Deleting your account…")
+                        is AccountDeletionUiState.NeedsPassword -> {
+                            dismissBlockingProgress()
+                            showConfirmPasswordDialog(state.error)
+                        }
+                        is AccountDeletionUiState.NeedsGoogle -> {
+                            dismissBlockingProgress()
+                            // Handled once: reset first so coming back from the picker does not launch it again.
+                            authViewModel.resetAccountDeletion()
+                            Toast.makeText(requireContext(), "Confirm it's you to finish deleting your account", Toast.LENGTH_LONG).show()
+                            reauthForDeletion = true
+                            launchGoogleSignIn()
+                        }
+                        is AccountDeletionUiState.Deleted -> {
+                            dismissBlockingProgress()
+                            authViewModel.resetAccountDeletion()
+                            showSuccessDialog(
+                                "Account deleted",
+                                "Your account and its cloud backup have been deleted. " +
+                                "The data on this device was not changed."
+                            )
+                        }
+                        is AccountDeletionUiState.Error -> {
+                            dismissBlockingProgress()
+                            authViewModel.resetAccountDeletion()
+                            showErrorDialog(state.message)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     private fun showBackupConfirmation() {
         if (!isAdded) return
         MaterialAlertDialogBuilder(requireContext())
@@ -907,6 +1004,8 @@ class SettingsFragment : Fragment() {
         super.onDestroyView()
         blockingDialog?.dismiss()
         blockingDialog = null
+        confirmPasswordDialog?.dismiss()
+        confirmPasswordDialog = null
         _binding = null
     }
 }

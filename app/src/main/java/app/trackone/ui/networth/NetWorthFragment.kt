@@ -1,5 +1,12 @@
 package app.trackone.ui.networth
 
+import app.trackone.ui.util.announceAsButton
+import app.trackone.ui.util.LargeText
+import androidx.core.content.ContextCompat
+import app.trackone.ui.util.SelectionPillDrawable
+import app.trackone.ui.util.PillSelector
+import app.trackone.ui.util.MotionSpec
+import androidx.transition.TransitionManager
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -13,7 +20,6 @@ import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AlertDialog
 import androidx.core.content.res.ResourcesCompat
 import androidx.core.view.isVisible
-import androidx.core.view.isInvisible
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
@@ -88,7 +94,10 @@ class NetWorthFragment : Fragment() {
     private var activeFilter: AssetType? = null
 
     // The chip TextView for "All" tab, kept for selected-state toggling
+    private val filterExpansion = FilterExpansion()
     private var allChipView: TextView? = null
+    private val allChipKey = Any()   // the "All" chip's key in [allocationSelector]
+    private var allocationSelector: PillSelector<Any>? = null
     // Map from AssetType → its chip TextView
     private val typeChips = mutableMapOf<AssetType, TextView>()
 
@@ -131,6 +140,8 @@ class NetWorthFragment : Fragment() {
         setupRecyclerViews()
         setupHeaders()
         setupAddButtons()
+        setupEmptyCards()
+        LargeText.stackIfLarge(binding.rowPnlInvested, resources.configuration.fontScale)
         setupViewAllButtons()
         setupSelectionBar()
         setupSwipeRefresh()
@@ -195,12 +206,15 @@ class NetWorthFragment : Fragment() {
     private fun setupHeaders() {
         fun wireHeader(header: View, rv: RecyclerView, type: AssetType) {
             header.setOnClickListener {
+                animateSections()
+                filterExpansion.userChanged(type)
                 val nowExpanded = !(sectionExpanded[type] ?: true)
                 sectionExpanded[type] = nowExpanded
                 rv.isVisible = nowExpanded
                 // Show "View all" button only when expanded AND section has more than TOP_N items
                 val full = fullListCache[type] ?: emptyList()
                 viewAllButtonFor(type)?.isVisible = nowExpanded && full.size > TOP_N
+                refreshEmptyCards()
             }
         }
 
@@ -223,6 +237,46 @@ class NetWorthFragment : Fragment() {
         binding.btnAddCrypto.setOnClickListener  { showAddDialog(AssetType.CRYPTO,   "Add Crypto") }
         binding.btnAddCash.setOnClickListener    { showAddDialog(AssetType.CASH,     "Add Cash on Hand") }
         binding.btnAddBank.setOnClickListener    { showAddDialog(AssetType.BANK,     "Add Bank Balance") }
+        binding.btnAddFirstHolding.setOnClickListener { showAddDialog(AssetType.STOCK_IN, "Add Indian Stock") }
+        binding.btnAddFirstHolding.announceAsButton()
+    }
+
+    /**
+     * Each category's own explanation, shown only when the user opens an empty one. The action is
+     * the section's "+" button, so it opens exactly the dialog that button does.
+     */
+    private fun emptyCards() = mapOf(
+        AssetType.STOCK_IN to (binding.emptyStockIn to binding.btnAddStockIn),
+        AssetType.STOCK_US to (binding.emptyStockUs to binding.btnAddStockUs),
+        AssetType.MF       to (binding.emptyMf      to binding.btnAddMf),
+        AssetType.GOLD     to (binding.emptyGold    to binding.btnAddGold),
+        AssetType.SILVER   to (binding.emptySilver  to binding.btnAddSilver),
+        AssetType.CRYPTO   to (binding.emptyCrypto  to binding.btnAddCrypto),
+        AssetType.CASH     to (binding.emptyCash    to binding.btnAddCash),
+        AssetType.BANK     to (binding.emptyBank    to binding.btnAddBank)
+    )
+
+    private fun setupEmptyCards() {
+        emptyCards().forEach { (type, pair) ->
+            val (card, addButton) = pair
+            val copy = emptySectionCopy(type)
+            card.ivEmptyArt.setImageResource(emptySectionArt(type))
+            card.tvEmptyTitle.text = copy.title
+            card.tvEmptyBody.text = copy.body
+            card.btnEmptyAction.text = copy.action
+            card.btnEmptyAction.setOnClickListener { addButton.performClick() }
+            card.btnEmptyAction.announceAsButton()
+        }
+    }
+
+    private fun refreshEmptyCards() {
+        if (_binding == null) return
+        emptyCards().forEach { (type, pair) ->
+            pair.first.root.isVisible = showEmptyCard(
+                expanded = sectionExpanded[type] == true,
+                holdings = fullListCache[type]?.size ?: 0
+            )
+        }
     }
 
     /** Wire up each "View all" / "View less" button */
@@ -239,6 +293,7 @@ class NetWorthFragment : Fragment() {
         )
         for ((type, btn) in viewAllMap) {
             btn.setOnClickListener {
+                filterExpansion.userChanged(type)
                 val nowAll = !(sectionShowAll[type] ?: false)
                 sectionShowAll[type] = nowAll
                 btn.text = if (nowAll) "View less" else "View all"
@@ -250,29 +305,35 @@ class NetWorthFragment : Fragment() {
         }
     }
 
-    private fun expandSection(type: AssetType) {
-        sectionExpanded[type] = true
-        sectionShowAll[type] = true
-        
-        val rvMap = mapOf(
-            AssetType.STOCK_IN to binding.rvStockIn,
-            AssetType.STOCK_US to binding.rvStockUs,
-            AssetType.MF       to binding.rvMf,
-            AssetType.GOLD     to binding.rvGold,
-            AssetType.SILVER   to binding.rvSilver,
-            AssetType.CRYPTO   to binding.rvCrypto,
-            AssetType.CASH     to binding.rvCash,
-            AssetType.BANK     to binding.rvBank
-        )
-        rvMap[type]?.isVisible = true
-        
-        val full = fullListCache[type] ?: emptyList()
-        adapters[type]?.submitList(full)
-        
-        viewAllButtonFor(type)?.apply {
-            isVisible = full.size > TOP_N
-            text = "View less"
+    /** Picks the allocation filter (null is All): the header, the chips and which sections show follow. */
+    private fun applyFilter(newFilter: AssetType?) {
+        animateSections()
+        activeFilter = newFilter
+        // Opening a section for the filter is borrowed: All, or another category, puts it back.
+        val states = AssetType.entries.associateWith {
+            SectionState(expanded = sectionExpanded[it] == true, showAll = sectionShowAll[it] == true)
         }
+        filterExpansion.onFilterChanged(newFilter, states).forEach { (type, state) -> setSectionState(type, state) }
+        updateMainHeaderStats()
+        viewModel.assetSummary.value?.let { updateBreakdownUI(it) }
+        refreshChipStates()
+        updateSectionVisibility()
+    }
+
+    /** Shows [type]'s section as [state]: open or closed, and all its rows or just the top few. */
+    private fun setSectionState(type: AssetType, state: SectionState) {
+        sectionExpanded[type] = state.expanded
+        sectionShowAll[type] = state.showAll
+        rvForType(type)?.isVisible = state.expanded
+
+        val full = fullListCache[type] ?: emptyList()
+        adapters[type]?.submitList(if (state.showAll) full else full.take(TOP_N))
+
+        viewAllButtonFor(type)?.apply {
+            isVisible = state.expanded && full.size > TOP_N
+            text = if (state.showAll) "View less" else "View all"
+        }
+        refreshEmptyCards()
     }
 
     private fun updateMainHeaderStats() {
@@ -293,7 +354,8 @@ class NetWorthFragment : Fragment() {
             binding.tvTotalNetworth.text = inrFormat.format(totalCurrent)
         }
         
-        binding.tvTotalNetworthLabel.isInvisible = (activeFilter != null)
+        // The label stays and names what the figures below are, so a filter leaves no gap above them.
+        binding.tvTotalNetworthLabel.text = activeFilter?.let { getCategoryName(it) } ?: "Total Net Worth"
         
         // update invested amount text
         if (totalInvested > 0.0) {
@@ -346,6 +408,7 @@ class NetWorthFragment : Fragment() {
                     viewAllBtn?.isVisible = false
                 }
             }
+            refreshEmptyCards()
 
             fun updateCount(countView: android.widget.TextView, addButton: android.widget.ImageButton, type: AssetType) {
                 val count = grouped[type]?.size ?: 0
@@ -365,6 +428,10 @@ class NetWorthFragment : Fragment() {
             updateCount(binding.tvCountCrypto,  binding.btnAddCrypto,  AssetType.CRYPTO)
             updateCount(binding.tvCountCash,    binding.btnAddCash,    AssetType.CASH)
             updateCount(binding.tvCountBank,    binding.btnAddBank,    AssetType.BANK)
+
+            // The illustrated card only greets a portfolio with nothing in it; once there is one
+            // holding, empty sections fall back to their compact header with the neon "+".
+            binding.cardAssetsEmpty.isVisible = grouped.values.all { it.isEmpty() }
         }
 
         viewModel.assetSummary.observe(viewLifecycleOwner) { summary ->
@@ -425,11 +492,24 @@ class NetWorthFragment : Fragment() {
         // ── Allocation chip tabs ──────────────────────────────────────────────
         binding.llAllocationTabs.removeAllViews()
         typeChips.clear()
+        allocationSelector?.release()
+        val selector = PillSelector<Any>(
+            requireContext(),
+            labelOff = requireContext().getColor(R.color.text_secondary),
+            labelOn = requireContext().getColor(R.color.on_ink)
+        ) {
+            SelectionPillDrawable(
+                ContextCompat.getDrawable(requireContext(), R.drawable.bg_range_chip)!!,
+                requireContext().getColor(R.color.ink)
+            )
+        }
+        allocationSelector = selector
 
         // "All" chip
         val allChip = buildChip("All · ${inrFormat.format(total)}", null, isAll = true)
         allChipView = allChip
         binding.llAllocationTabs.addView(allChip)
+        selector.add(allChipKey, allChip, allChip)
 
         for (entry in sorted) {
             val type  = entry.key
@@ -441,6 +521,7 @@ class NetWorthFragment : Fragment() {
             )
             typeChips[type] = chip
             binding.llAllocationTabs.addView(chip)
+            selector.add(type, chip, chip)
         }
 
         // Apply current filter selection state
@@ -460,7 +541,11 @@ class NetWorthFragment : Fragment() {
                         marginEnd = (2 * resources.displayMetrics.density).toInt()
                     }
                 }
-                setBackgroundColor(color)
+                // Each segment is its own rounded pill (the design), not a flat block clipped by the bar.
+                background = android.graphics.drawable.GradientDrawable().apply {
+                    setColor(color)
+                    cornerRadius = 4 * resources.displayMetrics.density
+                }
             }
             binding.llSegmentedBar.addView(segment)
         }
@@ -483,12 +568,7 @@ class NetWorthFragment : Fragment() {
 
             // Clicking the row acts as a filter tab
             itemBinding.root.setOnClickListener {
-                activeFilter = if (activeFilter == type) null else type
-                activeFilter?.let { expandSection(it) }
-                updateMainHeaderStats()
-                updateBreakdownUI(summary)
-                refreshChipStates()
-                updateSectionVisibility()
+                applyFilter(if (activeFilter == type) null else type)
             }
 
             binding.llBreakdownList.addView(itemBinding.root)
@@ -517,44 +597,29 @@ class NetWorthFragment : Fragment() {
             } catch (_: Exception) {}
 
             setPadding(hPadPx, vPadPx, hPadPx, vPadPx)
-            background = requireContext().getDrawable(R.drawable.bg_allocation_chip)
             layoutParams = android.widget.LinearLayout.LayoutParams(
                 android.widget.LinearLayout.LayoutParams.WRAP_CONTENT,
                 android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
             ).apply { marginEnd = marginPx }
 
-            isSelected = false
             setTextColor(requireContext().getColor(R.color.text_secondary))
 
-            setOnClickListener {
-                activeFilter = if (isAll) null else type
-                activeFilter?.let { expandSection(it) }
-                updateMainHeaderStats()
-                viewModel.assetSummary.value?.let { summary ->
-                    updateBreakdownUI(summary)
-                }
-                refreshChipStates()
-                updateSectionVisibility()
-            }
+            setOnClickListener { applyFilter(if (isAll) null else type) }
         }
     }
 
-    /** Update selected/unselected visual state on all chips */
+    /** Moves the ink pill to the chip of the active filter, the way the bottom tabs move theirs. */
     private fun refreshChipStates() {
-        val selectedColor   = requireContext().getColor(R.color.on_ink)   // inverse of the ink fill
-        val unselectedColor = requireContext().getColor(R.color.text_secondary)
+        allocationSelector?.select(activeFilter ?: allChipKey)
+    }
 
-        // "All" chip
-        allChipView?.apply {
-            isSelected = (activeFilter == null)
-            setTextColor(if (activeFilter == null) selectedColor else unselectedColor)
-        }
-
-        typeChips.forEach { (type, chip) ->
-            val sel = (activeFilter == type)
-            chip.isSelected = sel
-            chip.setTextColor(if (sel) selectedColor else unselectedColor)
-        }
+    /**
+     * Call just before sections open, close, or are filtered in or out: they fade and shift to
+     * their new places with the app's one motion (see [MotionSpec]) instead of popping.
+     */
+    private fun animateSections() {
+        val parent = binding.sectionStockIn.parent as? ViewGroup ?: return
+        TransitionManager.beginDelayedTransition(parent, MotionSpec.transition(requireContext()))
     }
 
     /** Show only the section(s) that match the active filter; show all when filter is null */
@@ -1310,6 +1375,8 @@ class NetWorthFragment : Fragment() {
 
     override fun onDestroyView() {
         super.onDestroyView()
+        allocationSelector?.release()
+        allocationSelector = null
         _binding = null
     }
 }

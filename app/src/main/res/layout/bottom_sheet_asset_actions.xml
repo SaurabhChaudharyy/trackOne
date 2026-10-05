@@ -28,6 +28,7 @@
         android:paddingVertical="14dp"
         android:background="?attr/selectableItemBackground">
         <ImageView
+        android:importantForAccessibility="no"
             android:layout_width="22dp"
             android:layout_height="22dp"
             android:src="@drawable/ic_edit"
@@ -52,6 +53,7 @@
         android:paddingVertical="14dp"
         android:background="?attr/selectableItemBackground">
         <ImageView
+        android:importantForAccessibility="no"
             android:layout_width="22dp"
             android:layout_height="22dp"
             android:src="@drawable/ic_check_circle"
@@ -76,6 +78,7 @@
         android:paddingVertical="14dp"
         android:background="?attr/selectableItemBackground">
         <ImageView
+        android:importantForAccessibility="no"
             android:layout_width="22dp"
             android:layout_height="22dp"
             android:src="@drawable/ic_close"
