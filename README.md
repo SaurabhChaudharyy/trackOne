@@ -12,7 +12,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/Platform-Android-3DDC84?style=flat-square&logo=android&logoColor=white"/>
   <img src="https://img.shields.io/badge/Min%20SDK-26%20(Oreo)-blue?style=flat-square"/>
-  <img src="https://img.shields.io/badge/Target%20SDK-34-blue?style=flat-square"/>
+  <img src="https://img.shields.io/badge/Target%20SDK-36-blue?style=flat-square"/>
   <img src="https://img.shields.io/badge/Language-Kotlin-7F52FF?style=flat-square&logo=kotlin&logoColor=white"/>
   <img src="https://img.shields.io/badge/Architecture-MVVM-orange?style=flat-square"/>
 </p>
@@ -24,6 +24,25 @@
 </p>
 
 ---
+
+## What's New in v1.4.5
+
+*   **Delete your account from the app**: Settings → Delete Account permanently removes your sign-in account and its cloud backup. The data on your device is not touched. If you signed in a while ago you'll be asked to confirm it's you first.
+*   **1D and ALL on the Home chart**: a one-day intraday view and a full-history view (weekly prices, starting where most of your holdings have price data). The gain/loss line now follows the range you pick instead of always showing your all-time gain.
+*   **Friendlier empty categories**: tap an empty category on Assets to see what you can add there, each with its own illustration (gold bars, a silver coin, a bank, and so on).
+*   **Assets filter fix**: picking a category no longer leaves it expanded after you go back to All, and the header names the category instead of leaving a gap.
+*   **Consistent animations**: the bottom tabs, range chips, watchlist tabs, sections and the update banner now share one Material-style motion.
+*   **Faster, calmer refresh**: prices load several at a time (roughly twice as fast at launch), and the "Portfolio updated" banner only appears for a move worth noticing (0.1% of your total).
+*   **Large text and accessibility**: money figures are no longer cut off at large system text sizes, clearer TalkBack labels, easier-to-tap Watchlist tabs, and an Android 13+ themed app icon.
+*   **Privacy and security hardening**: no email addresses or holdings in logs, an unused foreground-service permission removed, and the widget's refresh and tap actions can no longer be triggered by other apps.
+
+## What's New in v1.4
+
+*   **"Marker" visual redesign**: a neon-accent-only palette (reserved for things that need attention), ink for selection, P&L communicated as coloured text rather than filled pills, a dotted chart fill, and consistent font weights app-wide.
+*   **Home chart rebuilt as real portfolio history**: today's holdings priced against each day's actual close over 1W/1M/3M/1Y, with a smooth pixel-accurate sweep-in animation and a cached last-drawn chart so cold start isn't blank.
+*   **Automatic symbol repair**: holdings imported under a company name or ISIN (which previously could never fetch a live price) are now automatically resolved to a priceable ticker.
+*   **Multi-broker reconciliation**: the same holding imported from more than one broker is combined into a single position instead of duplicated.
+*   **Weekly summary notification**, container-transform transition into the stock detail screen, and `targetSdk`/`compileSdk` bumped to 36 ahead of Play's API-36 deadline.
 
 ## What's New in v1.3-beta
 
@@ -60,8 +79,8 @@
 | Tab | What it does |
 |---|---|
 | **Markets / Watchlist** | Track any stock or crypto symbol. Live prices via Yahoo Finance. Tap any item for a full candlestick / line chart with 1D → 5Y timeframes. |
-| **Net Worth** | Add assets across 7 categories (Indian Stocks, US Stocks, Mutual Funds, Gold, Crypto, Cash, Bank). Collapsible sections. Auto-fetches current price for symbol-based assets. |
-| **Settings** | Import holdings directly from your broker's CSV/XLSX export (HDFC Securities, Angel One, Zerodha, Groww, Vested, Interactive Brokers). Optionally sign in with Google or email/password to back up your watchlist + net worth data to the cloud and restore it on another device. Toggle theme, biometric app lock, and the daily digest notification. |
+| **Net Worth** | Add assets across 8 categories (Indian Stocks, US Stocks, Mutual Funds, Gold, Silver, Crypto, Cash, Bank). Collapsible sections. Auto-fetches current price for symbol-based assets, and auto-resolves holdings imported under a company name/ISIN to a priceable ticker. |
+| **Settings** | Import holdings directly from your broker's CSV/XLSX export (HDFC Securities, Angel One, Zerodha, Groww, Vested, Interactive Brokers), with same-holding reconciliation across brokers. Optionally sign in with Google or email/password to back up your watchlist + net worth data to the cloud and restore it on another device. Toggle theme, biometric app lock, and the daily digest / weekly summary notifications. You can delete your account and cloud backup from Settings at any time. |
 | **Home-screen Widget** | Scrollable stock list widget that updates in the background via WorkManager. Tap any row to open the detail screen. |
 
 ---
@@ -101,7 +120,7 @@
 ### Prerequisites
 - Android Studio Hedgehog (2023.1.1) or newer
 - JDK 17
-- Android SDK 34
+- Android SDK 36
 
 ### Steps
 
@@ -128,21 +147,27 @@ cd trackOne
 app/src/main/
 ├── data/
 │   ├── api/            # Retrofit service (Yahoo Finance)
-│   ├── database/       # Room entities, DAOs, database class
+│   ├── database/       # Room entities, DAOs, database class (schema v6)
 │   ├── model/          # API response models
-│   └── repository/     # StockRepository, NetWorthRepository, BrokerCsvRepository, CloudBackupRepository, AuthRepository
-├── di/                 # Hilt AppModule
+│   └── repository/     # StockRepository, NetWorthRepository, PortfolioHistoryRepository,
+│                        # SymbolResolver/Matcher/Repairer, BrokerCsvRepository,
+│                        # CloudBackupRepository, LocalDataRepository, AuthRepository
+├── di/                 # Hilt AppModule + SecurityModule
+├── security/           # AppLockManager (pure logic) + AppLockPrefs
 ├── notifications/      # NotificationHelper (channels + builders)
 ├── ui/
 │   ├── config/         # Widget configuration activity
-│   ├── detail/         # Stock detail screen + chart
-│   ├── lock/           # Biometric app-lock gate
+│   ├── detail/         # Stock detail screen + chart (container-transform transition)
+│   ├── lock/           # Biometric/device-credential app-lock gate
 │   ├── main/           # MainActivity, Watchlist fragment + adapter
 │   ├── networth/       # Net Worth fragment + adapter + ViewModel
-│   ├── settings/       # Settings fragment + ViewModel
+│   ├── settings/       # Settings fragment + AuthViewModel/CloudBackupViewModel/CsvImportViewModel
+│   ├── util/           # Marker-design chart/UI helpers (dotted fill, reveal animation, money colour)
 │   └── widget/         # AppWidgetProvider + RemoteViews service
-├── utils/              # FormatUtils, Resource wrapper, PortfolioGainLoss, CurrencyConversion, SymbolUtils
-└── workers/            # StockUpdateWorker, DailyDigestWorker (WorkManager)
+├── utils/              # FormatUtils, Resource wrapper, PortfolioGainLoss, CurrencyConversion,
+│                        # SymbolUtils, ChartRange/ChartAxis, HoldingQuality
+└── workers/             # StockUpdateWorker, DailyDigestWorker, WeeklySummaryWorker,
+                          # PortfolioReminderWorker (WorkManager)
 ```
 
 ---
