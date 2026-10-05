@@ -47,3 +47,10 @@
 -keep class * extends androidx.work.CoroutineWorker
 -keep class * extends androidx.hilt.work.HiltWorker
 
+# Release builds drop verbose/debug/info logging entirely, so nothing logged can reach logcat on a user's
+# device (the lines are already kept free of emails and holdings; this is the second lock on that door).
+-assumenosideeffects class android.util.Log {
+    public static int v(...);
+    public static int d(...);
+    public static int i(...);
+}

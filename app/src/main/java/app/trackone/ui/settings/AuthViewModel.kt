@@ -1,5 +1,8 @@
 package app.trackone.ui.settings
 
+import app.trackone.data.repository.ReauthMethod
+import app.trackone.data.repository.DeletionResult
+import app.trackone.data.repository.AccountDeleter
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseAuth
@@ -29,6 +32,17 @@ sealed class EmailAuthUiState {
     data class Error(val message: String) : EmailAuthUiState()
 }
 
+sealed class AccountDeletionUiState {
+    object Idle : AccountDeletionUiState()
+    object Deleting : AccountDeletionUiState()
+    /** Firebase wants the password again; [error] is set when the last attempt was wrong. */
+    data class NeedsPassword(val error: String? = null) : AccountDeletionUiState()
+    /** Firebase wants a fresh Google sign-in to confirm it is the user. */
+    object NeedsGoogle : AccountDeletionUiState()
+    object Deleted : AccountDeletionUiState()
+    data class Error(val message: String) : AccountDeletionUiState()
+}
+
 sealed class GoogleSignInUiState {
     object Idle : GoogleSignInUiState()
     object Loading : GoogleSignInUiState()
@@ -44,6 +58,7 @@ sealed class GoogleSignInUiState {
 @HiltViewModel
 class AuthViewModel @Inject constructor(
     private val authRepository: AuthRepository,
+    private val accountDeleter: AccountDeleter,
     private val firebaseAuth: FirebaseAuth
 ) : ViewModel() {
 
@@ -160,6 +175,59 @@ class AuthViewModel @Inject constructor(
 
     fun resetEmailAuthState() {
         _emailAuthState.value = EmailAuthUiState.Idle
+    }
+
+    // ── Delete account ─────────────────────────────────────────────────────
+
+    private val _accountDeletion = MutableStateFlow<AccountDeletionUiState>(AccountDeletionUiState.Idle)
+    val accountDeletion: StateFlow<AccountDeletionUiState> = _accountDeletion.asStateFlow()
+
+    /** Deletes the cloud backup and the account (see [AccountDeletion] for the order and the retry). */
+    fun deleteAccount() {
+        viewModelScope.launch {
+            _accountDeletion.value = AccountDeletionUiState.Deleting
+            _accountDeletion.value = when (val result = accountDeleter.delete()) {
+                DeletionResult.Deleted -> {
+                    _authState.value = AuthState.SignedOut
+                    AccountDeletionUiState.Deleted
+                }
+                DeletionResult.NeedsRecentLogin -> when (authRepository.reauthMethod) {
+                    ReauthMethod.PASSWORD -> AccountDeletionUiState.NeedsPassword()
+                    ReauthMethod.GOOGLE -> AccountDeletionUiState.NeedsGoogle
+                    ReauthMethod.NONE -> AccountDeletionUiState.Error(
+                        "For your security, please sign out, sign in again, and then delete your account."
+                    )
+                }
+                is DeletionResult.Failed -> AccountDeletionUiState.Error(result.message)
+            }
+        }
+    }
+
+    /** The user typed their password to confirm it is them; on success the deletion carries on. */
+    fun confirmPasswordAndDelete(password: String) {
+        viewModelScope.launch {
+            _accountDeletion.value = AccountDeletionUiState.Deleting
+            authRepository.reauthenticateWithPassword(password).fold(
+                onSuccess = { deleteAccount() },
+                onFailure = { e -> _accountDeletion.value = AccountDeletionUiState.NeedsPassword(e.message) }
+            )
+        }
+    }
+
+    /** The user signed in with Google again to confirm it is them; on success the deletion carries on. */
+    fun confirmGoogleAndDelete(idToken: String) {
+        viewModelScope.launch {
+            _accountDeletion.value = AccountDeletionUiState.Deleting
+            authRepository.reauthenticateWithGoogle(idToken).fold(
+                onSuccess = { deleteAccount() },
+                onFailure = { e -> _accountDeletion.value = AccountDeletionUiState.Error(e.message ?: "Couldn't confirm your Google account") }
+            )
+        }
+    }
+
+    /** Back to idle: after a result was shown, or when the user cancelled a confirmation. */
+    fun resetAccountDeletion() {
+        _accountDeletion.value = AccountDeletionUiState.Idle
     }
 
     // ── Sign out ───────────────────────────────────────────────────────────

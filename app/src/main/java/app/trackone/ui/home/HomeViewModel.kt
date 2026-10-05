@@ -15,6 +15,7 @@ import app.trackone.data.repository.NetWorthRepository
 import app.trackone.data.repository.PortfolioHistoryRepository
 import app.trackone.data.repository.StockRepository
 import app.trackone.utils.ChartRange
+import app.trackone.utils.GainLoss
 import app.trackone.utils.PortfolioGainLoss
 import app.trackone.utils.Resource
 import app.trackone.utils.SymbolUtils
@@ -73,9 +74,17 @@ internal fun buildTopMover(asset: NetWorthAssetEntity, stock: StockEntity): TopM
 )
 
 /**
+ * A background price move has to reach this fraction of the total on screen to earn the banner. A
+ * fixed rupee amount is wrong at both ends: ₹1 on a ₹17 lakh portfolio is noise that even an FX
+ * tick on the US holdings exceeds, so the banner kept coming back.
+ */
+internal const val BANNER_MIN_MOVE_FRACTION = 0.001
+
+/**
  * Whether Home holds [latest] behind its "Portfolio updated" banner instead of showing it: only
  * when the sole difference from what's on screen ([shown]) is prices a background refresh wrote
- * ([backgroundWrite], holding id to value) and the total moved by more than ₹1. An edit, an
+ * ([backgroundWrite], holding id to value) and the total moved by at least
+ * [BANNER_MIN_MOVE_FRACTION] of what is shown. A smaller move is applied quietly. An edit, an
  * import, a rename or a refresh the user asked for shows at once.
  */
 internal fun holdBehindBanner(
@@ -90,8 +99,22 @@ internal fun holdBehindBanner(
         now.copy(currentValue = then.currentValue, updatedAt = then.updatedAt) == then &&
             (now.currentValue == then.currentValue || backgroundWrite[now.id] == now.currentValue)
     }
-    val moved = kotlin.math.abs(PortfolioGainLoss.compute(latest).current - PortfolioGainLoss.compute(shown).current)
-    return onlyBackgroundPrices && moved > 1.0
+    val shownTotal = PortfolioGainLoss.compute(shown).current
+    val moved = kotlin.math.abs(PortfolioGainLoss.compute(latest).current - shownTotal)
+    return onlyBackgroundPrices && moved >= BANNER_MIN_MOVE_FRACTION * shownTotal
+}
+
+/**
+ * How much the portfolio moved across the chart on screen: the last point against the first, as a
+ * [GainLoss] whose `invested` is the value at the start of the window. Null when there is nothing
+ * to compare (fewer than two points, or a window that starts at zero so a percentage is undefined),
+ * in which case the screen keeps showing the all-time gain.
+ */
+internal fun periodChange(points: List<PortfolioChartPoint>): GainLoss? {
+    if (points.size < 2) return null
+    val start = points.first().current
+    if (start <= 0.0) return null
+    return PortfolioGainLoss.between(start, points.last().current)
 }
 
 /**
@@ -166,6 +189,12 @@ class HomeViewModel @Inject constructor(
     private val _portfolioChartData = MutableLiveData<List<PortfolioChartPoint>>(emptyList())
     val portfolioChartData: LiveData<List<PortfolioChartPoint>> = _portfolioChartData.distinctUntilChanged()
 
+    // The move across the chart that is on screen. Set together with the chart data, never with
+    // the selected range: after a tap the old chart stays up until the new one lands, and its
+    // figure has to stay with it rather than jump to a window that isn't drawn yet.
+    private val _periodChange = MutableLiveData<GainLoss?>(null)
+    val periodChange: LiveData<GainLoss?> = _periodChange.distinctUntilChanged()
+
     private val _chartRange = MutableLiveData(ChartRange.MONTH)
     val chartRange: LiveData<ChartRange> = _chartRange
 
@@ -194,7 +223,7 @@ class HomeViewModel @Inject constructor(
         chartJob?.cancel()
         if (assets.isEmpty()) {
             _chartLoading.value = false
-            _portfolioChartData.value = emptyList()
+            showChart(emptyList())
             return
         }
         val range = _chartRange.value ?: ChartRange.MONTH
@@ -204,7 +233,7 @@ class HomeViewModel @Inject constructor(
         if (drawnRange != range) {
             chartSnapshots.load(range, fingerprint)?.let { saved ->
                 val total = assets.sumOf { it.currentValue }
-                _portfolioChartData.value = saved.dropLast(1) + saved.last().copy(current = total)
+                showChart(saved.dropLast(1) + saved.last().copy(current = total))
                 drawnRange = range
             }
         }
@@ -215,11 +244,16 @@ class HomeViewModel @Inject constructor(
             if (settle) delay(CHART_SETTLE_DELAY_MS)
             _chartLoading.value = !quiet
             val points = portfolioHistoryRepository.history(assets, range)
-            _portfolioChartData.value = points
+            showChart(points)
             drawnRange = range
             if (points.size >= 2) chartSnapshots.save(range, points, fingerprint)
             _chartLoading.value = false
         }
+    }
+
+    private fun showChart(points: List<PortfolioChartPoint>) {
+        _portfolioChartData.value = points
+        _periodChange.value = periodChange(points)
     }
 
     /** The range whose chart is on screen, so a rebuild knows whether a saved snapshot helps. */

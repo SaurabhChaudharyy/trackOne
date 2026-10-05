@@ -388,7 +388,7 @@ class BrokerCsvRepository @Inject constructor(
                 limiter.withPermit {
                     when (val resolution = symbolResolver.resolve(holding.symbol, holding.isin, holding.assetType)) {
                         is SymbolResolution.Confident -> {
-                            Log.i(TAG, "resolved '${holding.symbol}' -> '${resolution.symbol}' (${resolution.basis})")
+                            Log.i(TAG, "resolved a holding's ticker (${resolution.basis})")
                             holding.copy(symbol = resolution.symbol, symbolIsTicker = true)
                         }
                         else -> holding

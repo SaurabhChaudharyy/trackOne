@@ -1,5 +1,6 @@
 package app.trackone.data.repository
 
+import app.trackone.data.api.RequestLimits
 import app.trackone.data.api.YahooFinanceApiService
 import app.trackone.data.database.AssetType
 import app.trackone.data.database.NetWorthAssetEntity
@@ -9,6 +10,7 @@ import app.trackone.utils.ChartRange
 import app.trackone.utils.CurrencyConversion
 import app.trackone.utils.DailyClose
 import app.trackone.utils.HistoryHolding
+import app.trackone.utils.ValuePoint
 import app.trackone.utils.PortfolioGainLoss
 import app.trackone.utils.PortfolioHistory
 import app.trackone.utils.SymbolUtils
@@ -36,7 +38,10 @@ class PortfolioHistoryRepository @Inject constructor(
     private val apiService: YahooFinanceApiService,
     private val netWorthRepository: NetWorthRepository
 ) {
-    /** Native-currency daily closes for one symbol, as [epochDay to close] (IST days). */
+    /**
+     * Native-currency closes for one symbol, as [time key to close]: IST day numbers for daily
+     * ranges, epoch seconds for the intraday one (see [timeKey]).
+     */
     private class RawSeries(val currency: String, val points: List<Pair<Long, Double>>)
 
     private data class CacheKey(val symbol: String, val range: ChartRange)
@@ -47,7 +52,7 @@ class PortfolioHistoryRepository @Inject constructor(
     private val cache = ConcurrentHashMap<CacheKey, CacheEntry>()
 
     /** Bounds the concurrent requests: a big portfolio would otherwise fire dozens at once. */
-    private val fetchLimiter = Semaphore(MAX_PARALLEL_FETCHES)
+    private val fetchLimiter = Semaphore(RequestLimits.MAX_PARALLEL)
 
     suspend fun history(
         assets: List<NetWorthAssetEntity>,
@@ -98,11 +103,15 @@ class PortfolioHistoryRepository @Inject constructor(
 
         val liveTotal = assets.sumOf { it.currentValue }
         val invested = PortfolioGainLoss.compute(assets).invested
-        val today = PortfolioHistory.epochDayIst(nowMs / 1000)
+        val full = PortfolioHistory.buildSeries(holdings)
+        val series = if (range.fullHistory) trimToCoverage(full, holdings) else full
+        // A daily chart ends on today's point. An intraday one ends on its last bar: the market may
+        // be shut (a weekend), and a point stamped "now" would stretch the axis past the session.
+        val liveKey = if (range.intraday) series.lastOrNull()?.epochDay ?: 0L else PortfolioHistory.epochDayIst(nowMs / 1000)
 
-        PortfolioHistory.withLivePoint(PortfolioHistory.buildSeries(holdings), today, liveTotal).map {
+        PortfolioHistory.withLivePoint(series, liveKey, liveTotal).map {
             PortfolioChartPoint(
-                timestamp = PortfolioHistory.epochDayIstToMillis(it.epochDay),
+                timestamp = if (range.intraday) it.epochDay * 1000L else PortfolioHistory.epochDayIstToMillis(it.epochDay),
                 invested = invested,
                 current = it.valueInr
             )
@@ -120,12 +129,16 @@ class PortfolioHistoryRepository @Inject constructor(
     private suspend fun fetchRaw(symbol: String, range: ChartRange, nowMs: Long): RawSeries? {
         val key = CacheKey(symbol, range)
         cache[key]?.let { entry ->
-            val ttl = if (entry.series != null) SUCCESS_TTL_MS else FAILURE_TTL_MS
+            val ttl = when {
+                entry.series == null -> FAILURE_TTL_MS
+                range.intraday -> INTRADAY_TTL_MS
+                else -> SUCCESS_TTL_MS
+            }
             if (nowMs - entry.fetchedAtMs < ttl) return entry.series
         }
 
         val series = try {
-            fetchLimiter.withPermit { download(symbol, range) }
+            fetchLimiter.withPermit { download(symbol, range, nowMs) }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -135,8 +148,14 @@ class PortfolioHistoryRepository @Inject constructor(
         return series
     }
 
-    private suspend fun download(symbol: String, range: ChartRange): RawSeries? {
-        val response = apiService.getChartData(symbol, interval = range.interval, range = range.yahooRange)
+    private suspend fun download(symbol: String, range: ChartRange, nowMs: Long): RawSeries? {
+        val response = apiService.getChartData(
+            symbol,
+            interval = range.interval,
+            range = range.yahooRange,
+            period1 = if (range.fullHistory) 0L else null,
+            period2 = if (range.fullHistory) nowMs / 1000 else null
+        )
         if (!response.isSuccessful) return null
         val result = response.body()?.chart?.result?.firstOrNull() ?: return null
         val timestamps = result.timestamps
@@ -145,19 +164,36 @@ class PortfolioHistoryRepository @Inject constructor(
 
         val points = timestamps.mapIndexedNotNull { i, ts ->
             val close = closes.getOrNull(i)
-            if (close == null || close <= 0.0) null else PortfolioHistory.epochDayIst(ts) to close
+            if (close == null || close <= 0.0) null else timeKey(ts, range) to close
         }
-            .groupBy({ it.first }, { it.second })          // one bar per IST day: keep the last
+            .groupBy({ it.first }, { it.second })          // one bar per time key (per IST day, for daily ranges): keep the last
             .map { (day, prices) -> day to prices.last() }
             .sortedBy { it.first }
 
         return if (points.isEmpty()) null else RawSeries(result.meta.currency, points)
     }
 
+    /**
+     * A full history starts where holdings worth [MIN_COVERED_SHARE] of the portfolio have real
+     * prices, not at the oldest holding's listing: before that most of the line would be holdings
+     * that didn't exist yet, valued at their first price, and the % change would be meaningless.
+     * Falls back to the whole series if trimming would leave nothing to draw.
+     */
+    private fun trimToCoverage(series: List<ValuePoint>, holdings: List<HistoryHolding>): List<ValuePoint> {
+        val from = PortfolioHistory.coveredFrom(holdings, MIN_COVERED_SHARE) ?: return series
+        return series.filter { it.epochDay >= from }.takeIf { it.size >= 2 } ?: series
+    }
+
+    /** Daily ranges collapse to one bar per IST day; intraday bars keep their own timestamp (seconds). */
+    private fun timeKey(epochSeconds: Long, range: ChartRange): Long =
+        if (range.intraday) epochSeconds else PortfolioHistory.epochDayIst(epochSeconds)
+
     private companion object {
         const val FX_SYMBOL = "USDINR=X"
-        const val MAX_PARALLEL_FETCHES = 4
+        const val MIN_COVERED_SHARE = 0.9
         const val SUCCESS_TTL_MS = 15 * 60 * 1000L
+        /** Today's chart moves with the market, so it goes stale faster than a month of daily closes. */
+        const val INTRADAY_TTL_MS = 5 * 60 * 1000L
         /** Failures are retried sooner, but not on every rebuild — that would hammer a rate-limited API. */
         const val FAILURE_TTL_MS = 2 * 60 * 1000L
     }

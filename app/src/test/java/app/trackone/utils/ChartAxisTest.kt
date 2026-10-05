@@ -59,4 +59,28 @@ class ChartAxisTest {
         assertTrue(t.lo <= 100_000.0 && t.hi >= 100_000.0)
         assertTrue(t.count >= 2)
     }
+
+    private val hour = 60L * 60 * 1000
+    private val day = 24 * hour
+
+    @Test
+    fun `a single session is labelled with times of day`() {
+        assertEquals("h:mm a", ChartAxis.labelPattern(spanMs = 6 * hour, intraday = true))
+    }
+
+    @Test
+    fun `an intraday span that crosses a day boundary adds the date to the time`() {
+        // India's session plus the US one that evening, or a weekend between two sessions.
+        assertEquals("d MMM, h:mm a", ChartAxis.labelPattern(spanMs = 3 * day, intraday = true))
+    }
+
+    @Test
+    fun `daily ranges up to about 200 days are labelled day and month`() {
+        assertEquals("d MMM", ChartAxis.labelPattern(spanMs = 30 * day, intraday = false))
+    }
+
+    @Test
+    fun `longer histories are labelled month and two-digit year`() {
+        assertEquals("MMM ''yy", ChartAxis.labelPattern(spanMs = 365 * day, intraday = false))
+    }
 }

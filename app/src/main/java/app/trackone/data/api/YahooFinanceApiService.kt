@@ -21,8 +21,12 @@ interface YahooFinanceApiService {
     suspend fun getChartData(
         @Path("symbol") symbol: String,
         @Query("interval") interval: String,
-        @Query("range") range: String,
-        @Query("includePrePost") includePrePost: Boolean = false
+        @Query("range") range: String?,
+        @Query("includePrePost") includePrePost: Boolean = false,
+        // An explicit window (epoch seconds) instead of [range]: `range=max` lets Yahoo pick its own
+        // bar size, and for a long history that is quarterly whatever [interval] says.
+        @Query("period1") period1: Long? = null,
+        @Query("period2") period2: Long? = null
     ): Response<YahooChartResponse>
 
     @GET("v1/finance/search")

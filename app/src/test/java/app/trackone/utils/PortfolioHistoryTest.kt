@@ -1,6 +1,7 @@
 package app.trackone.utils
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -91,5 +92,55 @@ class PortfolioHistoryTest {
         assertEquals(PortfolioHistory.epochDayIst(indiaOpen), PortfolioHistory.epochDayIst(sameIstDay))
         assertEquals(1L, PortfolioHistory.epochDayIst(86_400L - 19_800L))       // IST midnight = day 1
         assertEquals(0L, PortfolioHistory.epochDayIst(86_400L - 19_800L - 1))
+    }
+
+    @Test
+    fun `the series is covered from the first day holdings worth enough of the total have prices`() {
+        val holdings = listOf(
+            HistoryHolding(1.0, currentValue = 900.0, closes = closes(10L to 1.0, 20L to 1.0)),
+            HistoryHolding(1.0, currentValue = 100.0, closes = closes(30L to 1.0))
+        )
+
+        assertEquals(10L, PortfolioHistory.coveredFrom(holdings, minShare = 0.9))    // the 900 alone is 90%
+        assertEquals(30L, PortfolioHistory.coveredFrom(holdings, minShare = 0.95))   // needs the 100 as well
+    }
+
+    @Test
+    fun `a holding that starts late pushes the covered date out`() {
+        val holdings = listOf(
+            HistoryHolding(1.0, currentValue = 100.0, closes = closes(10L to 1.0)),
+            HistoryHolding(1.0, currentValue = 900.0, closes = closes(20L to 1.0))
+        )
+
+        assertEquals(20L, PortfolioHistory.coveredFrom(holdings, minShare = 0.9))
+    }
+
+    @Test
+    fun `holdings with no price history count as covered from the start`() {
+        val holdings = listOf(
+            HistoryHolding(1.0, currentValue = 500.0, closes = null),                  // cash
+            HistoryHolding(1.0, currentValue = 500.0, closes = closes(10L to 1.0, 20L to 1.0)),
+            HistoryHolding(1.0, currentValue = 500.0, closes = closes(40L to 1.0))
+        )
+
+        // 500 flat + 500 from day 10 = 2/3 of 1500; the last third arrives on day 40.
+        assertEquals(10L, PortfolioHistory.coveredFrom(holdings, minShare = 0.6))
+        assertEquals(40L, PortfolioHistory.coveredFrom(holdings, minShare = 0.9))
+    }
+
+    @Test
+    fun `there is no covered date when nothing has a price history`() {
+        assertNull(PortfolioHistory.coveredFrom(listOf(HistoryHolding(1.0, 500.0, null)), minShare = 0.9))
+        assertNull(PortfolioHistory.coveredFrom(emptyList(), minShare = 0.9))
+    }
+
+    @Test
+    fun `holdings worth nothing do not decide the covered date`() {
+        val holdings = listOf(
+            HistoryHolding(1.0, currentValue = 1000.0, closes = closes(10L to 1.0)),
+            HistoryHolding(1.0, currentValue = 0.0, closes = closes(99L to 1.0))
+        )
+
+        assertEquals(10L, PortfolioHistory.coveredFrom(holdings, minShare = 0.9))
     }
 }

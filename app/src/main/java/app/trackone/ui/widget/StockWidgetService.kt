@@ -85,7 +85,7 @@ class StockRemoteViewsFactory(
         views.setTextViewText(shown, changePercentText)
 
         val clickIntent = Intent().apply {
-            putExtra(StockWidgetProvider.EXTRA_SYMBOL, stock.symbol)
+            putExtra(StockWidgetActionReceiver.EXTRA_SYMBOL, stock.symbol)
         }
         views.setOnClickFillInIntent(R.id.widget_item_root, clickIntent)
 

@@ -1,5 +1,8 @@
 package app.trackone.data.repository
 
+import kotlinx.coroutines.sync.withPermit
+import kotlinx.coroutines.sync.Semaphore
+import app.trackone.data.api.RequestLimits
 import androidx.lifecycle.LiveData
 import app.trackone.data.api.YahooFinanceApiService
 import app.trackone.data.database.*
@@ -91,11 +94,13 @@ class StockRepository @Inject constructor(
     suspend fun refreshWatchlistStocks(): Resource<Unit> = withContext(Dispatchers.IO) {
         try {
             // Same symbol can appear in multiple groups (composite PK); fetch each symbol
-            // once, concurrently, instead of sequentially re-fetching duplicates.
+            // once, concurrently, instead of sequentially re-fetching duplicates. A few at a time:
+            // a long watchlist fired all at once is what gets rate-limited.
             val symbols = watchlistDao.getWatchlistSync().map { it.symbol }.distinct()
+            val limiter = Semaphore(RequestLimits.MAX_PARALLEL)
             val errors = coroutineScope {
                 symbols.map { symbol ->
-                    async { symbol to fetchAndCacheStock(symbol) }
+                    async { symbol to limiter.withPermit { fetchAndCacheStock(symbol) } }
                 }.awaitAll()
             }.filter { (_, result) -> result is Resource.Error }.map { it.first }
 

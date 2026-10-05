@@ -234,6 +234,26 @@ class CloudBackupRepository @Inject constructor(
     }
 
     // ──────────────────────────────────────────────────────────────────────
+    //  D E L E T E   (account deletion)
+    // ──────────────────────────────────────────────────────────────────────
+
+    /**
+     * Deletes everything stored in the cloud for the signed-in user: the three backup collections,
+     * then the user document itself. Safe to run again (an already-empty backup is simply skipped),
+     * which account deletion relies on when the user has to confirm their identity and retry.
+     * Throws if any step fails, so the caller can stop before deleting the account.
+     */
+    suspend fun deleteCloudData() = withContext(Dispatchers.IO) {
+        val uid = authRepository.currentUserId ?: return@withContext   // no account, nothing in the cloud
+        val userDoc = firestore.collection(COL_USERS).document(uid)
+        listOf(COL_WATCHLIST_GROUPS, COL_WATCHLIST, COL_NETWORTH).forEach { name ->
+            replaceCollection(userDoc.collection(name), emptyMap())      // "replace with nothing" = delete all
+        }
+        userDoc.delete().await()
+        Log.d(TAG, "deleteCloudData: success")
+    }
+
+    // ──────────────────────────────────────────────────────────────────────
     //  L A S T   S Y N C   T I M E
     // ──────────────────────────────────────────────────────────────────────
 

@@ -185,4 +185,111 @@ class PortfolioHistoryRepositoryTest {
 
         assertEquals(listOf(100.0, 100.0), points.map { it.current })   // day1 close, then the live point for day 3
     }
+
+    private fun stub(symbol: String, interval: String, range: String, response: Response<YahooChartResponse>) {
+        coEvery { api.getChartData(symbol, interval, range, any()) } returns response
+    }
+
+    @Test
+    fun `1D keeps every intraday bar instead of collapsing them into one day`() = runTest {
+        val open = day3
+        val bars = listOf(open, open + 300, open + 600)          // three 5-minute bars, same IST day
+        stub("USDINR=X", "5m", "1d", failure())
+        stub("TCS.NS", "5m", "1d", chart("INR", bars, listOf(100.0, 102.0, 101.0)))
+
+        val points = repo.history(listOf(asset("TCS", AssetType.STOCK_IN, 1.0, 101.0)), ChartRange.DAY, now)
+
+        assertEquals(listOf(100.0, 102.0, 101.0), points.map { it.current })
+        assertEquals(bars.map { it * 1000 }, points.map { it.timestamp })
+    }
+
+    @Test
+    fun `1D ends on the live total without adding a point after the last bar`() = runTest {
+        val bars = listOf(day1, day1 + 300)                       // a session two days before now
+        stub("USDINR=X", "5m", "1d", failure())
+        stub("TCS.NS", "5m", "1d", chart("INR", bars, listOf(100.0, 102.0)))
+
+        val points = repo.history(listOf(asset("TCS", AssetType.STOCK_IN, 1.0, 105.0)), ChartRange.DAY, now)
+
+        assertEquals(listOf(100.0, 105.0), points.map { it.current })
+        assertEquals((day1 + 300) * 1000, points.last().timestamp)
+    }
+
+    @Test
+    fun `1D carries a closed market's last price across the other market's bars`() = runTest {
+        val indiaBars = listOf(day3, day3 + 300)                  // India trades first
+        val usBars = listOf(day3 + 600, day3 + 900)               // then the US opens
+        stub("USDINR=X", "5m", "1d", failure())
+        stub("TCS.NS", "5m", "1d", chart("INR", indiaBars, listOf(100.0, 110.0)))
+        stub("AAPL", "5m", "1d", chart("INR", usBars, listOf(200.0, 210.0)))
+
+        val points = repo.history(
+            listOf(asset("TCS", AssetType.STOCK_IN, 1.0, 111.0), asset("AAPL", AssetType.STOCK_US, 1.0, 210.0)),
+            ChartRange.DAY, now
+        )
+
+        // India's 110 is held while the US trades (US is backfilled with its first bar before it
+        // opens); the live total (111 + 210) replaces the last bar.
+        assertEquals(listOf(300.0, 310.0, 310.0, 321.0), points.map { it.current })
+    }
+
+    private fun stubAll(symbol: String, response: Response<YahooChartResponse>) {
+        coEvery { api.getChartData(symbol, "1wk", null, any(), 0L, any()) } returns response
+    }
+
+    @Test
+    fun `ALL asks for weekly bars from an explicit start instead of range max`() = runTest {
+        stubAll("USDINR=X", failure())
+        stubAll("TCS.NS", chart("INR", listOf(day1, day2), listOf(100.0, 110.0)))
+
+        val points = repo.history(listOf(asset("TCS", AssetType.STOCK_IN, 1.0, 120.0)), ChartRange.ALL, now)
+
+        coVerify(exactly = 1) { api.getChartData("TCS.NS", "1wk", null, any(), 0L, now / 1000) }
+        assertEquals(PortfolioHistory.epochDayIstToMillis(PortfolioHistory.epochDayIst(day1)), points.first().timestamp)
+        assertEquals(120.0, points.last().current, 0.0)           // live point for today
+    }
+
+    @Test
+    fun `ALL starts where most of the portfolio has real prices instead of backfilling the rest`() = runTest {
+        // BIG (90% of the value) only lists on day 2; SMALL has traded since day 1. Day 1 would be
+        // SMALL's real price plus BIG at a made-up first price, so the chart starts on day 2.
+        stubAll("USDINR=X", failure())
+        stubAll("BIG.NS", chart("INR", listOf(day2, day3), listOf(900.0, 900.0)))
+        stubAll("SMALL.NS", chart("INR", listOf(day1, day2, day3), listOf(100.0, 100.0, 100.0)))
+
+        val points = repo.history(
+            listOf(asset("BIG", AssetType.STOCK_IN, 1.0, 900.0), asset("SMALL", AssetType.STOCK_IN, 1.0, 100.0)),
+            ChartRange.ALL, now
+        )
+
+        assertEquals(PortfolioHistory.epochDayIstToMillis(PortfolioHistory.epochDayIst(day2)), points.first().timestamp)
+        assertEquals(listOf(1000.0, 1000.0), points.map { it.current })   // day 2 and day 3 only; day 1 is gone
+    }
+
+    @Test
+    fun `shorter ranges keep every day they were given`() = runTest {
+        stub("USDINR=X", failure())
+        stub("BIG.NS", chart("INR", listOf(day2, day3), listOf(900.0, 900.0)))
+        stub("SMALL.NS", chart("INR", listOf(day1, day2, day3), listOf(100.0, 100.0, 100.0)))
+
+        val points = repo.history(
+            listOf(asset("BIG", AssetType.STOCK_IN, 1.0, 900.0), asset("SMALL", AssetType.STOCK_IN, 1.0, 100.0)),
+            ChartRange.MONTH, now
+        )
+
+        assertEquals(PortfolioHistory.epochDayIstToMillis(PortfolioHistory.epochDayIst(day1)), points.first().timestamp)
+    }
+
+    @Test
+    fun `1D series are refetched sooner than daily ones`() = runTest {
+        stub("USDINR=X", "5m", "1d", failure())
+        stub("TCS.NS", "5m", "1d", chart("INR", listOf(day3, day3 + 300), listOf(100.0, 101.0)))
+        val holdings = listOf(asset("TCS", AssetType.STOCK_IN, 1.0, 101.0))
+
+        repo.history(holdings, ChartRange.DAY, now)
+        repo.history(holdings, ChartRange.DAY, now + 60_000)          // within the intraday window: cached
+        repo.history(holdings, ChartRange.DAY, now + 6 * 60_000)      // past it: fetched again
+
+        coVerify(exactly = 2) { api.getChartData("TCS.NS", "5m", "1d", any()) }
+    }
 }

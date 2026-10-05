@@ -46,4 +46,19 @@ object ChartAxis {
 
     private const val TICK_PADDING = 0.05     // snapping to a round gridline adds the rest
     private val NICE_STEPS = listOf(1.0, 2.0, 2.5, 5.0)
+
+    private const val MS_PER_HOUR = 60L * 60 * 1000
+    private const val SINGLE_SESSION_MAX_HOURS = 18L
+    private const val DAY_AND_MONTH_MAX_DAYS = 200L
+
+    /**
+     * The date pattern for the time axis. A single intraday session reads as times of day; one that
+     * spans a night or a weekend (India's session plus the US one) needs the date as well. Daily
+     * ranges read day and month until they are long enough that "Sep 25" would be mistaken for a day.
+     */
+    fun labelPattern(spanMs: Long, intraday: Boolean): String = when {
+        intraday -> if (spanMs < SINGLE_SESSION_MAX_HOURS * MS_PER_HOUR) "h:mm a" else "d MMM, h:mm a"
+        spanMs < DAY_AND_MONTH_MAX_DAYS * 24 * MS_PER_HOUR -> "d MMM"
+        else -> "MMM ''yy"
+    }
 }

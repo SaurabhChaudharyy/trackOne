@@ -35,6 +35,9 @@ object PortfolioGainLoss {
         return fromTotals(totalInvested, totalCurrent)
     }
 
+    /** The move from [start] to [end], for a window of the chart rather than the whole holding period. */
+    fun between(start: Double, end: Double): GainLoss = fromTotals(start, end)
+
     fun computePerAsset(asset: NetWorthAssetEntity): GainLoss =
         fromTotals(investedValue(asset), asset.currentValue)
 

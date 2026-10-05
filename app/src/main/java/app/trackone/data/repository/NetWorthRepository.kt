@@ -1,5 +1,6 @@
 package app.trackone.data.repository
 
+import app.trackone.data.api.RequestLimits
 import android.content.Context
 import android.util.Log
 import androidx.room.withTransaction
@@ -14,6 +15,11 @@ import app.trackone.utils.Resource
 import app.trackone.utils.SymbolUtils
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -199,6 +205,45 @@ class NetWorthRepository @Inject constructor(
      * [asset] with its live price applied. If the row's buyPrice is still in USD (first refresh after
      * an import) it is converted to INR and the currency flipped, so P&L compares like with like.
      */
+    /** The result of pricing a batch: each holding that got a live price, and each that didn't. */
+    internal class PricedHoldings(val updated: List<NetWorthAssetEntity>, val failed: List<NetWorthAssetEntity>)
+
+    /**
+     * Fetches a live price for every holding, a few at a time. One after another, 78 holdings took
+     * about 12 seconds, which kept Home's spinner up that long (and made a pull to refresh wait
+     * behind the startup one). The result keeps [assets]' order whichever quote answers first, and
+     * [onProgress] is called once per holding with a count that only ever goes up.
+     */
+    internal suspend fun priceHoldings(
+        assets: List<NetWorthAssetEntity>,
+        usdInrRate: Double,
+        onProgress: (Int, Int) -> Unit = { _, _ -> }
+    ): PricedHoldings = coroutineScope {
+        val limiter = Semaphore(RequestLimits.MAX_PARALLEL)
+        val progressLock = Any()
+        var done = 0
+        val outcomes = assets.map { asset ->
+            async {
+                val symbol = if (asset.assetType == AssetType.GOLD) "GC=F" else asset.name
+                val result = limiter.withPermit { fetchLivePrice(symbol, asset.assetType, usdInrRate) }
+                synchronized(progressLock) { onProgress(++done, assets.size) }
+                asset to result
+            }
+        }.awaitAll()
+
+        val updated = mutableListOf<NetWorthAssetEntity>()
+        val failed = mutableListOf<NetWorthAssetEntity>()
+        for ((asset, result) in outcomes) {
+            if (result is Resource.Success) {
+                updated.add(withLivePrice(asset, result.data, usdInrRate))
+            } else if (result is Resource.Error) {
+                Log.w(TAG, "refreshNetWorthAssets: a holding could not be priced: ${result.message}")
+                failed.add(asset)
+            }
+        }
+        PricedHoldings(updated, failed)
+    }
+
     private fun withLivePrice(asset: NetWorthAssetEntity, priceInr: Double, usdInrRate: Double): NetWorthAssetEntity {
         val (buyPrice, currency) = if (asset.currency == "USD") {
             val buyPriceInr = if (asset.buyPrice > 0) CurrencyConversion.toInr(asset.buyPrice, asset.currency, usdInrRate) else 0.0
@@ -259,25 +304,12 @@ class NetWorthRepository @Inject constructor(
             // conversion and buyPrice conversion, instead of being re-fetched per asset.
             val usdInrRate = fetchUsdInrRate()
 
-            // Collected here, not written per-iteration — see the transaction below for why.
-            val updatedAssets = mutableListOf<NetWorthAssetEntity>()
+            // Collected here, not written per-quote — see the transaction below for why.
+            val priced = priceHoldings(fetchableAssets, usdInrRate, onProgress)
+            val updatedAssets = priced.updated.toMutableList()
 
             // Holdings whose live price could not be fetched, kept for the symbol repair below.
-            val failed = mutableListOf<NetWorthAssetEntity>()
-
-            for ((index, asset) in fetchableAssets.withIndex()) {
-                val symbol = if (asset.assetType == AssetType.GOLD) "GC=F" else asset.name
-                val result = fetchLivePrice(symbol, asset.assetType, usdInrRate)
-
-                if (result is Resource.Success) {
-                    updatedAssets.add(withLivePrice(asset, result.data, usdInrRate))
-                } else if (result is Resource.Error) {
-                    Log.w(TAG, "refreshNetWorthAssets: failed to update ${asset.name}: ${result.message}")
-                    failed.add(asset)
-                }
-
-                onProgress(index + 1, fetchableAssets.size)
-            }
+            val failed = priced.failed
 
             // A holding stored under a company name (or a wrong symbol) can never be priced. Give the
             // failures one guarded attempt at a rename — and price the renamed ones right away. Only
@@ -285,8 +317,7 @@ class NetWorthRepository @Inject constructor(
             // to the resolver.
             if (failed.isNotEmpty() && updatedAssets.isNotEmpty()) {
                 for (repair in symbolRepairer.findRepairs(failed, assets)) {
-                    Log.i(TAG, "symbol repair: '${repair.oldName}' -> '${repair.newName}' " +
-                        "(matched '${repair.matchedName}' by ${repair.basis})")
+                    Log.i(TAG, "symbol repair: renamed a holding (matched by ${repair.basis})")
                     val renamed = assets.first { it.id == repair.assetId }.copy(name = repair.newName)
                     val price = fetchLivePrice(renamed.name, renamed.assetType, usdInrRate)
                     updatedAssets.add(if (price is Resource.Success) withLivePrice(renamed, price.data, usdInrRate) else renamed)

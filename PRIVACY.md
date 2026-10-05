@@ -1,6 +1,6 @@
 # Privacy Policy — trackOne
 
-_Last updated: 2026-09-13_
+_Last updated: 2026-10-06_
 
 trackOne is a local-first portfolio tracker. This page explains exactly what data the app touches, and when.
 
@@ -32,8 +32,21 @@ No other personal data (name, photo, contacts, location, etc.) is collected, eve
 
 ## Your data, your control
 
-- Delete your account's cloud backup by signing in and simply not maintaining it — cloud data only exists for accounts that have tapped **Backup**.
-- Uninstalling the app removes all local data. It does not delete a Firestore backup — sign in and contact the maintainer if you want your cloud backup deleted.
+- Delete your account and its cloud backup at any time from **Settings → Delete Account** (details below).
+- Uninstalling the app removes all local data. It does **not** delete your account or cloud backup, so delete the account first, or use the email route below.
+
+## Delete your trackOne account and data
+
+You can delete your trackOne account and everything stored for it in the cloud, from inside the app:
+
+1. Sign in, then open **Settings**.
+2. Tap **Delete Account** and confirm. If you signed in a while ago, you will be asked to confirm it's you first (your password, or your Google account).
+
+**What is deleted:** your Firebase Authentication account (email address and account ID) and everything in your Cloud Firestore backup (watchlists, net worth entries and the backup time). It is deleted permanently and cannot be recovered.
+
+**What is not changed:** the data stored on your device. Use **Settings → Clear Local Data**, or uninstall the app, to remove that. Crash reports (Firebase Crashlytics) are not linked to your account and are not removed by deleting it.
+
+**If you can no longer open the app** (for example you uninstalled it, or lost your phone): email [maintainer contact email] from the address your account uses, with the subject "trackOne account deletion", and we will delete your account and cloud backup.
 
 ## Contact
 

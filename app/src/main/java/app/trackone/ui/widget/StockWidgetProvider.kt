@@ -8,7 +8,6 @@ import android.content.Intent
 import android.widget.RemoteViews
 import app.trackone.R
 import app.trackone.data.repository.StockRepository
-import app.trackone.ui.detail.StockDetailActivity
 import app.trackone.workers.StockUpdateWorker
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
@@ -21,13 +20,6 @@ class StockWidgetProvider : AppWidgetProvider() {
 
     @Inject
     lateinit var repository: StockRepository
-
-    companion object {
-        const val ACTION_REFRESH_WIDGET = "app.trackone.ACTION_REFRESH_WIDGET"
-        const val ACTION_WIDGET_ITEM_CLICK = "app.trackone.ACTION_WIDGET_ITEM_CLICK"
-        const val EXTRA_SYMBOL = "extra_symbol"
-        const val EXTRA_WIDGET_ID = "extra_widget_id"
-    }
 
     override fun onUpdate(context: Context, appWidgetManager: AppWidgetManager, appWidgetIds: IntArray) {
         appWidgetIds.forEach { widgetId ->
@@ -53,31 +45,6 @@ class StockWidgetProvider : AppWidgetProvider() {
         StockUpdateWorker.cancel(context)
     }
 
-    override fun onReceive(context: Context, intent: Intent) {
-        super.onReceive(context, intent)
-        when (intent.action) {
-            ACTION_REFRESH_WIDGET -> {
-                val widgetId = intent.getIntExtra(EXTRA_WIDGET_ID, AppWidgetManager.INVALID_APPWIDGET_ID)
-                val appWidgetManager = AppWidgetManager.getInstance(context)
-
-                CoroutineScope(Dispatchers.IO).launch {
-                    repository.refreshWatchlistStocks()
-                    if (widgetId != AppWidgetManager.INVALID_APPWIDGET_ID) {
-                        updateWidget(context, appWidgetManager, widgetId)
-                    }
-                }
-            }
-            ACTION_WIDGET_ITEM_CLICK -> {
-                val symbol = intent.getStringExtra(EXTRA_SYMBOL) ?: return
-                val detailIntent = Intent(context, StockDetailActivity::class.java).apply {
-                    putExtra(StockDetailActivity.EXTRA_SYMBOL, symbol)
-                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
-                }
-                context.startActivity(detailIntent)
-            }
-        }
-    }
-
     private suspend fun updateWidget(context: Context, appWidgetManager: AppWidgetManager, widgetId: Int) {
         val views = RemoteViews(context.packageName, R.layout.widget_stock_list)
 
@@ -94,8 +61,8 @@ class StockWidgetProvider : AppWidgetProvider() {
         views.setRemoteAdapter(R.id.widget_list_view, serviceIntent)
         views.setEmptyView(R.id.widget_list_view, R.id.widget_empty_view)
 
-        val itemClickIntent = Intent(context, StockWidgetProvider::class.java).apply {
-            action = ACTION_WIDGET_ITEM_CLICK
+        val itemClickIntent = Intent(context, StockWidgetActionReceiver::class.java).apply {
+            action = StockWidgetActionReceiver.ACTION_WIDGET_ITEM_CLICK
         }
         val itemClickPendingIntent = PendingIntent.getBroadcast(
             context, 0, itemClickIntent,
@@ -103,9 +70,9 @@ class StockWidgetProvider : AppWidgetProvider() {
         )
         views.setPendingIntentTemplate(R.id.widget_list_view, itemClickPendingIntent)
 
-        val refreshIntent = Intent(context, StockWidgetProvider::class.java).apply {
-            action = ACTION_REFRESH_WIDGET
-            putExtra(EXTRA_WIDGET_ID, widgetId)
+        val refreshIntent = Intent(context, StockWidgetActionReceiver::class.java).apply {
+            action = StockWidgetActionReceiver.ACTION_REFRESH_WIDGET
+            putExtra(StockWidgetActionReceiver.EXTRA_WIDGET_ID, widgetId)
         }
         val refreshPendingIntent = PendingIntent.getBroadcast(
             context, widgetId + 1000,

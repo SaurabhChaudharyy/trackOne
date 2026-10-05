@@ -1,5 +1,8 @@
 package app.trackone.data.repository
 
+import com.google.firebase.auth.FirebaseAuthRecentLoginRequiredException
+import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
+import com.google.firebase.auth.EmailAuthProvider
 import android.content.Context
 import android.util.Log
 import com.google.android.gms.auth.api.signin.GoogleSignIn
@@ -34,6 +37,13 @@ class AuthRepository @Inject constructor(
     }
 
     val currentUser: FirebaseUser? get() = auth.currentUser
+
+    /** How this account can prove it is the user again (needed before Firebase deletes an old sign-in). */
+    val reauthMethod: ReauthMethod
+        get() = ReauthMethod.forProviders(currentUser?.providerData?.map { it.providerId }.orEmpty())
+
+    /** True when Firebase refused an action because the last sign-in is too old. */
+    fun isRecentLoginError(e: Throwable): Boolean = e is FirebaseAuthRecentLoginRequiredException
     val isSignedIn: Boolean get() = currentUser != null
     val currentUserId: String? get() = currentUser?.uid
 
@@ -67,7 +77,7 @@ class AuthRepository @Inject constructor(
             val result = auth.signInWithCredential(credential).await()
             val user = result.user
             if (user != null) {
-                Log.d(TAG, "signInWithGoogle: success – ${user.email}")
+                Log.d(TAG, "signInWithGoogle: success")
                 Result.success(user)
             } else {
                 Result.failure(Exception("Sign-in succeeded but user is null"))
@@ -86,7 +96,7 @@ class AuthRepository @Inject constructor(
             val result = auth.createUserWithEmailAndPassword(email, password).await()
             val user = result.user
             if (user != null) {
-                Log.d(TAG, "signUpWithEmail: success – ${user.email}")
+                Log.d(TAG, "signUpWithEmail: success")
                 Result.success(user)
             } else {
                 Result.failure(Exception("Account created but user is null"))
@@ -105,7 +115,7 @@ class AuthRepository @Inject constructor(
             val result = auth.signInWithEmailAndPassword(email, password).await()
             val user = result.user
             if (user != null) {
-                Log.d(TAG, "signInWithEmail: success – ${user.email}")
+                Log.d(TAG, "signInWithEmail: success")
                 Result.success(user)
             } else {
                 Result.failure(Exception("Sign-in succeeded but user is null"))
@@ -116,13 +126,51 @@ class AuthRepository @Inject constructor(
         }
     }
 
+    /** Confirms the signed-in password account with its password; the account stays signed in. */
+    suspend fun reauthenticateWithPassword(password: String): Result<Unit> {
+        val user = currentUser ?: return Result.failure(Exception("Not signed in"))
+        val email = user.email ?: return Result.failure(Exception("This account has no email address"))
+        return try {
+            user.reauthenticate(EmailAuthProvider.getCredential(email, password)).await()
+            Result.success(Unit)
+        } catch (e: FirebaseAuthInvalidCredentialsException) {
+            Result.failure(Exception("That password is incorrect"))
+        } catch (e: Exception) {
+            Log.e(TAG, "reauthenticateWithPassword: failed", e)
+            Result.failure(e)
+        }
+    }
+
+    /** Confirms the signed-in Google account with a fresh Google ID token. */
+    suspend fun reauthenticateWithGoogle(idToken: String): Result<Unit> {
+        val user = currentUser ?: return Result.failure(Exception("Not signed in"))
+        return try {
+            user.reauthenticate(GoogleAuthProvider.getCredential(idToken, null)).await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "reauthenticateWithGoogle: failed", e)
+            Result.failure(e)
+        }
+    }
+
+    /** Deletes the signed-in Firebase account. Throws if Firebase refuses (see [isRecentLoginError]). */
+    suspend fun deleteCurrentUser() {
+        val user = currentUser ?: return        // already gone: nothing left to delete
+        user.delete().await()
+    }
+
+    /** Removes this app's access to the Google account too, so a deleted account leaves no link behind. */
+    suspend fun revokeGoogleAccess() {
+        try { getGoogleSignInClient().revokeAccess().await() } catch (e: Exception) { Log.w(TAG, "revokeGoogleAccess: failed", e) }
+    }
+
     /**
      * Sends a password-reset email for the given address.
      */
     suspend fun sendPasswordResetEmail(email: String): Result<Unit> {
         return try {
             auth.sendPasswordResetEmail(email).await()
-            Log.d(TAG, "sendPasswordResetEmail: sent to $email")
+            Log.d(TAG, "sendPasswordResetEmail: sent")
             Result.success(Unit)
         } catch (e: Exception) {
             Log.e(TAG, "sendPasswordResetEmail: failed", e)

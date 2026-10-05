@@ -16,11 +16,14 @@ import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.test.runTest
+import java.util.concurrent.atomic.AtomicInteger
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import okhttp3.ResponseBody.Companion.toResponseBody
 import retrofit2.Response
 
 /**
@@ -254,5 +257,70 @@ class NetWorthRepositoryTest {
         val rate = repository.fetchUsdInrRate()
 
         assertEquals(80.0, rate, 0.0001)
+    }
+
+    // ── pricing every holding in one refresh ─────────────────────────────────────────────────────
+
+    private fun holding(name: String, id: Long, qty: Double = 1.0) = NetWorthAssetEntity(
+        id = id, name = name, assetType = AssetType.STOCK_IN, quantity = qty, buyPrice = 1.0, currentValue = 1.0
+    )
+
+    @Test
+    fun `pricing keeps the holdings in their original order whichever quote answers first`() = runTest {
+        coEvery { apiService.getQuote("SLOW.NS") } coAnswers { delay(150); chartResponse("INR", 10.0) }
+        coEvery { apiService.getQuote("MID.NS") } coAnswers { delay(40); chartResponse("INR", 20.0) }
+        coEvery { apiService.getQuote("FAST.NS") } coAnswers { chartResponse("INR", 30.0) }
+
+        val priced = repository.priceHoldings(
+            listOf(holding("SLOW", 1), holding("MID", 2), holding("FAST", 3)), usdInrRate = 80.0
+        )
+
+        assertEquals(listOf("SLOW", "MID", "FAST"), priced.updated.map { it.name })
+        assertEquals(listOf(10.0, 20.0, 30.0), priced.updated.map { it.currentValue })
+        assertTrue(priced.failed.isEmpty())
+    }
+
+    @Test
+    fun `a holding that cannot be priced is reported and the rest still are`() = runTest {
+        coEvery { apiService.getQuote("OK.NS") } returns chartResponse("INR", 5.0)
+        coEvery { apiService.getQuote("BAD.NS") } returns Response.error(404, "".toResponseBody(null))
+        coEvery { apiService.getQuote("ALSO.NS") } returns chartResponse("INR", 7.0)
+
+        val priced = repository.priceHoldings(
+            listOf(holding("OK", 1), holding("BAD", 2), holding("ALSO", 3)), usdInrRate = 80.0
+        )
+
+        assertEquals(listOf("OK", "ALSO"), priced.updated.map { it.name })
+        assertEquals(listOf("BAD"), priced.failed.map { it.name })
+    }
+
+    @Test
+    fun `quotes are fetched in parallel but never more than four at once`() = runTest {
+        val inFlight = AtomicInteger(0)
+        val peak = AtomicInteger(0)
+        coEvery { apiService.getQuote(any()) } coAnswers {
+            val now = inFlight.incrementAndGet()
+            peak.updateAndGet { maxOf(it, now) }
+            delay(40)
+            inFlight.decrementAndGet()
+            chartResponse("INR", 1.0)
+        }
+
+        repository.priceHoldings((1..16).map { holding("S$it", it.toLong()) }, usdInrRate = 80.0)
+
+        assertTrue("never in parallel (peak ${peak.get()})", peak.get() > 1)
+        assertTrue("too many at once (peak ${peak.get()})", peak.get() <= 4)
+    }
+
+    @Test
+    fun `progress counts up to the number of holdings`() = runTest {
+        coEvery { apiService.getQuote(any()) } returns chartResponse("INR", 1.0)
+        val seen = java.util.Collections.synchronizedList(mutableListOf<Pair<Int, Int>>())
+
+        repository.priceHoldings((1..6).map { holding("S$it", it.toLong()) }, usdInrRate = 80.0) { done, total ->
+            seen.add(done to total)
+        }
+
+        assertEquals((1..6).map { it to 6 }, seen.sortedBy { it.first })
     }
 }

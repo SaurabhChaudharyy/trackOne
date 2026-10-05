@@ -1,6 +1,10 @@
 package app.trackone.utils
 
-/** One closing price, in INR per unit, on a calendar day (days counted in IST — see [PortfolioHistory.epochDayIst]). */
+/**
+ * One closing price, in INR per unit, at a point in time. [epochDay] is that point's time key: a
+ * calendar day counted in IST (see [PortfolioHistory.epochDayIst]) for daily ranges, or epoch
+ * seconds for the intraday 1D range. [PortfolioHistory] only orders and compares keys, so either works.
+ */
 data class DailyClose(val epochDay: Long, val priceInr: Double)
 
 /**
@@ -10,6 +14,7 @@ data class DailyClose(val epochDay: Long, val priceInr: Double)
  */
 data class HistoryHolding(val quantity: Double, val currentValue: Double, val closes: List<DailyClose>?)
 
+/** The portfolio's value at a time key (same unit as [DailyClose.epochDay]). */
 data class ValuePoint(val epochDay: Long, val valueInr: Double)
 
 /**
@@ -49,6 +54,26 @@ object PortfolioHistory {
             }
             ValuePoint(day, total)
         }
+    }
+
+    /**
+     * The first time key from which holdings worth at least [minShare] of the portfolio's current
+     * value have a real price. Before it, the chart would be mostly [buildSeries]'s backfill: holdings
+     * that hadn't been listed yet valued at their first price. Holdings with no price history at all
+     * (cash, bank) are flat by nature and count as covered throughout. Null when no holding has a
+     * price history, so there is nothing to measure.
+     */
+    fun coveredFrom(holdings: List<HistoryHolding>, minShare: Double): Long? {
+        val total = holdings.sumOf { it.currentValue }
+        val priced = holdings.filter { !it.closes.isNullOrEmpty() }
+        if (total <= 0.0 || priced.isEmpty()) return null
+
+        var covered = holdings.filter { it.closes.isNullOrEmpty() }.sumOf { it.currentValue }
+        for ((start, holding) in priced.map { it.closes!!.minOf { c -> c.epochDay } to it }.sortedBy { it.first }) {
+            covered += holding.currentValue
+            if (covered >= minShare * total) return start
+        }
+        return priced.maxOf { h -> h.closes!!.minOf { it.epochDay } }
     }
 
     /** Ends the series on the live total (the number in the header) rather than on a stale close. */
