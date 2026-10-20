@@ -2,6 +2,7 @@ package app.trackone.ui.splash
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import app.trackone.data.api.Freshness
 import app.trackone.data.repository.StockRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -12,7 +13,8 @@ import javax.inject.Inject
 /**
  * Coordinates background data pre-fetching during the splash screen.
  *
- * Fetches the 4 market indexes and the watchlist prices in parallel so that
+ * Fetches the 4 market indexes and the watchlist prices in parallel (skipping any quote that is
+ * still fresh, see [Freshness.PASSIVE], so reopening the app does not repeat requests) so that
  * when [MainActivity] / [HomeFragment] open, the data is already cached in
  * the Room database and renders immediately without a loading spinner.
  *
@@ -42,13 +44,13 @@ class SplashViewModel @Inject constructor(
             // Fetch all indexes concurrently
             val indexJobs = indexSymbols.map { symbol ->
                 launch {
-                    runCatching { repository.fetchAndCacheStock(symbol) }
+                    runCatching { repository.fetchAndCacheStock(symbol, Freshness.PASSIVE) }
                 }
             }
 
             // Also refresh the watchlist in parallel
             val watchlistJob = launch {
-                runCatching { repository.refreshWatchlistStocks() }
+                runCatching { repository.refreshWatchlistStocks(Freshness.PASSIVE) }
             }
 
             indexJobs.forEach { it.join() }

@@ -25,7 +25,18 @@ data class StockEntity(
     val logo: String = "",
     val website: String = "",
     val lastUpdated: Long = System.currentTimeMillis(),
-    val isInWatchlist: Boolean = false
+    val isInWatchlist: Boolean = false,
+    /**
+     * Yahoo's latest trading session for this symbol, in epoch seconds (0 = not known): what lets
+     * the app say a market is open or closed from real hours, and keep a closing price until the
+     * next open. See [app.trackone.utils.MarketHours].
+     */
+    val sessionPreStart: Long = 0L,
+    val sessionStart: Long = 0L,
+    val sessionEnd: Long = 0L,
+    val sessionPostEnd: Long = 0L,
+    /** The exchange's offset from UTC, in seconds. */
+    val sessionGmtOffset: Int = 0
 ) : Parcelable {
     val isPositive: Boolean get() = change >= 0
     val isStale: Boolean get() = System.currentTimeMillis() - lastUpdated > 15 * 60 * 1000

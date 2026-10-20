@@ -41,11 +41,12 @@
             android:theme="@style/Theme.FinanceWidget"/>
 
         <!-- Fingerprint/device-credential lock gate — launched on top of whichever Activity
-             is in front whenever AppLockManager says the app is locked. -->
+             is in front whenever AppLockManager says the app is locked. Deliberately NOT
+             singleTask/singleInstance: relaunching those clears the Activities above the lock,
+             which destroys the MainActivity waiting behind it (see AppLockWatcher). -->
         <activity
             android:name=".ui.lock.LockActivity"
             android:exported="false"
-            android:launchMode="singleTask"
             android:theme="@style/Theme.FinanceWidget"/>
 
         <activity

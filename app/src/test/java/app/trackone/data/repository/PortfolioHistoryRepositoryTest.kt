@@ -17,9 +17,12 @@ import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
 import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
+import org.junit.Rule
 import org.junit.Test
+import org.junit.rules.TemporaryFolder
 import retrofit2.Response
 
 class PortfolioHistoryRepositoryTest {
@@ -27,6 +30,9 @@ class PortfolioHistoryRepositoryTest {
     private lateinit var api: YahooFinanceApiService
     private lateinit var netWorth: NetWorthRepository
     private lateinit var repo: PortfolioHistoryRepository
+
+    @get:Rule val tmp = TemporaryFolder()
+    private lateinit var seriesDir: java.io.File
 
     // Three consecutive IST days, expressed as the epoch seconds of a bar on each.
     private val day1 = 1_790_000_000L
@@ -40,8 +46,12 @@ class PortfolioHistoryRepositoryTest {
         netWorth = mockk()
         coEvery { netWorth.fetchUsdInrRate() } returns 80.0
         coEvery { netWorth.fetchRateToInr("USD") } returns 80.0
-        repo = PortfolioHistoryRepository(api, netWorth)
+        seriesDir = java.io.File(tmp.root, "series")
+        repo = PortfolioHistoryRepository(api, netWorth, ChartSeriesStore(seriesDir))
     }
+
+    /** A new process: nothing in memory, the same files on disk. */
+    private fun coldStart() = PortfolioHistoryRepository(api, netWorth, ChartSeriesStore(seriesDir))
 
     private fun chart(currency: String, times: List<Long>, closes: List<Double?>): Response<YahooChartResponse> =
         Response.success(
@@ -291,5 +301,101 @@ class PortfolioHistoryRepositoryTest {
         repo.history(holdings, ChartRange.DAY, now + 6 * 60_000)      // past it: fetched again
 
         coVerify(exactly = 2) { api.getChartData("TCS.NS", "5m", "1d", any()) }
+    }
+
+    // ── the series survive the process ───────────────────────────────────────────────────────────
+
+    private val halfHour = 30 * 60_000L
+
+    @Test
+    fun `a cold start soon after a download draws the same chart without downloading anything`() = runTest {
+        stub("USDINR=X", chart("INR", listOf(day1, day2), listOf(80.0, 80.0)))
+        stub("AAPL", chart("USD", listOf(day1, day2), listOf(100.0, 110.0)))
+        val holdings = listOf(asset("AAPL", AssetType.STOCK_US, 1.0, 8800.0))
+
+        val before = repo.history(holdings, ChartRange.MONTH, now)
+        val after = coldStart().history(holdings, ChartRange.MONTH, now + halfHour)
+
+        assertEquals(before.map { it.current }, after.map { it.current })
+        coVerify(exactly = 1) { api.getChartData("AAPL", "1d", "1mo", any()) }
+        coVerify(exactly = 1) { api.getChartData("USDINR=X", "1d", "1mo", any()) }
+    }
+
+    @Test
+    fun `a cold start after the saved window downloads again`() = runTest {
+        stub("USDINR=X", failure())
+        stub("TCS.NS", chart("INR", listOf(day1, day2), listOf(100.0, 110.0)))
+        val holdings = listOf(asset("TCS", AssetType.STOCK_IN, 1.0, 110.0))
+
+        repo.history(holdings, ChartRange.MONTH, now)
+        coldStart().history(holdings, ChartRange.MONTH, now + PortfolioHistoryRepository.PERSISTED_TTL_MS + 1)
+
+        coVerify(exactly = 2) { api.getChartData("TCS.NS", "1d", "1mo", any()) }
+    }
+
+    @Test
+    fun `a failed download is not saved, so the next cold start tries again`() = runTest {
+        stub("USDINR=X", failure())
+        stub("TCS.NS", failure())
+        val holdings = listOf(asset("TCS", AssetType.STOCK_IN, 1.0, 110.0))
+        repo.history(holdings, ChartRange.MONTH, now)
+
+        stub("TCS.NS", chart("INR", listOf(day1, day2), listOf(100.0, 110.0)))
+        val points = coldStart().history(holdings, ChartRange.MONTH, now + halfHour)
+
+        assertEquals(listOf(100.0, 110.0, 110.0), points.map { it.current })
+        coVerify(exactly = 2) { api.getChartData("TCS.NS", "1d", "1mo", any()) }
+    }
+
+    @Test
+    fun `today's chart is only kept for the intraday window across a cold start`() = runTest {
+        stub("USDINR=X", "5m", "1d", failure())
+        stub("TCS.NS", "5m", "1d", chart("INR", listOf(day3, day3 + 300), listOf(100.0, 101.0)))
+        val holdings = listOf(asset("TCS", AssetType.STOCK_IN, 1.0, 101.0))
+
+        repo.history(holdings, ChartRange.DAY, now)
+        coldStart().history(holdings, ChartRange.DAY, now + 2 * 60_000)       // within five minutes: from disk
+        coldStart().history(holdings, ChartRange.DAY, now + 6 * 60_000)       // past them: downloaded
+
+        coVerify(exactly = 2) { api.getChartData("TCS.NS", "5m", "1d", any()) }
+    }
+
+    @Test
+    fun `a damaged saved file is ignored and the series downloaded again`() = runTest {
+        stub("USDINR=X", failure())
+        stub("TCS.NS", chart("INR", listOf(day1, day2), listOf(100.0, 110.0)))
+        val holdings = listOf(asset("TCS", AssetType.STOCK_IN, 1.0, 110.0))
+        repo.history(holdings, ChartRange.MONTH, now)
+        seriesDir.listFiles()!!.forEach { it.writeText("garbage") }
+
+        val points = coldStart().history(holdings, ChartRange.MONTH, now + halfHour)
+
+        assertEquals(listOf(100.0, 110.0, 110.0), points.map { it.current })
+        coVerify(exactly = 2) { api.getChartData("TCS.NS", "1d", "1mo", any()) }
+    }
+
+    @Test
+    fun `a series saved in the future, from a clock that was set back, is not trusted`() = runTest {
+        stub("USDINR=X", failure())
+        stub("TCS.NS", chart("INR", listOf(day1, day2), listOf(100.0, 110.0)))
+        val holdings = listOf(asset("TCS", AssetType.STOCK_IN, 1.0, 110.0))
+        repo.history(holdings, ChartRange.MONTH, now + 3 * 3_600_000L)
+
+        coldStart().history(holdings, ChartRange.MONTH, now)
+
+        coVerify(exactly = 2) { api.getChartData("TCS.NS", "1d", "1mo", any()) }
+    }
+
+    @Test
+    fun `series of holdings that are long gone are cleared out`() = runTest {
+        stub("USDINR=X", failure())
+        stub("TCS.NS", chart("INR", listOf(day1, day2), listOf(100.0, 110.0)))
+        val store = ChartSeriesStore(seriesDir)
+        store.save("SOLD.NS", ChartRange.MONTH, ChartSeriesStore.Stored(now - 3 * 86_400_000L, "INR", listOf(day1 to 1.0)))
+
+        repo.history(listOf(asset("TCS", AssetType.STOCK_IN, 1.0, 110.0)), ChartRange.MONTH, now)
+
+        assertNull(store.load("SOLD.NS", ChartRange.MONTH))
+        assertTrue(store.load("TCS.NS", ChartRange.MONTH) != null)
     }
 }

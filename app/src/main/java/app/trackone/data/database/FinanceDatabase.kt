@@ -115,12 +115,23 @@ val MIGRATION_5_6 = object : Migration(5, 6) {
     }
 }
 
+val MIGRATION_6_7 = object : Migration(6, 7) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        // The latest trading session Yahoo reports for each saved quote; 0 until the next fetch fills it.
+        db.execSQL("ALTER TABLE stocks ADD COLUMN sessionPreStart INTEGER NOT NULL DEFAULT 0")
+        db.execSQL("ALTER TABLE stocks ADD COLUMN sessionStart INTEGER NOT NULL DEFAULT 0")
+        db.execSQL("ALTER TABLE stocks ADD COLUMN sessionEnd INTEGER NOT NULL DEFAULT 0")
+        db.execSQL("ALTER TABLE stocks ADD COLUMN sessionPostEnd INTEGER NOT NULL DEFAULT 0")
+        db.execSQL("ALTER TABLE stocks ADD COLUMN sessionGmtOffset INTEGER NOT NULL DEFAULT 0")
+    }
+}
+
 @TypeConverters(Converters::class)
 @Database(
     entities = [StockEntity::class, WatchlistGroupEntity::class, WatchlistEntity::class,
                 PriceHistoryEntity::class, NetWorthAssetEntity::class, NetWorthTransactionEntity::class,
                 ExpenseTransactionEntity::class],
-    version = 6,
+    version = 7,
     exportSchema = false
 )
 abstract class FinanceDatabase : RoomDatabase() {

@@ -2,22 +2,32 @@ package app.trackone.data.repository
 
 import android.content.Context
 import android.content.SharedPreferences
+import app.trackone.data.api.Freshness
+import app.trackone.data.api.RateLimitBackoff
 import app.trackone.data.api.YahooFinanceApiService
 import app.trackone.data.database.AssetType
 import app.trackone.data.database.FinanceDatabase
 import app.trackone.data.database.NetWorthAssetEntity
 import app.trackone.data.database.NetWorthDao
+import app.trackone.data.database.StockDao
+import app.trackone.data.database.StockEntity
+import app.trackone.data.database.WatchlistDao
 import app.trackone.data.model.YahooChart
 import app.trackone.data.model.YahooChartResponse
 import app.trackone.data.model.YahooChartResult
 import app.trackone.data.model.YahooMeta
 import app.trackone.utils.Resource
 import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.withContext
 import java.util.concurrent.atomic.AtomicInteger
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -35,6 +45,9 @@ class NetWorthRepositoryTest {
 
     private lateinit var apiService: YahooFinanceApiService
     private lateinit var netWorthDao: NetWorthDao
+    private lateinit var stockDao: StockDao
+    private lateinit var stockRepository: StockRepository
+    private val savedQuotes = java.util.concurrent.ConcurrentHashMap<String, StockEntity>()
     private lateinit var database: FinanceDatabase
     private lateinit var context: Context
     private lateinit var sharedPreferences: SharedPreferences
@@ -55,7 +68,17 @@ class NetWorthRepositoryTest {
         context = mockk<Context> {
             every { getSharedPreferences(any(), any()) } returns sharedPreferences
         }
-        repository = NetWorthRepository(database, netWorthDao, apiService, mockk(relaxed = true), context)
+        // Quotes come through the same repository the watchlist uses, over the same mocked API, so every
+        // stub below keeps meaning "what Yahoo answers".
+        stockDao = mockk(relaxed = true)
+        coEvery { stockDao.getStock(any()) } coAnswers { savedQuotes[firstArg()] }
+        coEvery { stockDao.insertStock(any()) } coAnswers { val s = firstArg<StockEntity>(); savedQuotes[s.symbol] = s }
+        val watchlistDao = mockk<WatchlistDao>(relaxed = true)
+        coEvery { watchlistDao.isInWatchlist(any()) } returns 0
+        stockRepository = StockRepository(
+            apiService, stockDao, mockk(relaxed = true), watchlistDao, mockk(relaxed = true), RateLimitBackoff { 0L }
+        )
+        repository = NetWorthRepository(database, netWorthDao, apiService, stockRepository, mockk(relaxed = true), context)
     }
 
     private fun chartResponse(currency: String, price: Double): Response<YahooChartResponse> =
@@ -259,6 +282,97 @@ class NetWorthRepositoryTest {
         assertEquals(80.0, rate, 0.0001)
     }
 
+    // ── quotes the watchlist side already has ────────────────────────────────────────────────────
+
+    private fun savedQuote(symbol: String, currency: String, price: Double, previousClose: Double, ageMs: Long) {
+        savedQuotes[symbol] = StockEntity(
+            symbol = symbol, companyName = symbol, currentPrice = price, change = 0.0, changePercent = 0.0,
+            highPrice = price, lowPrice = price, openPrice = price, previousClose = previousClose,
+            currency = currency, lastUpdated = System.currentTimeMillis() - ageMs
+        )
+    }
+
+    @Test
+    fun `a saved quote that is still fresh is used instead of asking Yahoo again`() = runTest {
+        savedQuote("TCS.NS", "INR", 3500.0, 3400.0, ageMs = 60_000)
+
+        val quote = (repository.fetchQuote("TCS", AssetType.STOCK_IN, freshness = Freshness.PASSIVE) as Resource.Success).data
+
+        assertEquals(3500.0, quote.priceInr, 0.0001)
+        assertEquals(3400.0, quote.previousCloseInr, 0.0001)
+        coVerify(exactly = 0) { apiService.getQuote(any()) }
+    }
+
+    @Test
+    fun `a saved quote is converted exactly like a live one`() = runTest {
+        savedQuote("AAPL", "USD", 200.0, 190.0, ageMs = 60_000)
+
+        val quote = (repository.fetchQuote("AAPL", AssetType.STOCK_US, usdInrRate = 80.0, freshness = Freshness.PASSIVE) as Resource.Success).data
+
+        assertEquals(16000.0, quote.priceInr, 0.0001)
+        assertEquals(15200.0, quote.previousCloseInr, 0.0001)
+    }
+
+    @Test
+    fun `a saved quote that is too old is fetched again`() = runTest {
+        savedQuote("TCS.NS", "INR", 1.0, 1.0, ageMs = 10 * 60_000)
+        coEvery { apiService.getQuote("TCS.NS") } returns chartResponse("INR", 3600.0, 3500.0)
+
+        val quote = (repository.fetchQuote("TCS", AssetType.STOCK_IN, freshness = Freshness.PASSIVE) as Resource.Success).data
+
+        assertEquals(3600.0, quote.priceInr, 0.0001)
+    }
+
+    @Test
+    fun `a screen that needs the live price never settles for a saved one`() = runTest {
+        savedQuote("TCS.NS", "INR", 1.0, 1.0, ageMs = 1_000)
+        coEvery { apiService.getQuote("TCS.NS") } returns chartResponse("INR", 3600.0, 3500.0)
+
+        val quote = (repository.fetchQuote("TCS", AssetType.STOCK_IN) as Resource.Success).data
+
+        assertEquals(3600.0, quote.priceInr, 0.0001)
+    }
+
+    @Test
+    fun `a failed request is an error here even when an old quote is saved`() = runTest {
+        // A stale price written as if it were live would also stop the symbol repair from ever running.
+        savedQuote("TCS.NS", "INR", 1.0, 1.0, ageMs = 10 * 60_000)
+        coEvery { apiService.getQuote("TCS.NS") } returns Response.error(429, "".toResponseBody(null))
+
+        val result = repository.fetchQuote("TCS", AssetType.STOCK_IN, freshness = Freshness.PASSIVE)
+
+        assertTrue(result is Resource.Error)
+    }
+
+    @Test
+    fun `pricing a refresh only asks Yahoo for the holdings whose saved quote has gone stale`() = runTest {
+        savedQuote("FRESH.NS", "INR", 10.0, 9.0, ageMs = 60_000)
+        savedQuote("STALE.NS", "INR", 1.0, 1.0, ageMs = 10 * 60_000)
+        coEvery { apiService.getQuote("STALE.NS") } returns chartResponse("INR", 20.0, 19.0)
+
+        val priced = repository.priceHoldings(
+            listOf(holding("FRESH", 1), holding("STALE", 2)), usdInrRate = 80.0, freshness = Freshness.PASSIVE
+        )
+
+        assertEquals(listOf(10.0, 20.0), priced.updated.map { it.currentValue })
+        coVerify(exactly = 0) { apiService.getQuote("FRESH.NS") }
+        coVerify(exactly = 1) { apiService.getQuote("STALE.NS") }
+    }
+
+    @Test
+    fun `home and net worth asking for the same holding at once make one request`() = runTest {
+        val gate = CompletableDeferred<Unit>()
+        coEvery { apiService.getQuote("TCS.NS") } coAnswers { gate.await(); chartResponse("INR", 3500.0, 3400.0) }
+
+        val home = async { stockRepository.fetchAndCacheStock("TCS.NS", Freshness.PASSIVE) }
+        val netWorth = async { repository.fetchQuote("TCS", AssetType.STOCK_IN, freshness = Freshness.PASSIVE) }
+        withContext(Dispatchers.Default) { delay(300) }
+        gate.complete(Unit)
+        home.await(); netWorth.await()
+
+        coVerify(exactly = 1) { apiService.getQuote("TCS.NS") }
+    }
+
     // ── pricing every holding in one refresh ─────────────────────────────────────────────────────
 
     private fun holding(name: String, id: Long, qty: Double = 1.0) = NetWorthAssetEntity(
@@ -322,5 +436,31 @@ class NetWorthRepositoryTest {
         }
 
         assertEquals((1..6).map { it to 6 }, seen.sortedBy { it.first })
+    }
+
+    // The 30-second window is checked before any database work, so it can be covered without Room.
+
+    @Test
+    fun `a refresh straight after another is skipped, even a forced one such as pull-to-refresh`() = runTest {
+        repository.refreshNetWorthAssets(force = true)
+        repository.refreshNetWorthAssets(force = true)
+
+        coVerify(exactly = 1) { netWorthDao.getAllAssetsSync() }
+    }
+
+    @Test
+    fun `a refresh that changed the holdings, such as an import or a restore, ignores the window`() = runTest {
+        repository.refreshNetWorthAssets(force = true)
+        repository.refreshNetWorthAssets(force = true, ignoreWindow = true)
+
+        coVerify(exactly = 2) { netWorthDao.getAllAssetsSync() }
+    }
+
+    @Test
+    fun `a passive refresh straight after a forced one is still skipped`() = runTest {
+        repository.refreshNetWorthAssets(force = true)
+        repository.refreshNetWorthAssets()
+
+        coVerify(exactly = 1) { netWorthDao.getAllAssetsSync() }
     }
 }

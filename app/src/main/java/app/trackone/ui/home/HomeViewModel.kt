@@ -13,6 +13,7 @@ import app.trackone.data.database.StockEntity
 import app.trackone.data.repository.ChartSnapshotStore
 import app.trackone.data.repository.NetWorthRepository
 import app.trackone.data.repository.PortfolioHistoryRepository
+import app.trackone.data.api.Freshness
 import app.trackone.data.repository.StockRepository
 import app.trackone.utils.ChartRange
 import app.trackone.utils.GainLoss
@@ -26,12 +27,18 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import app.trackone.utils.TradingSession
+import app.trackone.utils.tradingSession
 import javax.inject.Inject
 
 data class IndexData(
     val price: Double,
     val changePercent: Double,
-    val currency: String
+    val currency: String,
+    /** The latest trading session Yahoo reported with this quote; null until one is saved. */
+    val session: TradingSession? = null,
+    /** When this quote was taken, in epoch milliseconds. */
+    val fetchedAt: Long = 0L
 )
 
 /**
@@ -298,8 +305,10 @@ class HomeViewModel @Inject constructor(
         // while the screen is still laying out and animating in.
         viewModelScope.launch { delay(STARTUP_REFRESH_DELAY_MS); refreshLivePricesQuietly() }
         // Fetch indexes + top movers (also background)
-        viewModelScope.launch { fetchIndexes() }
-        viewModelScope.launch { fetchTopMovers() }
+        // The app opening itself: a quote still fresh (or a closing price while the market is
+        // shut) is used as it is, so reopening the app does not repeat the requests.
+        viewModelScope.launch { fetchIndexes(Freshness.PASSIVE) }
+        viewModelScope.launch { fetchTopMovers(Freshness.PASSIVE) }
     }
 
     override fun onCleared() {
@@ -327,8 +336,8 @@ class HomeViewModel @Inject constructor(
                 // Forced — the user explicitly pulled to refresh, so this must actually run
                 // rather than being skipped by the passive-refresh throttle.
                 launch { netWorthRepository.refreshNetWorthAssets(force = true) }
-                launch { fetchIndexes() }
-                launch { fetchTopMovers() }
+                launch { fetchIndexes(Freshness.PULL) }
+                launch { fetchTopMovers(Freshness.PULL) }
             }
             // Reads the DB values netWorthRepository just wrote above, so this must wait for
             // the whole coroutineScope block (and therefore all three) to finish. Also applies
@@ -361,29 +370,28 @@ class HomeViewModel @Inject constructor(
         rebuildChart(assets, settleChart)
     }
 
-    private suspend fun fetchIndexes() {
+    private suspend fun fetchIndexes(freshness: Freshness) {
         val symbols = listOf(
             "^NSEI"  to _nifty,
             "^BSESN" to _sensex,
             "^GSPC"  to _sp500,
             "^IXIC"  to _nasdaq
         )
+        fun indexOf(stock: StockEntity) = IndexData(
+            price = stock.currentPrice,
+            changePercent = stock.changePercent,
+            currency = stock.currency,
+            session = stock.tradingSession(),
+            fetchedAt = stock.lastUpdated
+        )
         for ((symbol, liveData) in symbols) {
-            liveData.postValue(Resource.Loading())
-            val result = repository.fetchAndCacheStock(symbol)
-            when (result) {
-                is Resource.Success -> {
-                    val stock = result.data
-                    liveData.postValue(
-                        Resource.Success(
-                            IndexData(
-                                price = stock.currentPrice,
-                                changePercent = stock.changePercent,
-                                currency = stock.currency
-                            )
-                        )
-                    )
-                }
+            // A saved quote goes on the card at once; the loading state is only for a first launch.
+            val saved = repository.getStockSync(symbol)
+            if (saved != null) liveData.postValue(Resource.Success(indexOf(saved)))
+            else liveData.postValue(Resource.Loading())
+
+            when (val result = repository.fetchAndCacheStock(symbol, freshness)) {
+                is Resource.Success -> liveData.postValue(Resource.Success(indexOf(result.data)))
                 is Resource.Error -> liveData.postValue(Resource.Error(result.message.orEmpty()))
                 else -> {}
             }
@@ -399,7 +407,7 @@ class HomeViewModel @Inject constructor(
      * dozens of network round trips in a row (up to two HTTP calls each) just to populate this
      * one section, which is most of what "extensive loading" on Home launch actually was.
      */
-    private suspend fun fetchTopMovers() {
+    private suspend fun fetchTopMovers(freshness: Freshness) {
         val fetchableTypes = setOf(
             AssetType.STOCK_IN, AssetType.STOCK_US,
             AssetType.CRYPTO, AssetType.GOLD, AssetType.SILVER
@@ -430,7 +438,7 @@ class HomeViewModel @Inject constructor(
         val results = coroutineScope {
             assets.map { asset ->
                 async {
-                    val result = repository.fetchAndCacheStock(symbolOf(asset))
+                    val result = repository.fetchAndCacheStock(symbolOf(asset), freshness)
                     if (result is Resource.Success) buildTopMover(asset, result.data) else null
                 }
             }.awaitAll()

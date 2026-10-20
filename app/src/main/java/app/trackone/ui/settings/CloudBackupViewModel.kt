@@ -83,7 +83,7 @@ class CloudBackupViewModel @Inject constructor(
                     // explicitly asked for a restore and expects current prices, not whatever
                     // was last cached before the passive-refresh interval elapses.
                     _state.value = CloudBackupUiState.FetchingPrices
-                    netWorthRepository.refreshNetWorthAssets(force = true)
+                    netWorthRepository.refreshNetWorthAssets(force = true, ignoreWindow = true)
 
                     _state.value = CloudBackupUiState.Success(
                         title = "Restore complete",

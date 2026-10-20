@@ -1,6 +1,7 @@
 package app.trackone.di
 
 import android.content.Context
+import android.os.SystemClock
 import app.trackone.security.AppLockManager
 import app.trackone.security.AppLockPrefs
 import dagger.Module
@@ -20,9 +21,10 @@ object SecurityModule {
         AppLockPrefs(context)
 
     // A single AppLockManager instance for the process, so its in-memory "unlocked this
-    // session" state (see AppLockManager) survives across every Activity.
+    // session" state (see AppLockManager) survives across every Activity. elapsedRealtime
+    // rather than uptime/nanoTime: it keeps counting while the device sleeps.
     @Provides
     @Singleton
     fun provideAppLockManager(prefs: AppLockPrefs): AppLockManager =
-        AppLockManager(prefs)
+        AppLockManager(prefs, SystemClock::elapsedRealtime)
 }

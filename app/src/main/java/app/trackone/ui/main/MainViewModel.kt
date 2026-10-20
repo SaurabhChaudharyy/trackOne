@@ -1,6 +1,7 @@
 package app.trackone.ui.main
 
 import androidx.lifecycle.*
+import app.trackone.data.api.Freshness
 import app.trackone.data.database.StockEntity
 import app.trackone.data.database.WatchlistEntity
 import app.trackone.data.database.WatchlistGroupEntity
@@ -115,7 +116,7 @@ class MainViewModel @Inject constructor(
             _isRefreshing.value = true
             _refreshState.value = Resource.Loading()
 
-            val watchlistJob = async { repository.refreshWatchlistStocks() }
+            val watchlistJob = async { repository.refreshWatchlistStocks(Freshness.forRefresh(userRequested = force)) }
             val netWorthJob  = launch { netWorthRepository.refreshNetWorthAssets(force = force) }
 
             val result = watchlistJob.await()
@@ -126,9 +127,26 @@ class MainViewModel @Inject constructor(
         }
     }
 
+    /** When each just-removed stock was first added, by group and symbol, for UNDO to give back. */
+    private val removedAddedAt = java.util.concurrent.ConcurrentHashMap<Pair<Long, String>, Long>()
+
     fun removeFromWatchlist(symbol: String) {
         val groupId = _activeGroupId.value ?: StockRepository.DEFAULT_GROUP_ID
-        viewModelScope.launch { repository.removeFromWatchlist(symbol, groupId) }
+        viewModelScope.launch {
+            repository.removeFromWatchlist(symbol, groupId)?.let { removedAddedAt[groupId to symbol] = it }
+        }
+    }
+
+    /**
+     * UNDO of [removeFromWatchlist]: back into [groupId] at [index], with the date it was first added.
+     * The group is the one the stock was removed from, not whichever tab is showing by the time UNDO is
+     * tapped.
+     */
+    fun restoreToWatchlist(symbol: String, displayName: String, groupId: Long, index: Int) {
+        viewModelScope.launch {
+            val addedAt = removedAddedAt.remove(groupId to symbol) ?: System.currentTimeMillis()
+            repository.restoreToWatchlist(symbol, displayName, groupId, index, addedAt)
+        }
     }
 
     fun addToWatchlist(symbol: String, displayName: String) {

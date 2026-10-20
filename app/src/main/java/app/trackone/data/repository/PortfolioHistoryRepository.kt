@@ -22,6 +22,7 @@ import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -36,7 +37,8 @@ import javax.inject.Singleton
 @Singleton
 class PortfolioHistoryRepository @Inject constructor(
     private val apiService: YahooFinanceApiService,
-    private val netWorthRepository: NetWorthRepository
+    private val netWorthRepository: NetWorthRepository,
+    private val seriesStore: ChartSeriesStore
 ) {
     /**
      * Native-currency closes for one symbol, as [time key to close]: IST day numbers for daily
@@ -48,8 +50,11 @@ class PortfolioHistoryRepository @Inject constructor(
     private class CacheEntry(val fetchedAtMs: Long, val series: RawSeries?)
 
     // Keyed by symbol+range only (never by quantity or value), so the reactive rebuilds that follow
-    // every price refresh recompute from memory instead of re-hitting the network.
+    // every price refresh recompute from memory instead of re-hitting the network. Below it, the same
+    // series are kept on disk ([seriesStore]) so a cold start does not download them all again.
     private val cache = ConcurrentHashMap<CacheKey, CacheEntry>()
+
+    private val pruned = AtomicBoolean(false)
 
     /** Bounds the concurrent requests: a big portfolio would otherwise fire dozens at once. */
     private val fetchLimiter = Semaphore(RequestLimits.MAX_PARALLEL)
@@ -61,6 +66,9 @@ class PortfolioHistoryRepository @Inject constructor(
     ): List<PortfolioChartPoint> = withContext(Dispatchers.IO) {
         val priced = assets.filter { it.assetType.hasLivePrice && it.name.isNotBlank() }
         if (priced.isEmpty()) return@withContext emptyList()
+
+        // Once per process: sold holdings leave series on disk that nothing reads again.
+        if (pruned.compareAndSet(false, true)) seriesStore.prune(olderThanMs = nowMs - PRUNE_AFTER_MS)
 
         val (fx, rawByAsset) = coroutineScope {
             val fxDeferred = async { fetchRaw(FX_SYMBOL, range, nowMs) }
@@ -137,6 +145,13 @@ class PortfolioHistoryRepository @Inject constructor(
             if (nowMs - entry.fetchedAtMs < ttl) return entry.series
         }
 
+        savedSeries(symbol, range, nowMs)?.let { saved ->
+            // Checked on disk this once: memory answers for the usual window from now. Today's chart
+            // keeps the age it was downloaded at, since its window is short.
+            cache[key] = CacheEntry(if (range.intraday) saved.fetchedAtMs else nowMs, saved.series)
+            return saved.series
+        }
+
         val series = try {
             fetchLimiter.withPermit { download(symbol, range, nowMs) }
         } catch (e: CancellationException) {
@@ -145,7 +160,20 @@ class PortfolioHistoryRepository @Inject constructor(
             null
         }
         cache[key] = CacheEntry(nowMs, series)
+        // A failure is not saved: the next cold start should try again, not inherit it.
+        if (series != null) seriesStore.save(symbol, range, ChartSeriesStore.Stored(nowMs, series.currency, series.points))
         return series
+    }
+
+    private class SavedSeries(val fetchedAtMs: Long, val series: RawSeries)
+
+    /** The series saved on disk for [symbol] and [range], when it is still recent enough to use. */
+    private fun savedSeries(symbol: String, range: ChartRange, nowMs: Long): SavedSeries? {
+        val stored = seriesStore.load(symbol, range) ?: return null
+        val ttl = if (range.intraday) INTRADAY_TTL_MS else PERSISTED_TTL_MS
+        // A stamp from the future means the clock was set back; nothing can be said about its age.
+        if (nowMs - stored.fetchedAtMs !in 0 until ttl) return null
+        return SavedSeries(stored.fetchedAtMs, RawSeries(stored.currency, stored.points))
     }
 
     private suspend fun download(symbol: String, range: ChartRange, nowMs: Long): RawSeries? {
@@ -188,13 +216,24 @@ class PortfolioHistoryRepository @Inject constructor(
     private fun timeKey(epochSeconds: Long, range: ChartRange): Long =
         if (range.intraday) epochSeconds else PortfolioHistory.epochDayIst(epochSeconds)
 
-    private companion object {
-        const val FX_SYMBOL = "USDINR=X"
-        const val MIN_COVERED_SHARE = 0.9
-        const val SUCCESS_TTL_MS = 15 * 60 * 1000L
+    companion object {
+        private const val FX_SYMBOL = "USDINR=X"
+        private const val MIN_COVERED_SHARE = 0.9
+        private const val SUCCESS_TTL_MS = 15 * 60 * 1000L
+
+        /**
+         * How long a series saved on disk is used by a cold start. A daily series only ever changes on
+         * its last bar, and the chart replaces that bar with the live total, so a few hours old is not
+         * visible; it is the same window the stock detail chart already keeps a month of closes for.
+         */
+        internal const val PERSISTED_TTL_MS = 4 * 60 * 60 * 1000L
+
+        /** Series nobody asked for in this long belong to holdings that are gone. */
+        private const val PRUNE_AFTER_MS = 24 * 60 * 60 * 1000L
+
         /** Today's chart moves with the market, so it goes stale faster than a month of daily closes. */
-        const val INTRADAY_TTL_MS = 5 * 60 * 1000L
+        private const val INTRADAY_TTL_MS = 5 * 60 * 1000L
         /** Failures are retried sooner, but not on every rebuild — that would hammer a rate-limited API. */
-        const val FAILURE_TTL_MS = 2 * 60 * 1000L
+        private const val FAILURE_TTL_MS = 2 * 60 * 1000L
     }
 }

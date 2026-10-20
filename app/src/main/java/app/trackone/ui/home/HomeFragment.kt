@@ -31,10 +31,13 @@ import app.trackone.utils.ChartRange
 import app.trackone.utils.FormatUtils
 import app.trackone.utils.GainLoss
 import app.trackone.utils.MarketUtils
+import app.trackone.utils.TradingSession
+import app.trackone.utils.MarketHours
 import app.trackone.utils.Resource
 import dagger.hilt.android.AndroidEntryPoint
 import java.text.SimpleDateFormat
 import java.util.Calendar
+import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
 
@@ -93,6 +96,7 @@ class HomeFragment : Fragment() {
     override fun onResume() {
         super.onResume()
         updateMarketStatus()
+        updateMarketsUpdatedLabel()
     }
 
     // ── Date ─────────────────────────────────────────────────────────────
@@ -111,8 +115,8 @@ class HomeFragment : Fragment() {
 
     private fun updateMarketStatus() {
         if (_binding == null) return
-        val usOpen    = MarketUtils.isUsMarketOpen()
-        val indiaOpen = MarketUtils.isIndiaMarketOpen()
+        val usOpen    = isMarketOpen(Market.US)
+        val indiaOpen = isMarketOpen(Market.INDIA)
 
         // US chip — ink pill for Open (flips with the theme), gray pill for Closed
         binding.tvUsMarketStatus.text = if (usOpen) "Open" else "Closed"
@@ -182,10 +186,10 @@ class HomeFragment : Fragment() {
     // ── Observe ViewModel ────────────────────────────────────────────────
 
     private fun observeViewModel() {
-        viewModel.nifty.observe(viewLifecycleOwner)  { res -> applyIndex(res, Index.NIFTY) }
-        viewModel.sensex.observe(viewLifecycleOwner) { res -> applyIndex(res, Index.SENSEX) }
-        viewModel.sp500.observe(viewLifecycleOwner)  { res -> applyIndex(res, Index.SP500) }
-        viewModel.nasdaq.observe(viewLifecycleOwner) { res -> applyIndex(res, Index.NASDAQ) }
+        viewModel.nifty.observe(viewLifecycleOwner)  { res -> applyIndex(res, Index.NIFTY); updateMarketStatus(); updateMarketsUpdatedLabel() }
+        viewModel.sensex.observe(viewLifecycleOwner) { res -> applyIndex(res, Index.SENSEX); updateMarketsUpdatedLabel() }
+        viewModel.sp500.observe(viewLifecycleOwner)  { res -> applyIndex(res, Index.SP500); updateMarketStatus(); updateMarketsUpdatedLabel() }
+        viewModel.nasdaq.observe(viewLifecycleOwner) { res -> applyIndex(res, Index.NASDAQ); updateMarketsUpdatedLabel() }
 
         viewModel.topMovers.observe(viewLifecycleOwner) { movers -> applyTopMovers(movers) }
 
@@ -817,6 +821,35 @@ class HomeFragment : Fragment() {
         }
     }
 
+    // ── Live market hours ────────────────────────────────────────────────
+    // The session times Yahoo sends with each index quote (S&P 500 for the US, Nifty for India) say
+    // whether a market is open right now, holidays included. The fixed weekday hours in MarketUtils
+    // are only the fallback for a first launch, before any quote has been saved.
+
+    /** The latest trading session saved with this market's index quote, if there is one. */
+    private fun sessionOf(market: Market): TradingSession? {
+        val index = if (market == Market.US) viewModel.sp500.value else viewModel.nifty.value
+        return (index as? Resource.Success)?.data?.session
+    }
+
+    private fun isMarketOpen(market: Market): Boolean =
+        when (MarketHours.state(sessionOf(market), System.currentTimeMillis())) {
+            MarketHours.State.OPEN -> true
+            MarketHours.State.CLOSED -> false
+            MarketHours.State.UNKNOWN ->
+                if (market == Market.US) MarketUtils.isUsMarketOpen() else MarketUtils.isIndiaMarketOpen()
+        }
+
+    /** "Updated 5m ago", from the most recent of the four index quotes; hidden until one exists. */
+    private fun updateMarketsUpdatedLabel() {
+        if (_binding == null) return
+        val latest = listOf(viewModel.nifty, viewModel.sensex, viewModel.sp500, viewModel.nasdaq)
+            .mapNotNull { ((it.value as? Resource.Success)?.data?.fetchedAt)?.takeIf { t -> t > 0L } }
+            .maxOrNull()
+        binding.tvMarketsUpdated.visibility = if (latest == null) View.GONE else View.VISIBLE
+        if (latest != null) binding.tvMarketsUpdated.text = "Updated ${FormatUtils.formatLastUpdated(latest)}"
+    }
+
     // ── Market Hours Dialog ──────────────────────────────────────────────
 
     private enum class Market { US, INDIA }
@@ -834,6 +867,10 @@ class HomeFragment : Fragment() {
             return sdf.format(cal.time)
         }
 
+        /** A time Yahoo reported as epoch seconds, shown in the device's timezone. */
+        fun fromEpoch(epochSec: Long): String = sdf.format(Date(epochSec * 1_000L))
+        var usedLive = false
+
         val dialogView = layoutInflater.inflate(R.layout.dialog_market_hours, null)
         val tvTitle    = dialogView.findViewById<TextView>(R.id.tv_market_title)
         val tvStatus   = dialogView.findViewById<TextView>(R.id.tv_market_status)
@@ -846,7 +883,7 @@ class HomeFragment : Fragment() {
         when (market) {
             Market.US -> {
                 val estTz  = TimeZone.getTimeZone("America/New_York")
-                val isOpen = MarketUtils.isUsMarketOpen()
+                val isOpen = isMarketOpen(Market.US)
                 tvTitle.text  = "NYSE / NASDAQ"
                 tvStatus.text = if (isOpen) "OPEN" else "CLOSED"
                 // Open = ink pill with inverse text, closed = neutral pill. Both flip with the theme.
@@ -856,14 +893,22 @@ class HomeFragment : Fragment() {
                 tvStatus.backgroundTintList = android.content.res.ColorStateList.valueOf(
                     requireContext().getColor(if (isOpen) R.color.ink else R.color.surface_variant)
                 )
-                tvRegOpen.text  = toDeviceTime(9,  30, estTz)
-                tvRegClose.text = toDeviceTime(16,  0, estTz)
-                tvExt1.text = "Pre: from ${toDeviceTime(4,  0, estTz)}"
-                tvExt2.text = "After: until ${toDeviceTime(20, 0, estTz)}"
+                val live = sessionOf(Market.US)
+                tvRegOpen.text  = live?.let { fromEpoch(it.start) } ?: toDeviceTime(9,  30, estTz)
+                tvRegClose.text = live?.let { fromEpoch(it.end) }   ?: toDeviceTime(16,  0, estTz)
+                // Extended hours: the exchange's own when known; a market that reports none shows none.
+                if (live == null) {
+                    tvExt1.text = "Pre: from ${toDeviceTime(4,  0, estTz)}"
+                    tvExt2.text = "After: until ${toDeviceTime(20, 0, estTz)}"
+                } else {
+                    if (live.hasPreMarket) tvExt1.text = "Pre: from ${fromEpoch(live.preStart)}" else tvExt1.visibility = View.GONE
+                    if (live.hasAfterHours) tvExt2.text = "After: until ${fromEpoch(live.postEnd)}" else tvExt2.visibility = View.GONE
+                }
+                usedLive = live != null
             }
             Market.INDIA -> {
                 val istTz  = TimeZone.getTimeZone("Asia/Kolkata")
-                val isOpen = MarketUtils.isIndiaMarketOpen()
+                val isOpen = isMarketOpen(Market.INDIA)
                 tvTitle.text  = "NSE / BSE"
                 tvStatus.text = if (isOpen) "OPEN" else "CLOSED"
                 // Open = ink pill with inverse text, closed = neutral pill. Both flip with the theme.
@@ -873,14 +918,18 @@ class HomeFragment : Fragment() {
                 tvStatus.backgroundTintList = android.content.res.ColorStateList.valueOf(
                     requireContext().getColor(if (isOpen) R.color.ink else R.color.surface_variant)
                 )
-                tvRegOpen.text  = toDeviceTime(9,  15, istTz)
-                tvRegClose.text = toDeviceTime(15, 30, istTz)
+                val live = sessionOf(Market.INDIA)
+                tvRegOpen.text  = live?.let { fromEpoch(it.start) } ?: toDeviceTime(9,  15, istTz)
+                tvRegClose.text = live?.let { fromEpoch(it.end) }   ?: toDeviceTime(15, 30, istTz)
+                // NSE's 9:00 pre-open call auction is not in Yahoo's session times, so it stays fixed.
                 tvExt1.text = "Pre-open: from ${toDeviceTime(9, 0, istTz)}"
+                usedLive = live != null
                 tvExt2.visibility = View.GONE
             }
         }
 
-        tvTz.text = "Times shown in your local timezone (${deviceTz.getDisplayName(false, TimeZone.SHORT)})"
+        tvTz.text = "Times shown in your local timezone (${deviceTz.getDisplayName(false, TimeZone.SHORT)})" +
+            if (usedLive) "\nFrom the exchange's latest session." else ""
 
         AlertDialog.Builder(requireContext(), R.style.ThemeOverlay_App_MaterialAlertDialog)
             .setView(dialogView)

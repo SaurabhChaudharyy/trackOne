@@ -23,7 +23,9 @@ import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.Snackbar
 import app.trackone.R
+import app.trackone.data.database.StockEntity
 import app.trackone.data.database.WatchlistGroupEntity
+import app.trackone.data.repository.StockRepository
 import app.trackone.databinding.DialogWatchlistNameBinding
 import app.trackone.databinding.FragmentWatchlistBinding
 import app.trackone.databinding.ItemWatchlistTabBinding
@@ -42,6 +44,9 @@ class WatchlistFragment : Fragment() {
     /** Map groupId → tab view for quick lookup. */
     private val tabViews = mutableMapOf<Long, View>()
     private var tabSelector: PillSelector<Long>? = null
+
+    /** True while the add button has been tucked away by scrolling down the list. */
+    private var fabScrolledAway = false
 
     companion object {
         private const val MAX_WATCHLISTS = 5
@@ -141,7 +146,9 @@ class WatchlistFragment : Fragment() {
 
             // Scroll active tab into view
             if (isActive) {
-                binding.hsvTabs.post { binding.hsvTabs.smoothScrollTo(tabView.left - 12, 0) }
+                // Capture the view: `binding` is null once onDestroyView has run, and this runs later.
+                val tabScroll = binding.hsvTabs
+                tabScroll.post { tabScroll.smoothScrollTo(tabView.left - 12, 0) }
             }
         }
         selector.select(activeId)
@@ -295,6 +302,19 @@ class WatchlistFragment : Fragment() {
 
     // ── RecyclerView ─────────────────────────────────────────────────────────
 
+    /**
+     * Removes [stock] and offers UNDO. The row's place and group are taken now, before the list
+     * changes, so UNDO puts it back where it was even if another tab is showing by then.
+     */
+    private fun removeWithUndo(stock: StockEntity) {
+        val groupId = viewModel.activeGroupId.value ?: StockRepository.DEFAULT_GROUP_ID
+        val index = adapter.items.indexOfFirst { it.symbol == stock.symbol }.let { if (it < 0) Int.MAX_VALUE else it }
+        viewModel.removeFromWatchlist(stock.symbol)
+        Snackbar.make(binding.root, "${stock.symbol} removed", Snackbar.LENGTH_LONG)
+            .setAction("UNDO") { viewModel.restoreToWatchlist(stock.symbol, stock.companyName, groupId, index) }
+            .show()
+    }
+
     private fun setupRecyclerView() {
         adapter = WatchlistAdapter(
             onStockClick = { stock, row ->
@@ -303,17 +323,29 @@ class WatchlistFragment : Fragment() {
             },
             onRemoveClick = { stock ->
                 binding.root.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                viewModel.removeFromWatchlist(stock.symbol)
-                Snackbar.make(binding.root, "${stock.symbol} removed", Snackbar.LENGTH_LONG)
-                    .setAction("UNDO") { viewModel.addToWatchlist(stock.symbol, stock.companyName) }
-                    .show()
+                removeWithUndo(stock)
             }
         )
 
         binding.recyclerViewWatchlist.apply {
             layoutManager = LinearLayoutManager(requireContext())
             adapter = this@WatchlistFragment.adapter
-            setHasFixedSize(true)
+            // The add button floats over the last rows, so it steps aside while reading down the
+            // list and returns on the first scroll back up (hide/show also animate).
+            val fab = binding.fabAddStock
+            addOnScrollListener(object : RecyclerView.OnScrollListener() {
+                override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
+                    if (dy > 0 && !fabScrolledAway) {
+                        fabScrolledAway = true
+                        fab.hide()
+                    } else if (dy < 0 && fabScrolledAway) {
+                        fabScrolledAway = false
+                        fab.show()
+                    }
+                }
+            })
+            // Not setHasFixedSize(true): the list is a wrap_content card, and a fixed-size RecyclerView
+            // keeps the height it first measured, so it stayed one row tall as stocks were added.
         }
 
         val swipeCallback = object : ItemTouchHelper.SimpleCallback(
@@ -348,11 +380,8 @@ class WatchlistFragment : Fragment() {
 
             override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) {
                 val stock = adapter.items[viewHolder.adapterPosition]
-                viewModel.removeFromWatchlist(stock.symbol)
+                removeWithUndo(stock)
                 viewHolder.itemView.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                Snackbar.make(binding.root, "${stock.symbol} removed", Snackbar.LENGTH_LONG)
-                    .setAction("UNDO") { viewModel.addToWatchlist(stock.symbol, stock.companyName) }
-                    .show()
             }
 
             override fun onChildDraw(
@@ -415,11 +444,10 @@ class WatchlistFragment : Fragment() {
             // GONE to VISIBLE — that's the flicker. Disabling the animator for just this
             // one frame (and restoring it on the next post) gives a clean instant render.
             if (wasEmpty && isNowPopulated) {
-                val savedAnimator = binding.recyclerViewWatchlist.itemAnimator
-                binding.recyclerViewWatchlist.itemAnimator = null
-                binding.recyclerViewWatchlist.post {
-                    binding.recyclerViewWatchlist.itemAnimator = savedAnimator
-                }
+                val list = binding.recyclerViewWatchlist
+                val savedAnimator = list.itemAnimator
+                list.itemAnimator = null
+                list.post { list.itemAnimator = savedAnimator }
             }
 
             adapter.submitList(stocks)
@@ -459,7 +487,21 @@ class WatchlistFragment : Fragment() {
     private fun updateEmptyState(isEmpty: Boolean) {
         binding.emptyStateLayout.visibility = if (isEmpty) View.VISIBLE else View.GONE
         binding.recyclerViewWatchlist.visibility = if (isEmpty) View.GONE else View.VISIBLE
-        binding.fabAddStock.visibility = if (isEmpty) View.GONE else View.VISIBLE
+        val list = binding.recyclerViewWatchlist
+        val fab = binding.fabAddStock
+        if (isEmpty) {
+            fabScrolledAway = false
+            fab.hide()
+        } else {
+            // Every price refresh lands here: keep the button tucked away if the user scrolled it
+            // away, but bring it back for a new list (another tab) that is sitting at the top.
+            list.post {
+                if (!fabScrolledAway || !list.canScrollVertically(-1)) {
+                    fabScrolledAway = false
+                    fab.show()
+                }
+            }
+        }
     }
 
     // ── Keyboard helpers ──────────────────────────────────────────────────────
@@ -479,6 +521,7 @@ class WatchlistFragment : Fragment() {
         tabSelector?.release()
         tabSelector = null
         tabViews.clear()
+        fabScrolledAway = false
         _binding = null
     }
 }

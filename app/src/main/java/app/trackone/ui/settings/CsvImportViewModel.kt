@@ -51,7 +51,7 @@ class CsvImportViewModel @Inject constructor(
                     // so this must run now rather than being skipped by the passive-refresh
                     // throttle.
                     _state.value = CsvImportUiState.FetchingPrices()
-                    netWorthRepository.refreshNetWorthAssets(force = true) { current, total ->
+                    netWorthRepository.refreshNetWorthAssets(force = true, ignoreWindow = true) { current, total ->
                         _state.value = CsvImportUiState.FetchingPrices(current, total)
                     }
                     _state.value = CsvImportUiState.Success(result.imported, result.skipped)

@@ -1,18 +1,30 @@
 package app.trackone.data.repository
 
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.sync.Semaphore
+import app.trackone.data.api.Freshness
+import app.trackone.data.api.QuoteFreshness
+import app.trackone.data.api.RateLimitBackoff
+import app.trackone.data.api.RefreshPolicy
 import app.trackone.data.api.RequestLimits
 import androidx.lifecycle.LiveData
 import app.trackone.data.api.YahooFinanceApiService
 import app.trackone.data.database.*
 import app.trackone.data.model.YahooSearchResult
 import app.trackone.utils.Resource
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
+import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -22,7 +34,8 @@ class StockRepository @Inject constructor(
     private val stockDao: StockDao,
     private val watchlistGroupDao: WatchlistGroupDao,
     private val watchlistDao: WatchlistDao,
-    private val priceHistoryDao: PriceHistoryDao
+    private val priceHistoryDao: PriceHistoryDao,
+    private val backoff: RateLimitBackoff
 ) {
 
     companion object {
@@ -91,33 +104,106 @@ class StockRepository @Inject constructor(
     suspend fun getWatchlistStocksSyncByGroup(groupId: Long): List<StockEntity> =
         withContext(Dispatchers.IO) { stockDao.getWatchlistStocksSyncByGroup(groupId) }
 
-    suspend fun refreshWatchlistStocks(): Resource<Unit> = withContext(Dispatchers.IO) {
-        try {
-            // Same symbol can appear in multiple groups (composite PK); fetch each symbol
-            // once, concurrently, instead of sequentially re-fetching duplicates. A few at a time:
-            // a long watchlist fired all at once is what gets rate-limited.
-            val symbols = watchlistDao.getWatchlistSync().map { it.symbol }.distinct()
-            val limiter = Semaphore(RequestLimits.MAX_PARALLEL)
-            val errors = coroutineScope {
-                symbols.map { symbol ->
-                    async { symbol to limiter.withPermit { fetchAndCacheStock(symbol) } }
-                }.awaitAll()
-            }.filter { (_, result) -> result is Resource.Error }.map { it.first }
+    /**
+     * Serializes watchlist refreshes: Splash, the Watchlist screen and the widget can all ask at
+     * once, and the second one waits and then finds everything already fresh (see [RefreshPolicy]).
+     */
+    private val watchlistRefreshMutex = Mutex()
 
-            if (errors.isEmpty()) Resource.Success(Unit)
-            else Resource.Error("Failed to refresh: ${errors.joinToString()}")
-        } catch (e: Exception) {
-            Resource.Error(e.message ?: "Unknown error during refresh")
+    /**
+     * Refreshes every watchlist symbol whose saved quote is not fresh enough for [freshness] — the
+     * default is [Freshness.PULL] (skip only what is under [RefreshPolicy.WINDOW_MS] old), so pulling
+     * to refresh again and again does not repeat the requests; the app opening itself passes
+     * [Freshness.PASSIVE]. [Freshness.ALWAYS] refetches everything. While Yahoo has asked the app to
+     * slow down ([backoff]), nothing is fetched and the saved prices stay on screen.
+     */
+    suspend fun refreshWatchlistStocks(freshness: Freshness = Freshness.PULL): Resource<Unit> =
+        watchlistRefreshMutex.withLock {
+            withContext(Dispatchers.IO) {
+                try {
+                    val paused = backoff.remainingMs()
+                    if (paused > 0L) {
+                        return@withContext Resource.Error(
+                            "Yahoo Finance is limiting requests, so these are saved prices. Try again in ${(paused + 999) / 1000}s."
+                        )
+                    }
+
+                    // Same symbol can appear in multiple groups (composite PK); fetch each symbol
+                    // once, concurrently, instead of sequentially re-fetching duplicates. A few at a time:
+                    // a long watchlist fired all at once is what gets rate-limited.
+                    val symbols = watchlistDao.getWatchlistSync().map { it.symbol }.distinct()
+                        .filterNot { QuoteFreshness.isFresh(stockDao.getStock(it), freshness) }
+                    val limiter = Semaphore(RequestLimits.MAX_PARALLEL)
+                    val errors = coroutineScope {
+                        symbols.map { symbol ->
+                            // The saved quote is looked at again once the symbol has its turn: someone else (Splash's
+                            // index fetch, Home) may have saved it while this one waited for a free slot.
+                            async { symbol to limiter.withPermit { fetchAndCacheStock(symbol, freshness) } }
+                        }.awaitAll()
+                    }.filter { (_, result) -> result is Resource.Error }.map { it.first }
+
+                    if (errors.isEmpty()) Resource.Success(Unit)
+                    else Resource.Error("Failed to refresh: ${errors.joinToString()}")
+                } catch (e: Exception) {
+                    Resource.Error(e.message ?: "Unknown error during refresh")
+                }
+            }
         }
-    }
 
-    suspend fun fetchAndCacheStock(symbol: String): Resource<StockEntity> = withContext(Dispatchers.IO) {
-        try {
+    /**
+     * Requests for a symbol that are already on their way, so a second caller waits for that answer
+     * instead of asking Yahoo again: Splash's index fetch and the watchlist refresh both want ^NSEI,
+     * and Home's top movers and net worth both want every holding. They run in [fetchScope], not in the
+     * caller's: Splash finishes 2.5 s in, and cancelling what it started only made Home ask again.
+     */
+    private val inFlight = ConcurrentHashMap<String, Deferred<Resource<StockEntity>>>()
+    private val fetchScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    /**
+     * The quote for [symbol], from Yahoo unless the saved one is fresh enough for [freshness]. The
+     * default asks Yahoo every time, as a screen showing the live price needs. When Yahoo cannot be
+     * reached the saved quote (however old) is returned, so a screen has something to show; use
+     * [fetchFreshQuote] when a failure has to be known as one.
+     */
+    suspend fun fetchAndCacheStock(symbol: String, freshness: Freshness = Freshness.ALWAYS): Resource<StockEntity> =
+        when (val result = fetchFreshQuote(symbol, freshness)) {
+            is Resource.Error -> fallbackToCache(symbol, result.message.orEmpty())
+            else -> result
+        }
+
+    /**
+     * Like [fetchAndCacheStock] but a failure stays a failure: no saved quote stands in for it. Net
+     * worth prices holdings from this, because a stale price written as a live one would also stop
+     * its symbol repair from ever noticing a symbol that no longer exists.
+     */
+    suspend fun fetchFreshQuote(symbol: String, freshness: Freshness = Freshness.ALWAYS): Resource<StockEntity> =
+        withContext(Dispatchers.IO) {
+            try {
+                if (freshness.maxAgeMs > 0L) {
+                    val savedQuote = stockDao.getStock(symbol)
+                    if (savedQuote != null && QuoteFreshness.isFresh(savedQuote, freshness)) {
+                        return@withContext Resource.Success(savedQuote)
+                    }
+                }
+                val request = inFlight.computeIfAbsent(symbol) { key ->
+                    fetchScope.async(start = CoroutineStart.LAZY) { requestQuote(key) }
+                        .also { started -> started.invokeOnCompletion { inFlight.remove(key, started) } }
+                }
+                request.await()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Resource.Error(e.message ?: "Network error")
+            }
+        }
+
+    private suspend fun requestQuote(symbol: String): Resource<StockEntity> {
+        return try {
             val response = apiService.getQuote(symbol, interval = "1d", range = "1d")
 
             if (response.isSuccessful) {
                 val chartResult = response.body()?.chart?.result?.firstOrNull()
-                    ?: return@withContext fallbackToCache(symbol, "No data returned for $symbol")
+                    ?: return Resource.Error("No data returned for $symbol")
 
                 val meta = chartResult.meta
                 val inWatchlist = watchlistDao.isInWatchlist(symbol) > 0
@@ -142,16 +228,21 @@ class StockRepository @Inject constructor(
                     exchange = meta.exchangeName,
                     currency = meta.currency,
                     lastUpdated = System.currentTimeMillis(),
-                    isInWatchlist = inWatchlist
+                    isInWatchlist = inWatchlist,
+                    sessionPreStart = meta.currentTradingPeriod?.pre?.start ?: 0L,
+                    sessionStart = meta.currentTradingPeriod?.regular?.start ?: 0L,
+                    sessionEnd = meta.currentTradingPeriod?.regular?.end ?: 0L,
+                    sessionPostEnd = meta.currentTradingPeriod?.post?.end ?: 0L,
+                    sessionGmtOffset = meta.currentTradingPeriod?.regular?.gmtoffset ?: 0
                 )
 
                 stockDao.insertStock(stock)
                 Resource.Success(stock)
             } else {
-                fallbackToCache(symbol, "HTTP ${response.code()}: ${response.message()}")
+                Resource.Error("HTTP ${response.code()}: ${response.message()}")
             }
         } catch (e: Exception) {
-            fallbackToCache(symbol, e.message ?: "Network error")
+            Resource.Error(e.message ?: "Network error")
         }
     }
 
@@ -246,9 +337,33 @@ class StockRepository @Inject constructor(
             fetchAndCacheStock(symbol)
         }
 
-    suspend fun removeFromWatchlist(symbol: String, groupId: Long) = withContext(Dispatchers.IO) {
+    /** Removes [symbol] from the group and returns when it was first added, for an UNDO to put back. */
+    suspend fun removeFromWatchlist(symbol: String, groupId: Long): Long? = withContext(Dispatchers.IO) {
+        val addedAt = watchlistDao.getWatchlistSyncByGroup(groupId).firstOrNull { it.symbol == symbol }?.addedAt
         watchlistDao.removeFromWatchlistInGroup(symbol, groupId)
+        addedAt
     }
+
+    /**
+     * Puts a just-removed stock back at [index] in the group's list (UNDO). [addToWatchlist] always
+     * appends, so this renumbers the group instead: stored positions are not trusted to be
+     * contiguous, because removals leave gaps. No quote is fetched — the stock row is still cached,
+     * and the next refresh updates it like any other.
+     */
+    suspend fun restoreToWatchlist(
+        symbol: String, displayName: String, groupId: Long, index: Int,
+        addedAt: Long = System.currentTimeMillis()
+    ) =
+        withContext(Dispatchers.IO) {
+            val others = watchlistDao.getWatchlistSyncByGroup(groupId).filter { it.symbol != symbol }
+            val at = index.coerceIn(0, others.size)
+            others.forEachIndexed { i, item ->
+                watchlistDao.updatePosition(item.symbol, groupId, if (i >= at) i + 1 else i)
+            }
+            watchlistDao.addToWatchlist(
+                WatchlistEntity(symbol = symbol, displayName = displayName, position = at, groupId = groupId, addedAt = addedAt)
+            )
+        }
 
     suspend fun isInWatchlist(symbol: String): Boolean = withContext(Dispatchers.IO) {
         watchlistDao.isInWatchlist(symbol) > 0

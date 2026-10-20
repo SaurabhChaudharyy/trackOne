@@ -4,6 +4,8 @@ import app.trackone.data.api.RequestLimits
 import android.content.Context
 import android.util.Log
 import androidx.room.withTransaction
+import app.trackone.data.api.Freshness
+import app.trackone.data.api.RefreshPolicy
 import app.trackone.data.api.YahooFinanceApiService
 import app.trackone.data.database.AssetType
 import app.trackone.data.database.FinanceDatabase
@@ -31,6 +33,7 @@ class NetWorthRepository @Inject constructor(
     private val database: FinanceDatabase,
     private val netWorthDao: NetWorthDao,
     private val apiService: YahooFinanceApiService,
+    private val stockRepository: StockRepository,
     private val symbolRepairer: SymbolRepairer,
     @ApplicationContext private val context: Context
 ) {
@@ -88,17 +91,24 @@ class NetWorthRepository @Inject constructor(
     suspend fun fetchLivePrice(
         symbol: String,
         assetType: AssetType,
-        usdInrRate: Double? = null
-    ): Resource<Double> = when (val quote = fetchQuote(symbol, assetType, usdInrRate)) {
+        usdInrRate: Double? = null,
+        freshness: Freshness = Freshness.ALWAYS
+    ): Resource<Double> = when (val quote = fetchQuote(symbol, assetType, usdInrRate, freshness)) {
         is Resource.Success -> Resource.Success(quote.data.priceInr)
         is Resource.Error   -> Resource.Error(quote.message)
         is Resource.Loading -> Resource.Loading()
     }
 
+    /**
+     * The quote comes from [StockRepository], the one place that asks Yahoo for a symbol: a holding
+     * Home's top movers just fetched is not fetched again, a request already on its way is joined, and
+     * [freshness] says how old a saved quote may be (the default always asks, as adding a holding does).
+     */
     suspend fun fetchQuote(
         symbol: String,
         assetType: AssetType,
-        usdInrRate: Double? = null
+        usdInrRate: Double? = null,
+        freshness: Freshness = Freshness.ALWAYS
     ): Resource<LiveQuote> =
         withContext(Dispatchers.IO) {
             try {
@@ -110,20 +120,18 @@ class NetWorthRepository @Inject constructor(
                     else               -> symbol.trim().uppercase()
                 }
 
-                val resp = apiService.getQuote(fetchSymbol)
-                if (!resp.isSuccessful) {
-                    return@withContext Resource.Error("HTTP ${resp.code()}: ${resp.message()}")
+                val quote = when (val result = stockRepository.fetchFreshQuote(fetchSymbol, freshness)) {
+                    is Resource.Success -> result.data
+                    is Resource.Error   -> return@withContext Resource.Error(result.message.orEmpty())
+                    is Resource.Loading -> return@withContext Resource.Loading()
                 }
 
-                val meta = resp.body()?.chart?.result?.firstOrNull()?.meta
-                    ?: return@withContext Resource.Error("No data for $fetchSymbol")
-
-                val priceInNativeCurrency = meta.regularMarketPrice
+                val priceInNativeCurrency = quote.currentPrice
                 if (priceInNativeCurrency <= 0) {
                     return@withContext Resource.Error("Invalid price returned")
                 }
 
-                val currency = meta.currency
+                val currency = quote.currency
                 // Reuse a batch-level USD rate when the caller already fetched one, instead
                 // of issuing a fresh USDINR=X call per asset. Any other currency gets its own
                 // rate; with none, the quote fails rather than counting pence or CAD as rupees.
@@ -142,7 +150,7 @@ class NetWorthRepository @Inject constructor(
                 Resource.Success(
                     LiveQuote(
                         priceInr = toFinalPrice(priceInNativeCurrency),
-                        previousCloseInr = meta.effectivePreviousClose
+                        previousCloseInr = quote.previousClose
                             .takeIf { it > 0.0 }?.let(toFinalPrice) ?: 0.0
                     )
                 )
@@ -217,6 +225,7 @@ class NetWorthRepository @Inject constructor(
     internal suspend fun priceHoldings(
         assets: List<NetWorthAssetEntity>,
         usdInrRate: Double,
+        freshness: Freshness = Freshness.ALWAYS,
         onProgress: (Int, Int) -> Unit = { _, _ -> }
     ): PricedHoldings = coroutineScope {
         val limiter = Semaphore(RequestLimits.MAX_PARALLEL)
@@ -225,7 +234,7 @@ class NetWorthRepository @Inject constructor(
         val outcomes = assets.map { asset ->
             async {
                 val symbol = if (asset.assetType == AssetType.GOLD) "GC=F" else asset.name
-                val result = limiter.withPermit { fetchLivePrice(symbol, asset.assetType, usdInrRate) }
+                val result = limiter.withPermit { fetchLivePrice(symbol, asset.assetType, usdInrRate, freshness) }
                 synchronized(progressLock) { onProgress(++done, assets.size) }
                 asset to result
             }
@@ -267,7 +276,11 @@ class NetWorthRepository @Inject constructor(
      *
      * Passive callers (a screen refreshing as soon as it loads) are throttled to once every
      * [MIN_PASSIVE_REFRESH_INTERVAL_MS] — pass [force] = true for a refresh the user explicitly
-     * asked for (pull-to-refresh, right after a CSV import or cloud restore), which always runs.
+     * asked for (pull-to-refresh), which skips that throttle but still not a second pass within
+     * [RefreshPolicy.WINDOW_MS] of the last one: pulling again and again would repeat every holding's
+     * request to Yahoo for prices that cannot have changed. [ignoreWindow] is for a refresh that
+     * follows a change to the holdings themselves (a CSV import or cloud restore), which has new
+     * rows to price and must run.
      *
      * All the DB writes land in a single transaction at the end, after every network call has
      * finished — not one `updateAsset` per asset as it's fetched. Room invalidates a table's
@@ -287,13 +300,14 @@ class NetWorthRepository @Inject constructor(
     suspend fun refreshNetWorthAssets(
         force: Boolean = false,
         userRequested: Boolean = force,
+        ignoreWindow: Boolean = false,
         onProgress: (Int, Int) -> Unit = { _, _ -> }
     ): Unit = refreshMutex.withLock {
         // Checked inside the lock: if another caller was already mid-refresh when this one
         // arrived, lastRefreshAt is now fresh and this call can skip instead of duplicating it.
-        if (!force && System.currentTimeMillis() - lastRefreshAt < MIN_PASSIVE_REFRESH_INTERVAL_MS) {
-            return@withLock
-        }
+        val sinceLast = System.currentTimeMillis() - lastRefreshAt
+        if (!force && sinceLast < MIN_PASSIVE_REFRESH_INTERVAL_MS) return@withLock
+        if (!ignoreWindow && sinceLast < RefreshPolicy.WINDOW_MS) return@withLock
 
         withContext(Dispatchers.IO) {
         try {
@@ -305,7 +319,10 @@ class NetWorthRepository @Inject constructor(
             val usdInrRate = fetchUsdInrRate()
 
             // Collected here, not written per-quote — see the transaction below for why.
-            val priced = priceHoldings(fetchableAssets, usdInrRate, onProgress)
+            // A passive refresh takes the quotes Home and the watchlist just saved (or a closing price
+            // while the market is shut); a pull only skips what is under the 30-second window.
+            val freshness = Freshness.forRefresh(userRequested = force)
+            val priced = priceHoldings(fetchableAssets, usdInrRate, freshness, onProgress)
             val updatedAssets = priced.updated.toMutableList()
 
             // Holdings whose live price could not be fetched, kept for the symbol repair below.

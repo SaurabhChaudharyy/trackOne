@@ -12,6 +12,9 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import okhttp3.OkHttpClient
+import android.os.SystemClock
+import app.trackone.data.api.BackoffInterceptor
+import app.trackone.data.api.RateLimitBackoff
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
@@ -22,9 +25,16 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 object AppModule {
 
+    // One for the process, shared by the HTTP client (which records Yahoo's 429s) and the
+    // repositories (which tell the user why prices were not refreshed). elapsedRealtime keeps
+    // counting while the phone sleeps.
     @Provides
     @Singleton
-    fun provideOkHttpClient(): OkHttpClient {
+    fun provideRateLimitBackoff(): RateLimitBackoff = RateLimitBackoff(SystemClock::elapsedRealtime)
+
+    @Provides
+    @Singleton
+    fun provideOkHttpClient(backoff: RateLimitBackoff): OkHttpClient {
         val loggingInterceptor = HttpLoggingInterceptor().apply {
             level = if (app.trackone.BuildConfig.DEBUG) {
                 HttpLoggingInterceptor.Level.BODY
@@ -34,6 +44,7 @@ object AppModule {
         }
 
         return OkHttpClient.Builder()
+            .addInterceptor(BackoffInterceptor(backoff))
             .addInterceptor(loggingInterceptor)
             .addInterceptor { chain ->
                 val original = chain.request()
@@ -46,9 +57,12 @@ object AppModule {
                     .build()
                 chain.proceed(request)
             }
-            .connectTimeout(30, TimeUnit.SECONDS)
-            .readTimeout(30, TimeUnit.SECONDS)
-            .writeTimeout(30, TimeUnit.SECONDS)
+            // A quote is a few KB. Thirty seconds of silence per request let Yahoo's hanging (rather than
+            // 429) throttling hold every screen's spinner for minutes and never trip the backoff.
+            .connectTimeout(10, TimeUnit.SECONDS)
+            .readTimeout(15, TimeUnit.SECONDS)
+            .writeTimeout(10, TimeUnit.SECONDS)
+            .callTimeout(20, TimeUnit.SECONDS)
             .retryOnConnectionFailure(true)
             .build()
     }
@@ -77,7 +91,7 @@ object AppModule {
             FinanceDatabase::class.java,
             "finance_widget_db"
         )
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
             .fallbackToDestructiveMigration()
             .build()
     }

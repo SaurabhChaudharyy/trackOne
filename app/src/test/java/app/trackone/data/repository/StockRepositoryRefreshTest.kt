@@ -1,8 +1,12 @@
 package app.trackone.data.repository
 
+import app.trackone.data.api.Freshness
+import app.trackone.data.api.RateLimitBackoff
+import app.trackone.data.api.RefreshPolicy
 import app.trackone.data.api.RequestLimits
 import app.trackone.data.api.YahooFinanceApiService
 import app.trackone.data.database.PriceHistoryDao
+import app.trackone.data.database.StockEntity
 import app.trackone.data.database.StockDao
 import app.trackone.data.database.WatchlistDao
 import app.trackone.data.database.WatchlistEntity
@@ -15,6 +19,9 @@ import app.trackone.utils.Resource
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
+import kotlinx.coroutines.async
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.test.runTest
 import okhttp3.ResponseBody.Companion.toResponseBody
@@ -31,15 +38,20 @@ class StockRepositoryRefreshTest {
     private lateinit var stockDao: StockDao
     private lateinit var watchlistDao: WatchlistDao
     private lateinit var repo: StockRepository
+    private var backoffNow = 0L
+    private val backoff = RateLimitBackoff { backoffNow }
+    /** What the fake stock table holds, so a second refresh can see what the first one wrote. */
+    private val cached = java.util.concurrent.ConcurrentHashMap<String, StockEntity>()
 
     @Before
     fun setUp() {
         api = mockk()
         stockDao = mockk(relaxed = true)
         watchlistDao = mockk(relaxed = true)
-        coEvery { stockDao.getStock(any()) } returns null
+        coEvery { stockDao.getStock(any()) } coAnswers { cached[firstArg()] }
+        coEvery { stockDao.insertStock(any()) } coAnswers { val s = firstArg<StockEntity>(); cached[s.symbol] = s }
         coEvery { watchlistDao.isInWatchlist(any()) } returns 1
-        repo = StockRepository(api, stockDao, mockk<WatchlistGroupDao>(relaxed = true), watchlistDao, mockk<PriceHistoryDao>(relaxed = true))
+        repo = StockRepository(api, stockDao, mockk<WatchlistGroupDao>(relaxed = true), watchlistDao, mockk<PriceHistoryDao>(relaxed = true), backoff)
     }
 
     private fun quote(price: Double): Response<YahooChartResponse> = Response.success(
@@ -81,6 +93,31 @@ class StockRepositoryRefreshTest {
     }
 
     @Test
+    fun `a symbol another caller saved while it waited for its turn is not fetched again`() = runTest {
+        // One more symbol than may be in flight: one of them waits for a free slot (which one is up to the
+        // IO pool). By the time it has one, Splash (say) has saved its quote, and asking Yahoo again
+        // would be a duplicate.
+        val symbols = (1..RequestLimits.MAX_PARALLEL + 1).map { "S$it" }
+        val requested = java.util.concurrent.ConcurrentLinkedQueue<String>()
+        val gate = kotlinx.coroutines.CompletableDeferred<Unit>()
+        coEvery { watchlistDao.getWatchlistSync() } returns watching(*symbols.toTypedArray())
+        coEvery { api.getQuote(any(), any(), any(), any()) } coAnswers {
+            requested.add(firstArg())
+            gate.await()
+            quote(10.0)
+        }
+
+        val refresh = async { repo.refreshWatchlistStocks() }
+        withContext(Dispatchers.Default) { delay(500) }          // the slots are full and the last symbol is waiting
+        val queued = symbols.single { it !in requested }
+        cached[queued] = StockEntity(queued, queued, 5.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0, lastUpdated = System.currentTimeMillis())
+        gate.complete(Unit)
+        refresh.await()
+
+        coVerify(exactly = 0) { api.getQuote(queued, any(), any(), any()) }
+    }
+
+    @Test
     fun `a symbol that is in several watchlists is fetched once`() = runTest {
         coEvery { watchlistDao.getWatchlistSync() } returns
             watching("AAPL", "TCS.NS", group = 1L) + watching("AAPL", group = 2L)
@@ -106,5 +143,83 @@ class StockRepositoryRefreshTest {
         assertEquals(false, result.message!!.contains("OK1"))
         coVerify(exactly = 1) { stockDao.insertStock(match { it.symbol == "OK1" }) }
         coVerify(exactly = 1) { stockDao.insertStock(match { it.symbol == "OK2" }) }
+    }
+
+    private fun cachedQuote(symbol: String, ageMs: Long) {
+        cached[symbol] = StockEntity(symbol, symbol, 1.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0, lastUpdated = System.currentTimeMillis() - ageMs)
+    }
+
+    @Test
+    fun `a symbol quoted within the window is not fetched again`() = runTest {
+        coEvery { watchlistDao.getWatchlistSync() } returns watching("FRESH", "OLD")
+        cachedQuote("FRESH", ageMs = 5_000)
+        cachedQuote("OLD", ageMs = 10 * 60_000)
+        coEvery { api.getQuote(any(), any(), any(), any()) } returns quote(10.0)
+
+        val result = repo.refreshWatchlistStocks()
+
+        assertTrue(result is Resource.Success)
+        coVerify(exactly = 0) { api.getQuote("FRESH", any(), any(), any()) }
+        coVerify(exactly = 1) { api.getQuote("OLD", any(), any(), any()) }
+    }
+
+    @Test
+    fun `refreshing again straight away makes no requests`() = runTest {
+        coEvery { watchlistDao.getWatchlistSync() } returns watching("A", "B", "C")
+        coEvery { api.getQuote(any(), any(), any(), any()) } returns quote(10.0)
+
+        repeat(5) { repo.refreshWatchlistStocks() }
+
+        coVerify(exactly = 3) { api.getQuote(any(), any(), any(), any()) }     // one round, not five
+    }
+
+    @Test
+    fun `refreshes that overlap share one round of requests`() = runTest {
+        coEvery { watchlistDao.getWatchlistSync() } returns watching("A", "B", "C")
+        coEvery { api.getQuote(any(), any(), any(), any()) } coAnswers { delay(100); quote(10.0) }
+
+        val results = (1..4).map { async { repo.refreshWatchlistStocks() } }.map { it.await() }
+
+        assertTrue(results.all { it is Resource.Success })
+        coVerify(exactly = 3) { api.getQuote(any(), any(), any(), any()) }
+    }
+
+    @Test
+    fun `a failed fetch does not use up the window, so the next refresh retries it`() = runTest {
+        coEvery { watchlistDao.getWatchlistSync() } returns watching("BAD")
+        coEvery { api.getQuote("BAD", any(), any(), any()) } returns Response.error(500, "".toResponseBody(null))
+
+        repo.refreshWatchlistStocks()
+        repo.refreshWatchlistStocks()
+
+        coVerify(exactly = 2) { api.getQuote("BAD", any(), any(), any()) }
+    }
+
+    @Test
+    fun `a window of zero fetches everything`() = runTest {
+        coEvery { watchlistDao.getWatchlistSync() } returns watching("A")
+        cachedQuote("A", ageMs = 1_000)
+        coEvery { api.getQuote(any(), any(), any(), any()) } returns quote(10.0)
+
+        repo.refreshWatchlistStocks(Freshness.ALWAYS)
+
+        coVerify(exactly = 1) { api.getQuote("A", any(), any(), any()) }
+    }
+
+    @Test
+    fun `while Yahoo is limiting requests nothing is fetched and the reason is given`() = runTest {
+        coEvery { watchlistDao.getWatchlistSync() } returns watching("A", "B")
+        backoff.onResponse(429, null)
+
+        val result = repo.refreshWatchlistStocks()
+
+        assertTrue(result is Resource.Error)
+        assertTrue((result as Resource.Error).message!!.contains("limiting", ignoreCase = true))
+        coVerify(exactly = 0) { api.getQuote(any(), any(), any(), any()) }
+    }
+
+    @Test
+    fun `the window shared with net worth is thirty seconds`() {
+        assertEquals(30_000L, RefreshPolicy.WINDOW_MS)
     }
 }

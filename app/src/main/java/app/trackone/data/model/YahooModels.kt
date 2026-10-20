@@ -37,7 +37,9 @@ data class YahooMeta(
     @SerializedName("marketCap")                 val marketCap: Long = 0L,
     @SerializedName("fiftyTwoWeekHigh")          val fiftyTwoWeekHigh: Double = 0.0,
     @SerializedName("fiftyTwoWeekLow")           val fiftyTwoWeekLow: Double = 0.0,
-    @SerializedName("trailingPE")                val trailingPE: Double = 0.0
+    @SerializedName("trailingPE")                val trailingPE: Double = 0.0,
+    /** The latest trading session's times; null when Yahoo leaves it out. */
+    @SerializedName("currentTradingPeriod")      val currentTradingPeriod: YahooTradingPeriods? = null
 ) {
 
     val effectivePreviousClose: Double
@@ -56,6 +58,25 @@ data class YahooMeta(
     val displayName: String
         get() = longName.ifEmpty { shortName }.ifEmpty { symbol }
 }
+
+/**
+ * Yahoo's `currentTradingPeriod`: the pre-market, regular and after-hours windows of the *latest*
+ * session. On a weekend or a market holiday it still describes the last session that ran, which is
+ * how the app can tell "closed" without a holiday calendar. A market with no extended hours reports
+ * them as empty (start == end).
+ */
+data class YahooTradingPeriods(
+    @SerializedName("pre")     val pre: YahooPeriod? = null,
+    @SerializedName("regular") val regular: YahooPeriod? = null,
+    @SerializedName("post")    val post: YahooPeriod? = null
+)
+
+/** One window, in epoch seconds, with the exchange's offset from UTC in seconds. */
+data class YahooPeriod(
+    @SerializedName("start")     val start: Long = 0L,
+    @SerializedName("end")       val end: Long = 0L,
+    @SerializedName("gmtoffset") val gmtoffset: Int = 0
+)
 
 data class YahooIndicators(
     @SerializedName("quote") val quote: List<YahooQuote>?

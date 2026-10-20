@@ -40,6 +40,7 @@ import app.trackone.data.repository.BrokerCsvRepository
 import app.trackone.databinding.DialogEmailAuthBinding
 import app.trackone.databinding.FragmentSettingsBinding
 import app.trackone.security.AppLockPrefs
+import app.trackone.security.LockDelay
 import app.trackone.workers.DailyDigestWorker
 import app.trackone.workers.PortfolioReminderWorker
 import app.trackone.workers.WeeklySummaryWorker
@@ -264,6 +265,11 @@ class SettingsFragment : Fragment() {
         binding.rowFingerprintLock.setOnDebouncedClickListener {
             it.performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY)
             toggleFingerprintLock()
+        }
+
+        binding.rowLockDelay.setOnDebouncedClickListener {
+            it.performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY)
+            showLockDelayDialog()
         }
 
         // Daily Digest — same row-level-listener-drives-switch pattern as Fingerprint Lock.
@@ -708,7 +714,27 @@ class SettingsFragment : Fragment() {
     // ── Fingerprint Lock ─────────────────────────────────────────────────
 
     private fun updateFingerprintLockRow() {
-        binding.switchFingerprintLock.isChecked = appLockPrefs.isLockEnabled
+        val enabled = appLockPrefs.isLockEnabled
+        binding.switchFingerprintLock.isChecked = enabled
+        // The delay only means something while the lock is on: dim it and stop it taking taps.
+        binding.rowLockDelay.isEnabled = enabled
+        binding.rowLockDelay.alpha = if (enabled) 1f else 0.4f
+        binding.tvLockDelayValue.text = LockDelay.optionFor(appLockPrefs.relockDelayMs).label
+    }
+
+    private fun showLockDelayDialog() {
+        if (!isAdded || !appLockPrefs.isLockEnabled) return
+        val options = LockDelay.options
+        val current = options.indexOf(LockDelay.optionFor(appLockPrefs.relockDelayMs))
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle("Require unlock")
+            .setSingleChoiceItems(options.map { it.label }.toTypedArray(), current) { dialog, which ->
+                appLockPrefs.relockDelayMs = options[which].millis
+                updateFingerprintLockRow()
+                dialog.dismiss()
+            }
+            .setNegativeButton("Cancel") { dialog, _ -> dialog.dismiss() }
+            .show()
     }
 
     private fun toggleFingerprintLock() {

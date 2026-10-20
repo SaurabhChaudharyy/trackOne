@@ -28,6 +28,12 @@ class SplashActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // The icon was tapped while the app is already running: bring that task forward instead of
+        // stacking a second Splash and MainActivity (each one loads Home again).
+        if (!isTaskRoot && intent.hasCategory(Intent.CATEGORY_LAUNCHER) && intent.action == Intent.ACTION_MAIN) {
+            finish()
+            return
+        }
         binding = ActivitySplashBinding.inflate(layoutInflater)
         setContentView(binding.root)
 

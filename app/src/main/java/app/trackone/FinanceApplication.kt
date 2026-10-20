@@ -72,10 +72,17 @@ private class AppLockWatcher(
     private var startedActivityCount = 0
 
     override fun onActivityStarted(activity: Activity) {
-        startedActivityCount++
+        // First Activity back in front: the manager decides here whether the time away was long
+        // enough to lock, so the check just below sees the answer.
+        if (startedActivityCount++ == 0) appLockManager.onAppForegrounded()
 
         if (activity !is LockActivity && appLockManager.shouldShowLockScreen()) {
-            activity.startActivity(Intent(activity, LockActivity::class.java))
+            // REORDER_TO_FRONT lifts the lock that is already in the task above this Activity,
+            // leaving this Activity alive (stopped) underneath until the unlock reveals it.
+            // A singleTask lock would instead clear this Activity out of the task.
+            activity.startActivity(
+                Intent(activity, LockActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
+            )
         }
     }
 
