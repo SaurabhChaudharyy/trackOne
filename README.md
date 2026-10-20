@@ -25,6 +25,15 @@
 
 ---
 
+## What's New in v1.4.6
+
+*   **Far fewer requests to Yahoo Finance**: opening the app now asks for roughly half as many prices as before, and reopening it soon afterwards asks for almost none. Each price is requested once and shared by every screen that needs it, saved prices are reused while they're still fresh, and a closed market keeps its closing price until the next open.
+*   **Rate limiting handled gracefully**: when Yahoo asks the app to slow down, or stops answering, the app pauses its requests and keeps showing your saved prices instead of piling up retries behind spinners. Requests time out sooner, and prices and charts catch up once Yahoo responds again.
+*   **Home chart opens without downloading**: the price history behind the chart is remembered between launches (for a few hours), so the chart no longer waits on dozens of downloads every time the app starts.
+*   **Market status from real hours**: the Open / Closed chips and the market-hours dialog follow each exchange's actual session reported by Yahoo, not fixed hours, and Home shows when prices were last updated.
+*   **Choose how soon the app locks again**: with Fingerprint Lock on, Settings → Require unlock lets you pick Immediately, 1, 5, 15 or 30 minutes (the default is 1 minute).
+*   **Fixes**: a crash on the Watchlist after leaving the screen mid-update; the lock screen closing the app when it was dismissed; the Watchlist stuck on one row with its percentage text wrapping; UNDO after removing a stock now puts it back in its original place, group and date added; tapping the app icon while it's already open no longer stacks another copy on top.
+
 ## What's New in v1.4.5
 
 *   **Delete your account from the app**: Settings → Delete Account permanently removes your sign-in account and its cloud backup. The data on your device is not touched. If you signed in a while ago you'll be asked to confirm it's you first.
