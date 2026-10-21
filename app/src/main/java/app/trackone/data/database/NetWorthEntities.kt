@@ -36,7 +36,13 @@ data class NetWorthAssetEntity(
     /** ISIN, when known (mostly Indian broker imports). Null for manually-added assets. */
     val isin: String? = null,
     /** Which broker this holding was imported from, e.g. "Zerodha / Groww". Null if added manually. */
-    val brokerSource: String? = null
+    val brokerSource: String? = null,
+    /**
+     * Yesterday's close, per unit and in INR, as of the last live price. 0.0 means unknown (never
+     * priced, hand-priced, or the quote carried none), which is not the same as "unchanged".
+     * Per unit so that editing the quantity can't leave a stale day move behind.
+     */
+    val previousClosePrice: Double = 0.0
 )
 
 enum class TransactionType { BUY, SELL }

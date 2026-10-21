@@ -37,6 +37,7 @@ import app.trackone.utils.HoldingIssue
 import app.trackone.utils.SymbolCheck
 import app.trackone.utils.AnimationUtils.animateNumberFromZero
 import app.trackone.utils.PortfolioGainLoss
+import app.trackone.utils.HoldingSort
 import app.trackone.utils.Resource
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
@@ -62,6 +63,9 @@ class NetWorthFragment : Fragment() {
 
     // Tracks full data per section (before top-N trimming)
     private val fullListCache = mutableMapOf<AssetType, List<NetWorthAssetEntity>>()
+
+    /** How every section orders its holdings; remembered across launches. */
+    private var holdingSort = HoldingSort.VALUE
 
     // Tracks whether each section is expanded (showing all) or collapsed (top 3)
     private val sectionShowAll = mutableMapOf(
@@ -126,6 +130,7 @@ class NetWorthFragment : Fragment() {
 
     companion object {
         private const val TOP_N = 3 // items shown before "View all"
+        private const val PREF_SORT = "holding_sort"
     }
 
     override fun onCreateView(
@@ -143,6 +148,7 @@ class NetWorthFragment : Fragment() {
         setupEmptyCards()
         LargeText.stackIfLarge(binding.rowPnlInvested, resources.configuration.fontScale)
         setupViewAllButtons()
+        setupSortControl()
         setupSelectionBar()
         setupSwipeRefresh()
         observeViewModel()
@@ -279,6 +285,29 @@ class NetWorthFragment : Fragment() {
         }
     }
 
+    private val uiPrefs by lazy { requireContext().getSharedPreferences("networth_ui", android.content.Context.MODE_PRIVATE) }
+
+    /** The sort control: a tap steps Value → P&L % → Today and re-orders every section in place. */
+    private fun setupSortControl() {
+        holdingSort = HoldingSort.fromName(uiPrefs.getString(PREF_SORT, null))
+        showSortLabel()
+        binding.tvSort.setOnClickListener {
+            holdingSort = holdingSort.next()
+            uiPrefs.edit().putString(PREF_SORT, holdingSort.name).apply()
+            showSortLabel()
+            for ((type, adapter) in adapters) {
+                val sorted = holdingSort.sort(fullListCache[type] ?: continue)
+                fullListCache[type] = sorted
+                adapter.submitList(if (sectionShowAll[type] == true) sorted else sorted.take(TOP_N))
+            }
+        }
+    }
+
+    private fun showSortLabel() {
+        binding.tvSort.text = "Sort \u00b7 ${holdingSort.label}"
+        binding.tvSort.contentDescription = "Sort holdings by ${holdingSort.label}. Tap to change."
+    }
+
     /** Wire up each "View all" / "View less" button */
     private fun setupViewAllButtons() {
         val viewAllMap = mapOf(
@@ -389,10 +418,10 @@ class NetWorthFragment : Fragment() {
         viewModel.allAssets.observe(viewLifecycleOwner) { all ->
             updateMainHeaderStats()
             val grouped = all.groupBy { it.assetType }
+            binding.tvSort.isVisible = all.isNotEmpty()
             for ((type, adapter) in adapters) {
                 val list = grouped[type] ?: emptyList()
-                // Sort by currentValue descending so top holders appear first
-                val sorted = list.sortedByDescending { it.currentValue }
+                val sorted = holdingSort.sort(list)
                 fullListCache[type] = sorted
 
                 val showAll = sectionShowAll[type] == true

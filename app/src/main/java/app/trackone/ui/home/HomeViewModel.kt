@@ -421,14 +421,8 @@ class HomeViewModel @Inject constructor(
             return
         }
 
-        fun symbolOf(asset: NetWorthAssetEntity) = when (asset.assetType) {
-            AssetType.GOLD     -> "GC=F"
-            AssetType.SILVER   -> "SI=F"
-            // Same NSE-suffix fix as NetWorthRepository — a bare broker-imported
-            // ticker like "IEX" would otherwise resolve to an unrelated US company.
-            AssetType.STOCK_IN -> SymbolUtils.normaliseIndianSymbol(asset.name)
-            else               -> asset.name
-        }
+        // The same mapping as the live quote, so a broker-style name still finds its saved quote.
+        fun symbolOf(asset: NetWorthAssetEntity) = SymbolUtils.yahooSymbol(asset.name, asset.assetType)
         fun topFive(movers: List<TopMover>) = movers.sortedByDescending { kotlin.math.abs(it.stock.changePercent) }.take(5)
 
         // The last quotes saved on this device first, so the cards show at once; live ones replace them.

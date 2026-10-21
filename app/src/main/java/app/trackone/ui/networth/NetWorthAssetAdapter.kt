@@ -18,6 +18,7 @@ import app.trackone.ui.util.MoneyColor
 import app.trackone.R
 import app.trackone.utils.HoldingIssue
 import app.trackone.utils.HoldingQuality
+import app.trackone.utils.HoldingRowStats
 import app.trackone.utils.PortfolioGainLoss
 import java.text.NumberFormat
 import java.util.Locale
@@ -33,6 +34,10 @@ class NetWorthAssetAdapter(
 
     private val inrFormat = NumberFormat.getCurrencyInstance(Locale("en", "IN"))
     private val usdFormat = NumberFormat.getCurrencyInstance(Locale.US)
+
+    // The qty · avg · ltp line is bare numbers: the currency already sits on the row's value.
+    private val inrPlain = plainNumberFormat(Locale("en", "IN"))
+    private val usdPlain = plainNumberFormat(Locale.US)
 
     private val selectedIds = mutableSetOf<Long>()
     var isSelectionMode = false
@@ -88,7 +93,7 @@ class NetWorthAssetAdapter(
             binding.tvAssetName.text = asset.name.removePrefix("^")
             binding.tvAssetValue.text = fmt.format(asset.currentValue)
 
-            val subtitle = buildSubtitle(asset, fmt)
+            val subtitle = buildSubtitle(asset)
             if (subtitle.isNotBlank()) {
                 binding.tvAssetNotes.text = subtitle
                 binding.tvAssetNotes.visibility = View.VISIBLE
@@ -107,9 +112,22 @@ class NetWorthAssetAdapter(
                 if (issue != null && issue.tappable) View.OnClickListener { onWarningClick(asset, issue) } else null
             )
 
+            // Today's move rides beside the name as an arrow and a percent: the arrow keeps it
+            // readable without colour, and the rupee figure is left to the P&L line.
+            val today = HoldingRowStats.todayChange(asset)
+            if (today != null) {
+                val up = today.absChange >= 0
+                binding.tvAssetToday.text = "%s%.2f%%".format(if (up) "\u25B4" else "\u25BE", kotlin.math.abs(today.pctChange))
+                binding.tvAssetToday.setTextColor(ctx.getColor(MoneyColor.forChange(today.absChange)))
+                binding.tvAssetToday.contentDescription =
+                    "%s %.2f percent today".format(if (up) "Up" else "Down", kotlin.math.abs(today.pctChange))
+                binding.tvAssetToday.isVisible = true
+            } else {
+                binding.tvAssetToday.isVisible = false
+            }
+
             if (PortfolioGainLoss.hasCostBasis(asset) && asset.buyPrice > 0 && asset.quantity > 0) {
                 val perAsset = PortfolioGainLoss.computePerAsset(asset)
-                val invested = perAsset.invested
                 val gain     = perAsset.absChange
                 val gainPct  = perAsset.pctChange
                 val isGain   = gain >= 0
@@ -122,12 +140,8 @@ class NetWorthAssetAdapter(
                 binding.tvAssetPl.setTextColor(ctx.getColor(MoneyColor.forChange(gain)))
                 binding.tvAssetPl.background = null
                 binding.tvAssetPl.visibility = View.VISIBLE
-
-                binding.tvAssetInvested.text = "inv ${fmt.format(invested)}"
-                binding.tvAssetInvested.visibility = View.VISIBLE
             } else {
-                binding.tvAssetPl.visibility       = View.GONE
-                binding.tvAssetInvested.visibility = View.GONE
+                binding.tvAssetPl.visibility = View.GONE
             }
 
             if (asset.notes.isNotBlank()) {
@@ -190,28 +204,11 @@ class NetWorthAssetAdapter(
                 setSpan(BackgroundColorSpan(color), 0, length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
             }
 
-        private fun buildSubtitle(asset: NetWorthAssetEntity, fmt: NumberFormat): String {
-            val isFetchable = asset.assetType in listOf(
-                AssetType.STOCK_IN, AssetType.STOCK_US, AssetType.CRYPTO,
-                AssetType.GOLD, AssetType.SILVER
-            )
-            return when {
-                isFetchable && asset.quantity > 0 -> {
-                    val pricePerUnit =
-                        if (asset.quantity != 0.0) asset.currentValue / asset.quantity else 0.0
-                    val qtyStr = if (asset.quantity % 1.0 == 0.0)
-                        asset.quantity.toInt().toString()
-                    else
-                        "%.4f".format(asset.quantity)
-                    val unitLabel = when (asset.assetType) {
-                        AssetType.GOLD, AssetType.SILVER -> "g"
-                        else -> " units"
-                    }
-                    "$qtyStr$unitLabel \u00b7 ${fmt.format(pricePerUnit)}/unit"
-                }
-                asset.notes.isNotBlank() -> asset.notes
-                else -> ""
-            }
+        private fun buildSubtitle(asset: NetWorthAssetEntity): String {
+            val plain = if (asset.currency == "USD") usdPlain else inrPlain
+            return HoldingRowStats.detailLine(asset) { plain.format(it) }
+                ?: asset.notes.takeIf { it.isNotBlank() }
+                ?: ""
         }
     }
 
@@ -227,6 +224,9 @@ class NetWorthAssetAdapter(
     }
 
     companion object {
+        private fun plainNumberFormat(locale: Locale): NumberFormat =
+            NumberFormat.getNumberInstance(locale).apply { minimumFractionDigits = 2; maximumFractionDigits = 2 }
+
         private val DIFF = object : DiffUtil.ItemCallback<NetWorthAssetEntity>() {
             override fun areItemsTheSame(a: NetWorthAssetEntity, b: NetWorthAssetEntity) =
                 a.id == b.id

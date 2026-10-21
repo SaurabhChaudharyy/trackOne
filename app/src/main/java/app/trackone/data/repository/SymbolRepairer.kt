@@ -79,8 +79,7 @@ class SymbolRepairer @Inject constructor(
         return SymbolRepair(asset.id, asset.name, match.symbol, match.basis, match.matchedName)
     }
 
-    private fun canonical(name: String, type: AssetType): String =
-        if (type == AssetType.STOCK_IN) SymbolUtils.normaliseIndianSymbol(name) else name.trim().uppercase()
+    private fun canonical(name: String, type: AssetType): String = SymbolUtils.yahooSymbol(name, type)
 
     private fun key(asset: NetWorthAssetEntity) = "${asset.id}|${asset.name.trim().uppercase()}"
 

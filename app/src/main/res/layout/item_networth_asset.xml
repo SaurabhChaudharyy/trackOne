@@ -20,21 +20,44 @@
         android:layout_marginEnd="12dp"
         android:background="@color/divider_color"/>
 
+    <!-- Left: who it is and what you hold. Right: what it's worth and how it's done. -->
     <LinearLayout
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_weight="1"
         android:orientation="vertical">
 
-        <TextView
-            android:id="@+id/tv_asset_name"
+        <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textColor="@color/text_primary"
-            android:textSize="15sp"
-            android:fontFamily="@font/inter_bold"
-            tools:text="RELIANCE.NS"/>
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
 
+            <TextView
+                android:id="@+id/tv_asset_name"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="@color/text_primary"
+                android:textSize="15sp"
+                android:fontFamily="@font/inter_bold"
+                android:maxLines="1"
+                android:ellipsize="end"
+                tools:text="NIFTYBEES"/>
+
+            <!-- Today's move: an arrow and a percent, coloured by direction. -->
+            <TextView
+                android:id="@+id/tv_asset_today"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:textSize="11sp"
+                android:fontFamily="@font/inter_semi_bold"
+                android:fontFeatureSettings="tnum"
+                android:visibility="gone"
+                tools:text="▾1.02%"/>
+        </LinearLayout>
+
+        <!-- qty · avg · ltp, plain numbers: the currency is already on the value. -->
         <TextView
             android:id="@+id/tv_asset_notes"
             android:layout_width="wrap_content"
@@ -42,11 +65,12 @@
             android:layout_marginTop="1dp"
             android:textColor="@color/text_tertiary"
             android:textSize="12sp"
-            android:fontFamily="@font/geist_mono"
-            android:maxLines="1"
+            android:fontFamily="@font/inter"
+            android:fontFeatureSettings="tnum"
+            android:maxLines="2"
             android:ellipsize="end"
             android:visibility="gone"
-            tools:text="2 units · ₹1,200/unit"/>
+            tools:text="601 · avg 273.67 · ltp 261.20"/>
 
         <TextView
             android:id="@+id/tv_asset_label"
@@ -75,18 +99,6 @@
             android:foreground="?attr/selectableItemBackground"
             android:visibility="gone"
             tools:text="⚠ Price isn't updating · edit it to set the ticker"/>
-
-        <TextView
-            android:id="@+id/tv_asset_pl"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="3dp"
-            android:paddingVertical="1dp"
-            android:textSize="12sp"
-            android:fontFamily="@font/inter_bold"
-            android:fontFeatureSettings="tnum"
-            android:visibility="gone"
-            tools:text="↗ ₹3,200 (+2.74%)"/>
     </LinearLayout>
 
     <LinearLayout
@@ -94,6 +106,7 @@
         android:layout_height="wrap_content"
         android:orientation="vertical"
         android:gravity="end"
+        android:layout_marginStart="8dp"
         android:layout_marginEnd="8dp">
 
         <TextView
@@ -103,18 +116,18 @@
             android:textColor="@color/text_primary"
             android:textSize="15sp"
             android:fontFamily="@font/geist_mono_bold"
-            tools:text="₹1,20,000"/>
+            tools:text="₹1,56,981"/>
 
         <TextView
-            android:id="@+id/tv_asset_invested"
+            android:id="@+id/tv_asset_pl"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="1dp"
-            android:textSize="11sp"
-            android:textColor="@color/text_tertiary"
-            android:fontFamily="@font/geist_mono"
+            android:textSize="12sp"
+            android:fontFamily="@font/inter_bold"
+            android:fontFeatureSettings="tnum"
             android:visibility="gone"
-            tools:text="inv ₹1,16,800"/>
+            tools:text="↘ -₹7,495 (-4.56%)"/>
     </LinearLayout>
 
 

@@ -126,12 +126,19 @@ val MIGRATION_6_7 = object : Migration(6, 7) {
     }
 }
 
+val MIGRATION_7_8 = object : Migration(7, 8) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        // Yesterday's close per unit; 0 until the next live price fills it.
+        db.execSQL("ALTER TABLE networth_assets ADD COLUMN previousClosePrice REAL NOT NULL DEFAULT 0")
+    }
+}
+
 @TypeConverters(Converters::class)
 @Database(
     entities = [StockEntity::class, WatchlistGroupEntity::class, WatchlistEntity::class,
                 PriceHistoryEntity::class, NetWorthAssetEntity::class, NetWorthTransactionEntity::class,
                 ExpenseTransactionEntity::class],
-    version = 7,
+    version = 8,
     exportSchema = false
 )
 abstract class FinanceDatabase : RoomDatabase() {

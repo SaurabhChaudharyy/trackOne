@@ -118,6 +118,28 @@ class NetWorthRepositoryTest {
     }
 
     @Test
+    fun `a broker's NSE series tag is dropped before the API call`() = runTest {
+        // Zerodha names the ETF "GOLDIETF-E"; Yahoo only knows GOLDIETF.NS (GOLDIETF-E.NS is "Not Found").
+        coEvery { apiService.getQuote("GOLDIETF.NS") } returns chartResponse("INR", 122.19)
+
+        val result = repository.fetchLivePrice("GOLDIETF-E", AssetType.STOCK_IN)
+
+        assertTrue(result is Resource.Success)
+        assertEquals(122.19, (result as Resource.Success).data, 0.0001)
+    }
+
+    @Test
+    fun `a US class share written with a space is asked for with Yahoo's hyphen`() = runTest {
+        // Interactive Brokers exports "BRK B"; Yahoo's ticker is BRK-B.
+        coEvery { apiService.getQuote("BRK-B") } returns chartResponse("USD", 500.0)
+
+        val result = repository.fetchLivePrice("BRK B", AssetType.STOCK_US, usdInrRate = 80.0)
+
+        assertTrue(result is Resource.Success)
+        assertEquals(40_000.0, (result as Resource.Success).data, 0.0001)
+    }
+
+    @Test
     fun `USD stock price is converted using a caller-supplied rate, without an extra FX call`() = runTest {
         coEvery { apiService.getQuote("AAPL") } returns chartResponse("USD", 10.0)
 

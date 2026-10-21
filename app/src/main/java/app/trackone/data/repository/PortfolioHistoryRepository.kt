@@ -126,13 +126,8 @@ class PortfolioHistoryRepository @Inject constructor(
         }
     }
 
-    /** Same symbol mapping as the live quote (gold/silver futures, NSE suffix for Indian stocks). */
-    private fun symbolFor(asset: NetWorthAssetEntity): String = when (asset.assetType) {
-        AssetType.GOLD     -> "GC=F"
-        AssetType.SILVER   -> "SI=F"
-        AssetType.STOCK_IN -> SymbolUtils.normaliseIndianSymbol(asset.name)
-        else               -> asset.name.trim().uppercase()
-    }
+    /** Same symbol mapping as the live quote. */
+    private fun symbolFor(asset: NetWorthAssetEntity): String = SymbolUtils.yahooSymbol(asset.name, asset.assetType)
 
     private suspend fun fetchRaw(symbol: String, range: ChartRange, nowMs: Long): RawSeries? {
         val key = CacheKey(symbol, range)

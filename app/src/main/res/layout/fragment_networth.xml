@@ -248,6 +248,27 @@
             </LinearLayout>
         </LinearLayout>
 
+        <!-- Orders every section's holdings; a tap steps Value → P&L % → Today. -->
+        <TextView
+            android:id="@+id/tv_sort"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="end"
+            android:layout_marginTop="4dp"
+            android:layout_marginEnd="16dp"
+            android:minHeight="44dp"
+            android:gravity="center_vertical"
+            android:paddingHorizontal="8dp"
+            android:textColor="@color/text_secondary"
+            android:textSize="12sp"
+            android:fontFamily="@font/geist_mono"
+            android:clickable="true"
+            android:focusable="true"
+            android:background="?attr/selectableItemBackground"
+            android:visibility="gone"
+            tools:text="Sort · Value"
+            tools:visibility="visible"/>
+
         <LinearLayout
             android:id="@+id/section_stock_in"
             android:layout_width="match_parent"

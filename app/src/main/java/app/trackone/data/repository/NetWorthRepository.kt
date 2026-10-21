@@ -113,12 +113,7 @@ class NetWorthRepository @Inject constructor(
         withContext(Dispatchers.IO) {
             try {
 
-                val fetchSymbol = when (assetType) {
-                    AssetType.GOLD     -> "GC=F"
-                    AssetType.SILVER   -> "SI=F"
-                    AssetType.STOCK_IN -> SymbolUtils.normaliseIndianSymbol(symbol)
-                    else               -> symbol.trim().uppercase()
-                }
+                val fetchSymbol = SymbolUtils.yahooSymbol(symbol, assetType)
 
                 val quote = when (val result = stockRepository.fetchFreshQuote(fetchSymbol, freshness)) {
                     is Resource.Success -> result.data
@@ -234,7 +229,7 @@ class NetWorthRepository @Inject constructor(
         val outcomes = assets.map { asset ->
             async {
                 val symbol = if (asset.assetType == AssetType.GOLD) "GC=F" else asset.name
-                val result = limiter.withPermit { fetchLivePrice(symbol, asset.assetType, usdInrRate, freshness) }
+                val result = limiter.withPermit { fetchQuote(symbol, asset.assetType, usdInrRate, freshness) }
                 synchronized(progressLock) { onProgress(++done, assets.size) }
                 asset to result
             }
@@ -253,7 +248,7 @@ class NetWorthRepository @Inject constructor(
         PricedHoldings(updated, failed)
     }
 
-    private fun withLivePrice(asset: NetWorthAssetEntity, priceInr: Double, usdInrRate: Double): NetWorthAssetEntity {
+    private fun withLivePrice(asset: NetWorthAssetEntity, quote: LiveQuote, usdInrRate: Double): NetWorthAssetEntity {
         val (buyPrice, currency) = if (asset.currency == "USD") {
             val buyPriceInr = if (asset.buyPrice > 0) CurrencyConversion.toInr(asset.buyPrice, asset.currency, usdInrRate) else 0.0
             buyPriceInr to "INR"
@@ -261,7 +256,8 @@ class NetWorthRepository @Inject constructor(
             asset.buyPrice to asset.currency
         }
         return asset.copy(
-            currentValue = priceInr * asset.quantity,
+            currentValue = quote.priceInr * asset.quantity,
+            previousClosePrice = quote.previousCloseInr,
             buyPrice     = buyPrice,
             currency     = currency,
             updatedAt    = System.currentTimeMillis()
@@ -336,8 +332,8 @@ class NetWorthRepository @Inject constructor(
                 for (repair in symbolRepairer.findRepairs(failed, assets)) {
                     Log.i(TAG, "symbol repair: renamed a holding (matched by ${repair.basis})")
                     val renamed = assets.first { it.id == repair.assetId }.copy(name = repair.newName)
-                    val price = fetchLivePrice(renamed.name, renamed.assetType, usdInrRate)
-                    updatedAssets.add(if (price is Resource.Success) withLivePrice(renamed, price.data, usdInrRate) else renamed)
+                    val quote = fetchQuote(renamed.name, renamed.assetType, usdInrRate)
+                    updatedAssets.add(if (quote is Resource.Success) withLivePrice(renamed, quote.data, usdInrRate) else renamed)
                 }
             }
 
