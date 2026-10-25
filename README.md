@@ -1,0 +1,203 @@
+# trackOne — A privacy focused portfolio tracker for Android
+
+<p align="center">
+  <img src="app/src/main/res/mipmap-xxxhdpi/ic_launcher_foreground.png" width="96" alt="trackOne icon"/>
+</p>
+
+<p align="center">
+  A minimal, dark-mode finance app and home-screen widget to track your<br/>
+  watchlist, net worth, stocks, crypto, and more — local-first, with optional cloud backup.
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Platform-Android-3DDC84?style=flat-square&logo=android&logoColor=white"/>
+  <img src="https://img.shields.io/badge/Min%20SDK-26%20(Oreo)-blue?style=flat-square"/>
+  <img src="https://img.shields.io/badge/Target%20SDK-36-blue?style=flat-square"/>
+  <img src="https://img.shields.io/badge/Language-Kotlin-7F52FF?style=flat-square&logo=kotlin&logoColor=white"/>
+  <img src="https://img.shields.io/badge/Architecture-MVVM-orange?style=flat-square"/>
+</p>
+
+<p align="center">
+  <a href="https://github.com/SaurabhChaudharyy/trackOne/releases/latest">
+    <img src="https://img.shields.io/github/v/release/SaurabhChaudharyy/trackOne?style=for-the-badge&logo=android&logoColor=white&label=Download%20APK&color=D4E510&labelColor=09090B" alt="Download Latest APK"/>
+  </a>
+</p>
+
+---
+
+## What's New in v1.4.6
+
+*   **Far fewer requests to Yahoo Finance**: opening the app now asks for roughly half as many prices as before, and reopening it soon afterwards asks for almost none. Each price is requested once and shared by every screen that needs it, saved prices are reused while they're still fresh, and a closed market keeps its closing price until the next open.
+*   **Rate limiting handled gracefully**: when Yahoo asks the app to slow down, or stops answering, the app pauses its requests and keeps showing your saved prices instead of piling up retries behind spinners. Requests time out sooner, and prices and charts catch up once Yahoo responds again.
+*   **Home chart opens without downloading**: the price history behind the chart is remembered between launches (for a few hours), so the chart no longer waits on dozens of downloads every time the app starts.
+*   **Market status from real hours**: the Open / Closed chips and the market-hours dialog follow each exchange's actual session reported by Yahoo, not fixed hours, and Home shows when prices were last updated.
+*   **Choose how soon the app locks again**: with Fingerprint Lock on, Settings → Require unlock lets you pick Immediately, 1, 5, 15 or 30 minutes (the default is 1 minute).
+*   **Fixes**: a crash on the Watchlist after leaving the screen mid-update; the lock screen closing the app when it was dismissed; the Watchlist stuck on one row with its percentage text wrapping; UNDO after removing a stock now puts it back in its original place, group and date added; tapping the app icon while it's already open no longer stacks another copy on top.
+
+## What's New in v1.4.5
+
+*   **Delete your account from the app**: Settings → Delete Account permanently removes your sign-in account and its cloud backup. The data on your device is not touched. If you signed in a while ago you'll be asked to confirm it's you first.
+*   **1D and ALL on the Home chart**: a one-day intraday view and a full-history view (weekly prices, starting where most of your holdings have price data). The gain/loss line now follows the range you pick instead of always showing your all-time gain.
+*   **Friendlier empty categories**: tap an empty category on Assets to see what you can add there, each with its own illustration (gold bars, a silver coin, a bank, and so on).
+*   **Assets filter fix**: picking a category no longer leaves it expanded after you go back to All, and the header names the category instead of leaving a gap.
+*   **Consistent animations**: the bottom tabs, range chips, watchlist tabs, sections and the update banner now share one Material-style motion.
+*   **Faster, calmer refresh**: prices load several at a time (roughly twice as fast at launch), and the "Portfolio updated" banner only appears for a move worth noticing (0.1% of your total).
+*   **Large text and accessibility**: money figures are no longer cut off at large system text sizes, clearer TalkBack labels, easier-to-tap Watchlist tabs, and an Android 13+ themed app icon.
+*   **Privacy and security hardening**: no email addresses or holdings in logs, an unused foreground-service permission removed, and the widget's refresh and tap actions can no longer be triggered by other apps.
+
+## What's New in v1.4
+
+*   **"Marker" visual redesign**: a neon-accent-only palette (reserved for things that need attention), ink for selection, P&L communicated as coloured text rather than filled pills, a dotted chart fill, and consistent font weights app-wide.
+*   **Home chart rebuilt as real portfolio history**: today's holdings priced against each day's actual close over 1W/1M/3M/1Y, with a smooth pixel-accurate sweep-in animation and a cached last-drawn chart so cold start isn't blank.
+*   **Automatic symbol repair**: holdings imported under a company name or ISIN (which previously could never fetch a live price) are now automatically resolved to a priceable ticker.
+*   **Multi-broker reconciliation**: the same holding imported from more than one broker is combined into a single position instead of duplicated.
+*   **Weekly summary notification**, container-transform transition into the stock detail screen, and `targetSdk`/`compileSdk` bumped to 36 ahead of Play's API-36 deadline.
+
+## What's New in v1.3-beta
+
+*   **Optional Sign-In & Cloud Backup**: Sign in with Google or email/password to back up and restore your watchlist and net worth data via Firestore. Entirely opt-in — the app works fully offline without an account.
+*   **Refactored Settings**: Auth, cloud backup, and broker CSV import are now independent view models instead of one monolithic settings screen.
+*   **Dark Mode**: In-app theme toggle (System default / Light / Dark), independent of the device's own setting.
+*   **Optional Biometric App Lock**: Require fingerprint or device unlock to open the app.
+*   **Daily Digest**: An optional once-a-day notification summarizing your best/worst performing holdings and overall portfolio P&L.
+
+## What's New in v1.2
+
+*   **Highlighter Aesthetic Revamp**: Brand new bold, high-contrast UI.
+*   **Portfolio Chart Integration**: View your portfolio's performance via an intuitive, interactive line chart directly on the Home Screen.
+*   **Polished Asset Management**: Replaced standard popup menus with smooth `BottomSheetDialog`s for editing and deleting assets.
+*   **Improved Bulk Deletion**: Enhanced multi-select UI with a persistent bottom action bar and polished confirmation dialogs.
+*   **Dynamic UI Elements**: Timeframe chips, P&L markers, and action buttons have all been redesigned to align with a cohesive, premium light-theme.
+
+---
+
+## 📲 Download & Install
+
+1. Tap the **Download APK** badge above (or go to [Releases](https://github.com/SaurabhChaudharyy/trackOne/releases/latest))
+2. Download the `.apk` file onto your Android device
+3. Go to **Settings → Install unknown apps** and allow installs from your browser or file manager
+4. Open the `.apk` file and tap **Install**
+
+> Requires Android 8.0 (Oreo) or higher. No Play Store — direct sideload only.
+
+---
+
+
+## Features
+
+| Tab | What it does |
+|---|---|
+| **Markets / Watchlist** | Track any stock or crypto symbol. Live prices via Yahoo Finance. Tap any item for a full candlestick / line chart with 1D → 5Y timeframes. |
+| **Net Worth** | Add assets across 8 categories (Indian Stocks, US Stocks, Mutual Funds, Gold, Silver, Crypto, Cash, Bank). Collapsible sections. Auto-fetches current price for symbol-based assets, and auto-resolves holdings imported under a company name/ISIN to a priceable ticker. |
+| **Settings** | Import holdings directly from your broker's CSV/XLSX export (HDFC Securities, Angel One, Zerodha, Groww, Vested, Interactive Brokers), with same-holding reconciliation across brokers. Optionally sign in with Google or email/password to back up your watchlist + net worth data to the cloud and restore it on another device. Toggle theme, biometric app lock, and the daily digest / weekly summary notifications. You can delete your account and cloud backup from Settings at any time. |
+| **Home-screen Widget** | Scrollable stock list widget that updates in the background via WorkManager. Tap any row to open the detail screen. |
+
+---
+
+## Tech Stack
+
+| Layer | Library |
+|---|---|
+| Language | Kotlin |
+| UI | Android XML Views + Material 3 |
+| Architecture | MVVM |
+| Database | Room (KSP) |
+| Dependency Injection | Dagger Hilt (KSP) |
+| Networking | Retrofit + OkHttp + Gson |
+| Background work | WorkManager |
+| Image loading | Glide |
+| Charts | MPAndroidChart |
+| Async | Kotlin Coroutines |
+| Optional cloud backup | Firebase Auth + Cloud Firestore |
+| Crash reporting | Firebase Crashlytics |
+
+---
+
+## Data & Privacy
+
+- **Local-first by default**: all data is stored locally on your device in a Room (SQLite) database. No account is required to use the app.
+- **No ads, no third-party trackers** — ever, whether or not you sign in.
+- **Cloud Backup is entirely opt-in**: sign in with Google or email/password only if you want to back up your watchlist and net worth data to the cloud (Firestore) and restore it on another device. If you never sign in, nothing leaves your device.
+- Stock/crypto prices are fetched from the public Yahoo Finance API — no API key required.
+- **Crash reporting**: Firebase Crashlytics collects crash logs and basic device info (model, OS version, app version) to help fix bugs — this runs regardless of sign-in status, but never includes your portfolio data.
+- Full details: see [PRIVACY.md](PRIVACY.md).
+
+---
+
+## Building
+
+### Prerequisites
+- Android Studio Hedgehog (2023.1.1) or newer
+- JDK 17
+- Android SDK 36
+
+### Steps
+
+```bash
+# 1. Clone the repo
+git clone https://github.com/YOUR_USERNAME/trackOne.git
+cd trackOne
+
+# 2. Open in Android Studio — it will sync Gradle automatically
+# OR build from the command line:
+./gradlew assembleDebug
+
+# 3. Install on a connected device / emulator
+./gradlew installDebug
+```
+
+> **Note:** No API keys are needed. The app uses the public Yahoo Finance endpoint.
+
+---
+
+## Project Structure
+
+```
+app/src/main/
+├── data/
+│   ├── api/            # Retrofit service (Yahoo Finance)
+│   ├── database/       # Room entities, DAOs, database class (schema v6)
+│   ├── model/          # API response models
+│   └── repository/     # StockRepository, NetWorthRepository, PortfolioHistoryRepository,
+│                        # SymbolResolver/Matcher/Repairer, BrokerCsvRepository,
+│                        # CloudBackupRepository, LocalDataRepository, AuthRepository
+├── di/                 # Hilt AppModule + SecurityModule
+├── security/           # AppLockManager (pure logic) + AppLockPrefs
+├── notifications/      # NotificationHelper (channels + builders)
+├── ui/
+│   ├── config/         # Widget configuration activity
+│   ├── detail/         # Stock detail screen + chart (container-transform transition)
+│   ├── lock/           # Biometric/device-credential app-lock gate
+│   ├── main/           # MainActivity, Watchlist fragment + adapter
+│   ├── networth/       # Net Worth fragment + adapter + ViewModel
+│   ├── settings/       # Settings fragment + AuthViewModel/CloudBackupViewModel/CsvImportViewModel
+│   ├── util/           # Marker-design chart/UI helpers (dotted fill, reveal animation, money colour)
+│   └── widget/         # AppWidgetProvider + RemoteViews service
+├── utils/              # FormatUtils, Resource wrapper, PortfolioGainLoss, CurrencyConversion,
+│                        # SymbolUtils, ChartRange/ChartAxis, HoldingQuality
+└── workers/             # StockUpdateWorker, DailyDigestWorker, WeeklySummaryWorker,
+                          # PortfolioReminderWorker (WorkManager)
+```
+
+---
+
+## Known Limitations
+
+- Yahoo Finance's public API is unofficial and may occasionally rate-limit or return stale data.
+- The home-screen widget uses `RemoteViews`, which has strict constraints — complex layouts and custom attributes are not supported inside widget XMLs.
+- Cloud Backup is manual and one-way in each direction, not continuous background sync — tapping **Restore** replaces local data with whatever's in your last cloud backup. Without signing in, there is currently no way to move data between devices other than re-importing your broker CSV/XLSX on the new device.
+- The Daily Digest's "best/worst performing holding" is cumulative gain/loss since purchase, not today's price movement — it can repeat the same 1-2 holdings on consecutive days.
+
+---
+
+## Contributing
+
+Pull requests are welcome. For major changes, please open an issue first to discuss what you'd like to change.
+
+1. Fork the repo
+2. Create a feature branch (`git checkout -b feature/my-feature`)
+3. Commit your changes (`git commit -m 'feat: add my feature'`)
+4. Push to the branch (`git push origin feature/my-feature`)
+5. Open a Pull Request
+
+```

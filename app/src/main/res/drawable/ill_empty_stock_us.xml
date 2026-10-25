@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Empty-state art: a torn-paper neon blob behind line art, drawn in the marker style (ink outline,
+     white fill). Colours are constant in both themes. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="160dp"
+    android:height="160dp"
+    android:viewportWidth="160"
+    android:viewportHeight="160">
+    <path android:fillColor="@color/marker" android:pathData="M18,50 L90,14 L146,40 L150,104 L104,148 L40,140 L14,92 Z"/>
+    <path android:fillColor="@color/marker" android:pathData="M34,30 L128,24 L142,90 L110,144 L44,128 L16,76 Z"/>
+    <path android:fillColor="#FFFFFF" android:strokeColor="@color/on_marker" android:strokeWidth="3.5" android:strokeLineJoin="round" android:strokeLineCap="round" android:pathData="M36,48 h70 a8,8 0 0,1 8,8 v58 a8,8 0 0,1 -8,8 h-70 a8,8 0 0,1 -8,-8 v-58 a8,8 0 0,1 8,-8 Z"/>
+    <path android:fillColor="#00000000" android:strokeColor="@color/on_marker" android:strokeWidth="3.5" android:strokeLineJoin="round" android:strokeLineCap="round" android:pathData="M38,114 H104"/>
+    <path android:fillColor="#00000000" android:strokeColor="@color/on_marker" android:strokeWidth="3" android:strokeLineJoin="round" android:strokeLineCap="round" android:pathData="M47,70 V112 M71,62 V104 M95,74 V108"/>
+    <path android:fillColor="#FFFFFF" android:strokeColor="@color/on_marker" android:strokeWidth="3.5" android:strokeLineJoin="round" android:strokeLineCap="round" android:pathData="M43,86 h8 a2,2 0 0,1 2,2 v14 a2,2 0 0,1 -2,2 h-8 a2,2 0 0,1 -2,-2 v-14 a2,2 0 0,1 2,-2 Z"/>
+    <path android:fillColor="@color/on_marker" android:pathData="M67,72 h8 a2,2 0 0,1 2,2 v20 a2,2 0 0,1 -2,2 h-8 a2,2 0 0,1 -2,-2 v-20 a2,2 0 0,1 2,-2 Z"/>
+    <path android:fillColor="#FFFFFF" android:strokeColor="@color/on_marker" android:strokeWidth="3.5" android:strokeLineJoin="round" android:strokeLineCap="round" android:pathData="M91,84 h8 a2,2 0 0,1 2,2 v12 a2,2 0 0,1 -2,2 h-8 a2,2 0 0,1 -2,-2 v-12 a2,2 0 0,1 2,-2 Z"/>
+    <path android:fillColor="#FFFFFF" android:strokeColor="@color/on_marker" android:strokeWidth="3.5" android:strokeLineJoin="round" android:strokeLineCap="round" android:pathData="M97,50 a19,19 0 1,0 38,0 a19,19 0 1,0 -38,0 Z"/>
+    <path android:fillColor="#00000000" android:strokeColor="@color/on_marker" android:strokeWidth="3" android:strokeLineJoin="round" android:strokeLineCap="round" android:pathData="M116,36 V64 M123,44 C123,37 108,37 108,45 C108,52 124,50 124,57 C124,64 109,64 109,57"/>
+</vector>

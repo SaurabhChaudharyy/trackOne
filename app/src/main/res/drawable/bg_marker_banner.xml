@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- "Portfolio updated" banner: a rounded neon block. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="@color/marker"/>
+    <corners android:radius="12dp"/>
+</shape>

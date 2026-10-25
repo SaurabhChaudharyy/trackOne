@@ -1,0 +1,47 @@
+# Built outputs
+*.iml
+.gradle
+/local.properties
+/.idea
+/.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
+local.properties
+
+# Compiled files
+*.class
+*.dex
+*.ap_
+*.apk
+*.aab
+*.hprof
+
+# Module-specific build dirs
+/app/build/
+**/build/
+
+# Keystore files — NEVER commit signing keys
+*.jks
+*.keystore
+*.p12
+
+# macOS metadata
+**/.DS_Store
+.DS_Store
+
+# Android Studio navigation editor temp files
+.navigation/
+
+# Kotlin scratch files
+scratch/
+
+# Agent instructions (internal project context — not needed by contributors)
+AGENT_INSTRUCTIONS.md
+
+# Firebase
+app/google-services.json
+
+# Internal docs — not needed by contributors
+docs/

@@ -1,0 +1,1194 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/page"
+    android:fillViewport="true"
+    android:scrollbars="none">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+    <!-- The toolbar's colour ends in a round edge, so the cards below rest on the page. -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="16dp"
+        android:background="@drawable/bg_sheet_bottom"
+        android:importantForAccessibility="no"/>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:paddingTop="20dp"
+        android:paddingBottom="32dp">
+
+
+        <!-- ══════════════════════════════════════════════════════════════ -->
+        <!-- ── ACCOUNT section ──────────────────────────────────────── -->
+        <!-- ══════════════════════════════════════════════════════════════ -->
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="ACCOUNT"
+            android:textColor="@color/text_tertiary"
+            android:textSize="9sp"
+            android:fontFamily="@font/inter_semi_bold"
+            android:letterSpacing="0.16"
+            android:layout_marginBottom="10dp"/>
+
+        <!-- ── Sign-in card (shown when signed OUT) ─────────────────── -->
+        <LinearLayout
+            android:id="@+id/card_sign_in"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@drawable/bg_settings_card"
+            android:padding="16dp"
+            android:layout_marginBottom="24dp"
+            android:clickable="true"
+            android:focusable="true">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <LinearLayout
+                    android:layout_width="38dp"
+                    android:layout_height="38dp"
+                    android:background="@drawable/bg_settings_icon"
+                    android:gravity="center"
+                    android:layout_marginEnd="14dp">
+
+                    <ImageView
+                        android:layout_width="18dp"
+                        android:layout_height="18dp"
+                        android:src="@drawable/ic_google"
+                        tools:ignore="ContentDescription"/>
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Sign in with Google"
+                        android:textColor="@color/text_primary"
+                        android:textSize="14sp"
+                        android:fontFamily="@font/inter_semi_bold"/>
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Back up your portfolio to the cloud"
+                        android:textColor="@color/text_tertiary"
+                        android:textSize="11sp"
+                        android:fontFamily="@font/inter"
+                        android:layout_marginTop="2dp"/>
+                </LinearLayout>
+
+                <ImageView
+                    android:layout_width="16dp"
+                    android:layout_height="16dp"
+                    android:src="@drawable/ic_chevron_right"
+                    android:tint="@color/text_tertiary"
+                    tools:ignore="ContentDescription"/>
+            </LinearLayout>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginTop="14dp"
+                android:layout_marginBottom="14dp"
+                android:background="@color/divider_color"/>
+
+            <LinearLayout
+                android:id="@+id/card_sign_in_email"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:clickable="true"
+                android:focusable="true">
+
+                <LinearLayout
+                    android:layout_width="38dp"
+                    android:layout_height="38dp"
+                    android:background="@drawable/bg_settings_icon"
+                    android:gravity="center"
+                    android:layout_marginEnd="14dp">
+
+                    <ImageView
+                        android:layout_width="18dp"
+                        android:layout_height="18dp"
+                        android:src="@drawable/ic_email"
+                        android:tint="@color/on_primary"
+                        tools:ignore="ContentDescription"/>
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Sign in with Email"
+                        android:textColor="@color/text_primary"
+                        android:textSize="14sp"
+                        android:fontFamily="@font/inter_semi_bold"/>
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Use an email and password instead"
+                        android:textColor="@color/text_tertiary"
+                        android:textSize="11sp"
+                        android:fontFamily="@font/inter"
+                        android:layout_marginTop="2dp"/>
+                </LinearLayout>
+
+                <ImageView
+                    android:layout_width="16dp"
+                    android:layout_height="16dp"
+                    android:src="@drawable/ic_chevron_right"
+                    android:tint="@color/text_tertiary"
+                    tools:ignore="ContentDescription"/>
+            </LinearLayout>
+
+        </LinearLayout>
+
+        <!-- ── Signed-in profile card (shown when signed IN) ────────── -->
+        <LinearLayout
+            android:id="@+id/card_profile"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@drawable/bg_settings_card"
+            android:padding="16dp"
+            android:layout_marginBottom="12dp"
+            android:visibility="gone">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <ImageView
+                    android:id="@+id/iv_avatar"
+                    android:layout_width="38dp"
+                    android:layout_height="38dp"
+                    android:layout_marginEnd="14dp"
+                    android:src="@drawable/bg_settings_icon"
+                    tools:ignore="ContentDescription"/>
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:id="@+id/tv_user_name"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="User"
+                        android:textColor="@color/text_primary"
+                        android:textSize="14sp"
+                        android:fontFamily="@font/inter_semi_bold"/>
+
+                    <TextView
+                        android:id="@+id/tv_user_email"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="user@gmail.com"
+                        android:textColor="@color/text_tertiary"
+                        android:textSize="11sp"
+                        android:fontFamily="@font/inter"
+                        android:layout_marginTop="2dp"/>
+                </LinearLayout>
+
+                <ImageView
+                    android:id="@+id/btn_sign_out"
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:src="@drawable/ic_sign_out"
+                    android:alpha="0.5"
+                    android:clickable="true"
+                    android:focusable="true"
+                    tools:ignore="ContentDescription"/>
+            </LinearLayout>
+
+        </LinearLayout>
+
+        <!-- ══════════════════════════════════════════════════════════════ -->
+        <!-- ── APPEARANCE section ──────────────────────────────────────── -->
+        <!-- ══════════════════════════════════════════════════════════════ -->
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="APPEARANCE"
+            android:textColor="@color/text_tertiary"
+            android:textSize="9sp"
+            android:fontFamily="@font/inter_semi_bold"
+            android:letterSpacing="0.16"
+            android:layout_marginTop="24dp"
+            android:layout_marginBottom="10dp"/>
+
+        <LinearLayout
+            android:id="@+id/card_theme"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@drawable/bg_settings_card"
+            android:padding="16dp"
+            android:layout_marginBottom="24dp"
+            android:clickable="true"
+            android:focusable="true">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <LinearLayout
+                    android:layout_width="38dp"
+                    android:layout_height="38dp"
+                    android:background="@drawable/bg_settings_icon"
+                    android:gravity="center"
+                    android:layout_marginEnd="14dp">
+
+                    <ImageView
+                        android:layout_width="18dp"
+                        android:layout_height="18dp"
+                        android:src="@drawable/ic_theme"
+                        android:tint="@color/on_primary"
+                        tools:ignore="ContentDescription"/>
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Theme"
+                        android:textColor="@color/text_primary"
+                        android:textSize="14sp"
+                        android:fontFamily="@font/inter_semi_bold"/>
+
+                    <TextView
+                        android:id="@+id/tv_theme_value"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="System default"
+                        android:textColor="@color/text_tertiary"
+                        android:textSize="11sp"
+                        android:fontFamily="@font/inter"
+                        android:layout_marginTop="2dp"/>
+                </LinearLayout>
+
+                <ImageView
+                    android:layout_width="16dp"
+                    android:layout_height="16dp"
+                    android:src="@drawable/ic_chevron_right"
+                    android:tint="@color/text_tertiary"
+                    tools:ignore="ContentDescription"/>
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- ══════════════════════════════════════════════════════════════ -->
+        <!-- ── SECURITY section ────────────────────────────────────────── -->
+        <!-- ══════════════════════════════════════════════════════════════ -->
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="SECURITY"
+            android:textColor="@color/text_tertiary"
+            android:textSize="9sp"
+            android:fontFamily="@font/inter_semi_bold"
+            android:letterSpacing="0.16"
+            android:layout_marginTop="24dp"
+            android:layout_marginBottom="10dp"/>
+
+        <LinearLayout
+            android:id="@+id/row_fingerprint_lock"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:background="@drawable/bg_settings_card"
+            android:padding="16dp"
+            android:layout_marginBottom="8dp"
+            android:clickable="true"
+            android:focusable="true">
+
+            <LinearLayout
+                android:layout_width="38dp"
+                android:layout_height="38dp"
+                android:background="@drawable/bg_settings_icon"
+                android:gravity="center"
+                android:layout_marginEnd="14dp">
+
+                <ImageView
+                    android:layout_width="18dp"
+                    android:layout_height="18dp"
+                    android:src="@drawable/ic_fingerprint"
+                    android:tint="@color/on_primary"
+                    tools:ignore="ContentDescription"/>
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Fingerprint Lock"
+                    android:textColor="@color/text_primary"
+                    android:textSize="14sp"
+                    android:fontFamily="@font/inter_semi_bold"/>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Require fingerprint or device unlock to open the app"
+                    android:textColor="@color/text_tertiary"
+                    android:textSize="11sp"
+                    android:fontFamily="@font/inter"
+                    android:layout_marginTop="2dp"/>
+            </LinearLayout>
+
+            <com.google.android.material.switchmaterial.SwitchMaterial
+                android:id="@+id/switch_fingerprint_lock"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:clickable="false"
+                android:focusable="false"
+                app:useMaterialThemeColors="false"
+                app:thumbTint="@color/switch_thumb"
+                app:trackTint="@color/switch_track"/>
+        </LinearLayout>
+
+        <!-- How long the app may be left before it asks for the fingerprint again. Dimmed and inert
+             while Fingerprint Lock is off, rather than hidden, so the cards below do not jump. -->
+        <LinearLayout
+            android:id="@+id/row_lock_delay"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:background="@drawable/bg_settings_card"
+            android:padding="16dp"
+            android:layout_marginBottom="24dp"
+            android:clickable="true"
+            android:focusable="true">
+
+            <LinearLayout
+                android:layout_width="38dp"
+                android:layout_height="38dp"
+                android:background="@drawable/bg_settings_icon"
+                android:gravity="center"
+                android:layout_marginEnd="14dp">
+
+                <ImageView
+                    android:layout_width="18dp"
+                    android:layout_height="18dp"
+                    android:src="@drawable/ic_fingerprint"
+                    android:tint="@color/on_primary"
+                    tools:ignore="ContentDescription"/>
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Require unlock"
+                    android:textColor="@color/text_primary"
+                    android:textSize="14sp"
+                    android:fontFamily="@font/inter_semi_bold"/>
+
+                <TextView
+                    android:id="@+id/tv_lock_delay_value"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="After 1 minute"
+                    android:textColor="@color/text_tertiary"
+                    android:textSize="11sp"
+                    android:fontFamily="@font/inter"
+                    android:layout_marginTop="2dp"/>
+            </LinearLayout>
+
+            <ImageView
+                android:layout_width="16dp"
+                android:layout_height="16dp"
+                android:src="@drawable/ic_chevron_right"
+                android:tint="@color/text_tertiary"
+                tools:ignore="ContentDescription"/>
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/row_daily_digest"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:background="@drawable/bg_settings_card"
+            android:padding="16dp"
+            android:layout_marginBottom="8dp"
+            android:clickable="true"
+            android:focusable="true">
+
+            <LinearLayout
+                android:layout_width="38dp"
+                android:layout_height="38dp"
+                android:background="@drawable/bg_settings_icon"
+                android:gravity="center"
+                android:layout_marginEnd="14dp">
+
+                <ImageView
+                    android:layout_width="18dp"
+                    android:layout_height="18dp"
+                    android:src="@drawable/ic_notification_digest"
+                    android:tint="@color/on_primary"
+                    tools:ignore="ContentDescription"/>
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/settings_digest_title"
+                    android:textColor="@color/text_primary"
+                    android:textSize="14sp"
+                    android:fontFamily="@font/inter_semi_bold"/>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/settings_digest_desc"
+                    android:textColor="@color/text_tertiary"
+                    android:textSize="11sp"
+                    android:fontFamily="@font/inter"
+                    android:layout_marginTop="2dp"/>
+            </LinearLayout>
+
+            <com.google.android.material.switchmaterial.SwitchMaterial
+                android:id="@+id/switch_daily_digest"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:clickable="false"
+                android:focusable="false"
+                app:useMaterialThemeColors="false"
+                app:thumbTint="@color/switch_thumb"
+                app:trackTint="@color/switch_track"/>
+        </LinearLayout>
+
+        <!-- Digest frequency: dimmed rather than hidden while the digest is off, like Require unlock. -->
+        <LinearLayout
+            android:id="@+id/row_digest_frequency"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:background="@drawable/bg_settings_card"
+            android:padding="16dp"
+            android:layout_marginBottom="24dp"
+            android:clickable="true"
+            android:focusable="true">
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/settings_digest_frequency_title"
+                    android:textColor="@color/text_primary"
+                    android:textSize="14sp"
+                    android:fontFamily="@font/inter_semi_bold"/>
+
+                <TextView
+                    android:id="@+id/tv_digest_frequency_value"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textColor="@color/text_tertiary"
+                    android:textSize="11sp"
+                    android:fontFamily="@font/inter"
+                    android:layout_marginTop="2dp"/>
+            </LinearLayout>
+
+            <ImageView
+                android:layout_width="16dp"
+                android:layout_height="16dp"
+                android:layout_marginStart="14dp"
+                android:src="@drawable/ic_chevron_right"
+                app:tint="@color/text_tertiary"
+                tools:ignore="ContentDescription"/>
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/row_portfolio_reminder"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:background="@drawable/bg_settings_card"
+            android:padding="16dp"
+            android:layout_marginBottom="24dp"
+            android:clickable="true"
+            android:focusable="true">
+
+            <LinearLayout
+                android:layout_width="38dp"
+                android:layout_height="38dp"
+                android:background="@drawable/bg_settings_icon"
+                android:gravity="center"
+                android:layout_marginEnd="14dp">
+
+                <ImageView
+                    android:layout_width="18dp"
+                    android:layout_height="18dp"
+                    android:src="@drawable/ic_import"
+                    android:tint="@color/on_primary"
+                    tools:ignore="ContentDescription"/>
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Portfolio Update Reminder"
+                    android:textColor="@color/text_primary"
+                    android:textSize="14sp"
+                    android:fontFamily="@font/inter_semi_bold"/>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Twice a month, a nudge to update manual holdings and re-import broker CSVs"
+                    android:textColor="@color/text_tertiary"
+                    android:textSize="11sp"
+                    android:fontFamily="@font/inter"
+                    android:layout_marginTop="2dp"/>
+            </LinearLayout>
+
+            <com.google.android.material.switchmaterial.SwitchMaterial
+                android:id="@+id/switch_portfolio_reminder"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:clickable="false"
+                android:focusable="false"
+                app:useMaterialThemeColors="false"
+                app:thumbTint="@color/switch_thumb"
+                app:trackTint="@color/switch_track"/>
+        </LinearLayout>
+
+        <!-- ══════════════════════════════════════════════════════════════ -->
+        <!-- ── CLOUD BACKUP section (shown when signed IN) ───────────── -->
+        <!-- ══════════════════════════════════════════════════════════════ -->
+
+        <TextView
+            android:id="@+id/tv_cloud_backup_header"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="CLOUD BACKUP"
+            android:textColor="@color/text_tertiary"
+            android:textSize="9sp"
+            android:fontFamily="@font/inter_semi_bold"
+            android:letterSpacing="0.16"
+            android:layout_marginBottom="10dp"
+            android:visibility="gone"/>
+
+        <LinearLayout
+            android:id="@+id/card_cloud_backup"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@drawable/bg_settings_card"
+            android:layout_marginBottom="24dp"
+            android:visibility="gone">
+
+            <!-- Backup row -->
+            <LinearLayout
+                android:id="@+id/row_backup"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:padding="16dp"
+                android:clickable="true"
+                android:focusable="true">
+
+                <LinearLayout
+                    android:layout_width="38dp"
+                    android:layout_height="38dp"
+                    android:background="@drawable/bg_settings_icon"
+                    android:gravity="center"
+                    android:layout_marginEnd="14dp">
+
+                    <ImageView
+                        android:layout_width="18dp"
+                        android:layout_height="18dp"
+                        android:src="@drawable/ic_cloud_upload"
+                        android:tint="@color/on_primary"
+                        tools:ignore="ContentDescription"/>
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Backup to Cloud"
+                        android:textColor="@color/text_primary"
+                        android:textSize="14sp"
+                        android:fontFamily="@font/inter_semi_bold"/>
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Save a copy of this device's data to your account"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="11sp"
+                        android:fontFamily="@font/inter"
+                        android:layout_marginTop="2dp"/>
+
+                    <TextView
+                        android:id="@+id/tv_last_backup"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Never backed up"
+                        android:textColor="@color/text_tertiary"
+                        android:textSize="11sp"
+                        android:fontFamily="@font/inter"
+                        android:layout_marginTop="2dp"/>
+                </LinearLayout>
+
+                <ImageView
+                    android:layout_width="16dp"
+                    android:layout_height="16dp"
+                    android:src="@drawable/ic_chevron_right"
+                    android:tint="@color/text_tertiary"
+                    tools:ignore="ContentDescription"/>
+            </LinearLayout>
+
+            <!-- Divider -->
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="@color/border_color"
+                android:layout_marginStart="16dp"
+                android:layout_marginEnd="16dp"/>
+
+            <!-- Restore row -->
+            <LinearLayout
+                android:id="@+id/row_restore"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:padding="16dp"
+                android:clickable="true"
+                android:focusable="true">
+
+                <LinearLayout
+                    android:layout_width="38dp"
+                    android:layout_height="38dp"
+                    android:background="@drawable/bg_settings_icon"
+                    android:gravity="center"
+                    android:layout_marginEnd="14dp">
+
+                    <ImageView
+                        android:layout_width="18dp"
+                        android:layout_height="18dp"
+                        android:src="@drawable/ic_cloud_download"
+                        android:tint="@color/on_primary"
+                        tools:ignore="ContentDescription"/>
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Restore from Cloud"
+                        android:textColor="@color/text_primary"
+                        android:textSize="14sp"
+                        android:fontFamily="@font/inter_semi_bold"/>
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Overwrite this device with your last backup"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="11sp"
+                        android:fontFamily="@font/inter"
+                        android:layout_marginTop="2dp"/>
+                </LinearLayout>
+
+                <ImageView
+                    android:layout_width="16dp"
+                    android:layout_height="16dp"
+                    android:src="@drawable/ic_chevron_right"
+                    android:tint="@color/text_tertiary"
+                    tools:ignore="ContentDescription"/>
+            </LinearLayout>
+
+        </LinearLayout>
+
+        <!-- ══════════════════════════════════════════════════════════════ -->
+        <!-- ── RESET section (always visible, signed in or not — this is  -->
+        <!-- ── purely local and never touches Firestore)                 -->
+        <!-- ══════════════════════════════════════════════════════════════ -->
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="RESET"
+            android:textColor="@color/text_tertiary"
+            android:textSize="9sp"
+            android:fontFamily="@font/inter_semi_bold"
+            android:letterSpacing="0.16"
+            android:layout_marginBottom="10dp"/>
+
+        <!-- The two destructive rows share one block so the gap below it stays 24dp whether or not the
+             account row is showing (it appears only when signed in). -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginBottom="24dp">
+
+        <LinearLayout
+            android:id="@+id/row_clear_local_data"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:background="@drawable/bg_settings_card"
+            android:padding="16dp"
+            android:clickable="true"
+            android:focusable="true">
+
+            <LinearLayout
+                android:layout_width="38dp"
+                android:layout_height="38dp"
+                android:background="@drawable/bg_settings_icon_danger"
+                android:gravity="center"
+                android:layout_marginEnd="14dp">
+
+                <ImageView
+                    android:layout_width="18dp"
+                    android:layout_height="18dp"
+                    android:src="@drawable/ic_delete"
+                    android:tint="@color/danger"
+                    tools:ignore="ContentDescription"/>
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Clear Local Data"
+                    android:textColor="@color/danger"
+                    android:textSize="14sp"
+                    android:fontFamily="@font/inter_semi_bold"/>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Erase watchlists &amp; investments from this device"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="11sp"
+                    android:fontFamily="@font/inter"
+                    android:layout_marginTop="2dp"/>
+            </LinearLayout>
+
+            <ImageView
+                android:layout_width="16dp"
+                android:layout_height="16dp"
+                android:src="@drawable/ic_chevron_right"
+                android:tint="@color/text_tertiary"
+                tools:ignore="ContentDescription"/>
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/row_delete_account"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:background="@drawable/bg_settings_card"
+            android:padding="16dp"
+            android:layout_marginTop="12dp"
+            android:visibility="gone"
+            android:clickable="true"
+            android:focusable="true">
+
+            <LinearLayout
+                android:layout_width="38dp"
+                android:layout_height="38dp"
+                android:background="@drawable/bg_settings_icon_danger"
+                android:gravity="center"
+                android:layout_marginEnd="14dp">
+
+                <ImageView
+                    android:layout_width="18dp"
+                    android:layout_height="18dp"
+                    android:src="@drawable/ic_delete"
+                    app:tint="@color/danger"
+                    tools:ignore="ContentDescription"/>
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/account_delete_title"
+                    android:textColor="@color/danger"
+                    android:textSize="14sp"
+                    android:fontFamily="@font/inter_semi_bold"/>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/account_delete_subtitle"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="11sp"
+                    android:fontFamily="@font/inter"
+                    android:layout_marginTop="2dp"/>
+            </LinearLayout>
+
+            <ImageView
+                android:layout_width="16dp"
+                android:layout_height="16dp"
+                android:src="@drawable/ic_chevron_right"
+                app:tint="@color/text_tertiary"
+                tools:ignore="ContentDescription"/>
+        </LinearLayout>
+        </LinearLayout>
+
+        <!-- ══════════════════════════════════════════════════════════════ -->
+        <!-- ── STOCKS & INVESTMENTS section ─────────────────────────── -->
+        <!-- ══════════════════════════════════════════════════════════════ -->
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="STOCKS &amp; INVESTMENTS"
+            android:textColor="@color/text_tertiary"
+            android:textSize="9sp"
+            android:fontFamily="@font/inter_semi_bold"
+            android:letterSpacing="0.16"
+            android:layout_marginBottom="10dp"/>
+
+        <LinearLayout
+            android:id="@+id/card_import_broker_csv"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@drawable/bg_settings_card"
+            android:padding="16dp"
+            android:layout_marginBottom="24dp"
+            android:clickable="true"
+            android:focusable="true">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <LinearLayout
+                    android:layout_width="38dp"
+                    android:layout_height="38dp"
+                    android:background="@drawable/bg_settings_icon"
+                    android:gravity="center"
+                    android:layout_marginEnd="14dp">
+
+                    <ImageView
+                        android:layout_width="18dp"
+                        android:layout_height="18dp"
+                        android:src="@drawable/ic_import"
+                        android:tint="@color/on_primary"
+                        tools:ignore="ContentDescription"/>
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Import from Broker CSV"
+                        android:textColor="@color/text_primary"
+                        android:textSize="14sp"
+                        android:fontFamily="@font/inter_semi_bold"/>
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="HDFC Securities · Zerodha · Groww · Vested · IBKR"
+                        android:textColor="@color/text_tertiary"
+                        android:textSize="11sp"
+                        android:fontFamily="@font/inter"
+                        android:layout_marginTop="2dp"/>
+                </LinearLayout>
+
+                <ImageView
+                    android:layout_width="16dp"
+                    android:layout_height="16dp"
+                    android:src="@drawable/ic_chevron_right"
+                    android:tint="@color/text_tertiary"
+                    tools:ignore="ContentDescription"/>
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/tv_which_file_to_upload"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:text="Which file do I upload? →"
+                android:textColor="@color/text_primary"
+                android:textSize="11sp"
+                android:fontFamily="@font/inter_semi_bold"
+                android:clickable="true"
+                android:focusable="true"
+                android:background="?attr/selectableItemBackground"
+                android:padding="2dp"/>
+
+        </LinearLayout>
+
+        <!-- ── ABOUT section ────────────────────────────────────────── -->
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="ABOUT"
+            android:textColor="@color/text_tertiary"
+            android:textSize="9sp"
+            android:fontFamily="@font/inter_semi_bold"
+            android:letterSpacing="0.16"
+            android:layout_marginBottom="10dp"/>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:background="@drawable/bg_settings_card"
+            android:padding="16dp"
+            android:gravity="center_vertical">
+
+            <LinearLayout
+                android:layout_width="38dp"
+                android:layout_height="38dp"
+                android:background="@drawable/bg_settings_icon"
+                android:gravity="center"
+                android:layout_marginEnd="14dp">
+
+                <ImageView
+                    android:layout_width="18dp"
+                    android:layout_height="18dp"
+                    android:src="@drawable/ic_info"
+                    android:tint="@color/on_primary"
+                    tools:ignore="ContentDescription"/>
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/inter_semi_bold"
+                    android:text="TrackOne"
+                    android:textColor="@color/text_primary"
+                    android:textSize="14sp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="v1.2 · Data stored locally on device"
+                    android:textColor="@color/text_tertiary"
+                    android:textSize="11sp"
+                    android:fontFamily="@font/inter"
+                    android:layout_marginTop="2dp"/>
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- ── SUPPORT section ──────────────────────────────────────── -->
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="SUPPORT"
+            android:textColor="@color/text_tertiary"
+            android:textSize="9sp"
+            android:fontFamily="@font/inter_semi_bold"
+            android:letterSpacing="0.16"
+            android:layout_marginTop="24dp"
+            android:layout_marginBottom="10dp"/>
+
+        <LinearLayout
+            android:id="@+id/card_contact_us"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@drawable/bg_settings_card"
+            android:padding="16dp"
+            android:layout_marginBottom="24dp"
+            android:clickable="true"
+            android:focusable="true">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <LinearLayout
+                    android:layout_width="38dp"
+                    android:layout_height="38dp"
+                    android:background="@drawable/bg_settings_icon"
+                    android:gravity="center"
+                    android:layout_marginEnd="14dp">
+
+                    <ImageView
+                        android:layout_width="18dp"
+                        android:layout_height="18dp"
+                        android:src="@drawable/ic_email"
+                        app:tint="@color/on_primary"
+                        tools:ignore="ContentDescription"/>
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Contact Us / Report a Bug"
+                        android:textColor="@color/text_primary"
+                        android:textSize="14sp"
+                        android:fontFamily="@font/inter_semi_bold"/>
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="saurabh@trackone.app"
+                        android:textColor="@color/text_tertiary"
+                        android:textSize="11sp"
+                        android:fontFamily="@font/inter"
+                        android:layout_marginTop="2dp"/>
+                </LinearLayout>
+
+                <ImageView
+                    android:layout_width="16dp"
+                    android:layout_height="16dp"
+                    android:src="@drawable/ic_chevron_right"
+                    app:tint="@color/text_tertiary"
+                    tools:ignore="ContentDescription"/>
+            </LinearLayout>
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/layout_loading"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:paddingTop="32dp"
+            android:visibility="gone">
+
+            <ProgressBar
+                android:id="@+id/progress_backup"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:indeterminateTint="@color/text_secondary"
+                android:layout_marginEnd="10dp"/>
+
+            <TextView
+                android:id="@+id/tv_loading_label"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Working…"
+                android:textColor="@color/text_secondary"
+                android:textSize="12sp"
+                android:fontFamily="@font/inter"/>
+        </LinearLayout>
+
+    </LinearLayout>
+    </LinearLayout>
+</ScrollView>

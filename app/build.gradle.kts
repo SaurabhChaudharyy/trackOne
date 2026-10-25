@@ -1,0 +1,146 @@
+plugins {
+    alias(libs.plugins.android.application)
+    alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.ksp)                  // KSP replaces KAPT for Hilt + Room
+    alias(libs.plugins.kotlin.parcelize)
+    alias(libs.plugins.hilt)
+    alias(libs.plugins.google.services)
+    alias(libs.plugins.crashlytics)
+}
+
+android {
+    namespace = "app.trackone"
+    compileSdk = 36
+
+    defaultConfig {
+        applicationId = "app.trackone"
+        minSdk = 26
+        targetSdk = 36
+        versionCode = 11
+        versionName = "1.0.0"
+
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    signingConfigs {
+        create("release") {
+            // These env vars are injected by GitHub Actions from repository secrets.
+            // When building locally they will be null and the block is skipped safely.
+            val storeFile = System.getenv("SIGNING_STORE_FILE")
+            if (storeFile != null) {
+                this.storeFile     = file(storeFile)
+                this.storePassword = System.getenv("SIGNING_STORE_PASSWORD")
+                this.keyAlias      = System.getenv("SIGNING_KEY_ALIAS")
+                this.keyPassword   = System.getenv("SIGNING_KEY_PASSWORD")
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            signingConfig    = signingConfigs.getByName("release")
+            isMinifyEnabled  = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+        }
+        debug {
+            isDebuggable = true
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+
+    kotlinOptions {
+        jvmTarget = "17"
+    }
+
+    testOptions {
+        // Lets JVM unit tests run code that logs (android.util.Log) instead of throwing "not mocked".
+        unitTests.isReturnDefaultValues = true
+    }
+
+    buildFeatures {
+        viewBinding = true
+        buildConfig = true
+    }
+
+    lint {
+        // Pins today's pre-existing lint errors (deprecated splash-screen attrs,
+        // android:tint vs app:tint, a stray BOM) so CI's lintDebug only fails on new
+        // regressions, not this backlog — see the CI workflow (ci.yml) for where this runs.
+        baseline = file("lint-baseline.xml")
+    }
+}
+
+dependencies {
+    // AndroidX Core
+    implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.activity.ktx)
+    implementation(libs.androidx.fragment.ktx)
+    implementation(libs.androidx.appcompat)
+    implementation(libs.material)
+    implementation(libs.androidx.constraintlayout)
+    implementation(libs.androidx.splashscreen)
+    implementation(libs.androidx.swiperefresh)
+
+    // Lifecycle
+    implementation(libs.androidx.lifecycle.viewmodel)
+    implementation(libs.androidx.lifecycle.livedata)
+    implementation(libs.androidx.lifecycle.runtime)
+
+    // Room — KSP compiler
+    implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.ktx)
+    ksp(libs.androidx.room.compiler)
+
+    // Networking
+    implementation(libs.retrofit)
+    implementation(libs.retrofit.gson)
+    implementation(libs.okhttp)
+    implementation(libs.okhttp.logging)
+    implementation(libs.gson)
+
+    // Coroutines
+    implementation(libs.kotlinx.coroutines.android)
+    implementation(libs.kotlinx.coroutines.core)
+
+    // Hilt — KSP compiler
+    implementation(libs.hilt.android)
+    ksp(libs.hilt.compiler)
+    implementation(libs.hilt.work)
+    ksp(libs.hilt.work.compiler)
+
+    // WorkManager
+    implementation(libs.androidx.work.runtime)
+
+    // Image Loading (no annotation processor needed for basic Glide usage)
+    implementation(libs.glide)
+
+    // Charts
+    implementation(libs.mpandroidchart)
+
+    // Security
+    implementation(libs.androidx.biometric)
+
+    // Firebase
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.auth)
+    implementation(libs.firebase.firestore)
+    implementation(libs.firebase.crashlytics)
+
+    // Google Sign-In
+    implementation(libs.play.services.auth)
+
+    // Testing
+    testImplementation(libs.junit)
+    testImplementation(libs.mockk)
+    testImplementation(libs.kotlinx.coroutines.test)
+    androidTestImplementation(libs.androidx.junit)
+    androidTestImplementation(libs.androidx.espresso)
+}

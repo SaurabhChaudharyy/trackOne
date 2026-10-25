@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- One row in dialog_broker_file_guide's list. Inflated per BrokerGuideEntry. -->
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:paddingVertical="14dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <TextView
+            android:id="@+id/tv_broker_name"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:textColor="@color/text_primary"
+            android:textSize="15sp"
+            android:fontFamily="@font/inter_semi_bold"
+            tools:text="Zerodha"/>
+
+        <TextView
+            android:id="@+id/tv_broker_source"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:background="@drawable/bg_market_chip"
+            android:paddingHorizontal="8dp"
+            android:paddingVertical="3dp"
+            android:textColor="@color/text_secondary"
+            android:textSize="10sp"
+            android:textAllCaps="true"
+            android:letterSpacing="0.03"
+            android:fontFamily="@font/inter_semi_bold"
+            tools:text="Web"/>
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/tv_broker_path"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:textColor="@color/text_secondary"
+        android:textSize="12sp"
+        android:fontFamily="@font/geist_mono"
+        android:lineSpacingExtra="2dp"
+        tools:text="console.zerodha.com → Portfolio → Holdings → ⬇ · CSV"/>
+
+    <TextView
+        android:id="@+id/tv_broker_note"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:textColor="@color/text_tertiary"
+        android:textSize="12sp"
+        android:fontFamily="@font/inter"
+        android:lineSpacingExtra="2dp"
+        tools:text="Use Console on the web — the Kite trading app has no export for this."/>
+
+</LinearLayout>

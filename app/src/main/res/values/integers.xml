@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Motion, in ms. Both sit in Material 3's "medium" range (250-400). Everything that shows a
+         selection (bottom tabs, chips, tab underline) runs on one; everything that opens, closes or
+         shifts (sections, the banner) on the other. See MotionSpec and MotionContractTest. -->
+    <integer name="motion_duration_selection">300</integer>
+    <integer name="motion_duration_layout">350</integer>
+</resources>

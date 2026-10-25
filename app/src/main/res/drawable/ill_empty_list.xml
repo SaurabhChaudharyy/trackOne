@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Empty-state art for lists: a torn-paper neon blob behind a list card whose first row is
+     circled in marker. Colours are constant in both themes. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="160dp"
+    android:height="160dp"
+    android:viewportWidth="160"
+    android:viewportHeight="160">
+    <path android:fillColor="@color/marker" android:pathData="M26,36 L104,16 L148,46 L140,116 L92,146 L30,128 L12,80 Z"/>
+    <path android:fillColor="@color/marker" android:pathData="M40,24 L120,30 L146,84 L118,142 L52,146 L18,102 Z"/>
+    <group android:pivotX="80" android:pivotY="82" android:rotation="-5">
+        <path android:fillColor="#FFFFFF" android:strokeColor="@color/on_marker" android:strokeWidth="3.5" android:strokeLineJoin="round"
+            android:pathData="M44,38 L116,38 A8,8 0 0 1 124,46 L124,118 A8,8 0 0 1 116,126 L44,126 A8,8 0 0 1 36,118 L36,46 A8,8 0 0 1 44,38 Z"/>
+        <path android:fillColor="@color/on_marker" android:pathData="M48,62 A6,6 0 1 0 60,62 A6,6 0 1 0 48,62 Z"/>
+        <path android:strokeColor="@color/on_marker" android:strokeWidth="4" android:strokeLineCap="round" android:pathData="M68,62 L106,62"/>
+        <path android:strokeColor="@color/on_marker" android:strokeWidth="3" android:pathData="M48,84 A6,6 0 1 0 60,84 A6,6 0 1 0 48,84 Z"/>
+        <path android:strokeColor="@color/on_marker" android:strokeWidth="4" android:strokeLineCap="round" android:pathData="M68,84 L98,84"/>
+        <path android:strokeColor="@color/on_marker" android:strokeWidth="3" android:pathData="M48,106 A6,6 0 1 0 60,106 A6,6 0 1 0 48,106 Z"/>
+        <path android:strokeColor="@color/on_marker" android:strokeWidth="4" android:strokeLineCap="round" android:pathData="M68,106 L90,106"/>
+    </group>
+    <path android:strokeColor="@color/on_marker" android:strokeWidth="3.5" android:strokeLineCap="round" android:strokeLineJoin="round"
+        android:pathData="M30,58 C26,40 70,34 104,42 C128,48 126,70 102,76 C74,82 34,80 31,64"/>
+</vector>

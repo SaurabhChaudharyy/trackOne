@@ -1,0 +1,572 @@
+package app.trackone.data.repository
+
+import android.content.Context
+import android.content.SharedPreferences
+import app.trackone.data.api.Freshness
+import app.trackone.data.api.RateLimitBackoff
+import app.trackone.data.api.YahooFinanceApiService
+import app.trackone.data.database.AssetType
+import app.trackone.data.database.FinanceDatabase
+import app.trackone.data.database.NetWorthAssetEntity
+import app.trackone.data.database.NetWorthDao
+import app.trackone.data.database.StockDao
+import app.trackone.data.database.StockEntity
+import app.trackone.data.database.WatchlistDao
+import app.trackone.data.model.YahooChart
+import app.trackone.data.model.YahooChartResponse
+import app.trackone.data.model.YahooChartResult
+import app.trackone.data.model.YahooMeta
+import app.trackone.utils.Resource
+import io.mockk.coEvery
+import io.mockk.coVerify
+import io.mockk.every
+import io.mockk.mockk
+import io.mockk.slot
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.withContext
+import java.util.concurrent.atomic.AtomicInteger
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
+import org.junit.Before
+import org.junit.Test
+import okhttp3.ResponseBody.Companion.toResponseBody
+import retrofit2.Response
+
+/**
+ * Only fetchLivePrice/fetchUsdInrRate are covered here — refreshNetWorthAssets wraps its writes
+ * in Room's `withTransaction`, which needs a real (or in-memory) Room database to exercise
+ * meaningfully; that's instrumented-test territory, not a plain JVM unit test.
+ */
+class NetWorthRepositoryTest {
+
+    private lateinit var apiService: YahooFinanceApiService
+    private lateinit var netWorthDao: NetWorthDao
+    private lateinit var stockDao: StockDao
+    private lateinit var stockRepository: StockRepository
+    private val savedQuotes = java.util.concurrent.ConcurrentHashMap<String, StockEntity>()
+    private lateinit var database: FinanceDatabase
+    private lateinit var context: Context
+    private lateinit var sharedPreferences: SharedPreferences
+    private lateinit var editor: SharedPreferences.Editor
+    private lateinit var repository: NetWorthRepository
+
+    @Before
+    fun setUp() {
+        apiService = mockk()
+        netWorthDao = mockk(relaxed = true)
+        database = mockk(relaxed = true)
+        editor = mockk(relaxed = true)
+        sharedPreferences = mockk {
+            every { getFloat(any(), any()) } answers { secondArg() }
+            every { edit() } returns editor
+        }
+        every { editor.putFloat(any(), any()) } returns editor
+        context = mockk<Context> {
+            every { getSharedPreferences(any(), any()) } returns sharedPreferences
+        }
+        // Quotes come through the same repository the watchlist uses, over the same mocked API, so every
+        // stub below keeps meaning "what Yahoo answers".
+        stockDao = mockk(relaxed = true)
+        coEvery { stockDao.getStock(any()) } coAnswers { savedQuotes[firstArg()] }
+        coEvery { stockDao.insertStock(any()) } coAnswers { val s = firstArg<StockEntity>(); savedQuotes[s.symbol] = s }
+        val watchlistDao = mockk<WatchlistDao>(relaxed = true)
+        coEvery { watchlistDao.isInWatchlist(any()) } returns 0
+        stockRepository = StockRepository(
+            apiService, stockDao, mockk(relaxed = true), watchlistDao, mockk(relaxed = true), RateLimitBackoff { 0L }
+        )
+        repository = NetWorthRepository(database, netWorthDao, apiService, stockRepository, mockk(relaxed = true), context)
+    }
+
+    private fun chartResponse(currency: String, price: Double): Response<YahooChartResponse> =
+        Response.success(
+            YahooChartResponse(
+                chart = YahooChart(
+                    result = listOf(
+                        YahooChartResult(
+                            meta = YahooMeta(currency = currency, regularMarketPrice = price),
+                            timestamps = null,
+                            indicators = null
+                        )
+                    ),
+                    error = null
+                )
+            )
+        )
+
+    @Test
+    fun `INR-denominated stock price passes through unconverted`() = runTest {
+        coEvery { apiService.getQuote("TCS.NS") } returns chartResponse("INR", 3500.0)
+
+        val result = repository.fetchLivePrice("TCS", AssetType.STOCK_IN)
+
+        assertTrue(result is Resource.Success)
+        assertEquals(3500.0, (result as Resource.Success).data, 0.0001)
+    }
+
+    @Test
+    fun `Indian stock symbol is normalised with an NS suffix before the API call`() = runTest {
+        coEvery { apiService.getQuote("INFY.NS") } returns chartResponse("INR", 1500.0)
+
+        repository.fetchLivePrice("infy", AssetType.STOCK_IN)
+
+        // Would throw "no answer found" if the symbol weren't normalised, since only
+        // "INFY.NS" was stubbed above.
+    }
+
+    @Test
+    fun `a broker's NSE series tag is dropped before the API call`() = runTest {
+        // Zerodha names the ETF "GOLDIETF-E"; Yahoo only knows GOLDIETF.NS (GOLDIETF-E.NS is "Not Found").
+        coEvery { apiService.getQuote("GOLDIETF.NS") } returns chartResponse("INR", 122.19)
+
+        val result = repository.fetchLivePrice("GOLDIETF-E", AssetType.STOCK_IN)
+
+        assertTrue(result is Resource.Success)
+        assertEquals(122.19, (result as Resource.Success).data, 0.0001)
+    }
+
+    @Test
+    fun `a US class share written with a space is asked for with Yahoo's hyphen`() = runTest {
+        // Interactive Brokers exports "BRK B"; Yahoo's ticker is BRK-B.
+        coEvery { apiService.getQuote("BRK-B") } returns chartResponse("USD", 500.0)
+
+        val result = repository.fetchLivePrice("BRK B", AssetType.STOCK_US, usdInrRate = 80.0)
+
+        assertTrue(result is Resource.Success)
+        assertEquals(40_000.0, (result as Resource.Success).data, 0.0001)
+    }
+
+    @Test
+    fun `USD stock price is converted using a caller-supplied rate, without an extra FX call`() = runTest {
+        coEvery { apiService.getQuote("AAPL") } returns chartResponse("USD", 10.0)
+
+        val result = repository.fetchLivePrice("AAPL", AssetType.STOCK_US, usdInrRate = 83.0)
+
+        assertTrue(result is Resource.Success)
+        assertEquals(830.0, (result as Resource.Success).data, 0.0001)
+    }
+
+    @Test
+    fun `gold price is converted from troy ounce to grams, in INR`() = runTest {
+        // GC=F quotes come back in USD per troy ounce.
+        coEvery { apiService.getQuote("GC=F") } returns chartResponse("USD", 311.035)
+
+        val result = repository.fetchLivePrice("GC=F", AssetType.GOLD, usdInrRate = 10.0)
+
+        assertTrue(result is Resource.Success)
+        // 311.035 * 10 (fx) = 3110.35 INR per troy ounce -> /31.1035 = 100.0 INR/gram
+        assertEquals(100.0, (result as Resource.Success).data, 0.0001)
+    }
+
+    @Test
+    fun `HTTP failure surfaces as a Resource Error, not an exception`() = runTest {
+        coEvery { apiService.getQuote("BADSYM") } returns Response.error(
+            500, okhttp3.ResponseBody.create(null, "")
+        )
+
+        val result = repository.fetchLivePrice("BADSYM", AssetType.STOCK_US)
+
+        assertTrue(result is Resource.Error)
+    }
+
+    @Test
+    fun `a non-positive price is treated as an error, not a valid zero-value asset`() = runTest {
+        coEvery { apiService.getQuote("DELISTED") } returns chartResponse("USD", 0.0)
+
+        val result = repository.fetchLivePrice("DELISTED", AssetType.STOCK_US)
+
+        assertTrue(result is Resource.Error)
+    }
+
+    @Test
+    fun `an exception from the API call is caught and returned as a Resource Error`() = runTest {
+        coEvery { apiService.getQuote(any()) } throws RuntimeException("network down")
+
+        val result = repository.fetchLivePrice("AAPL", AssetType.STOCK_US)
+
+        assertTrue(result is Resource.Error)
+    }
+
+    private fun chartResponse(currency: String, price: Double, previousClose: Double): Response<YahooChartResponse> =
+        Response.success(
+            YahooChartResponse(
+                chart = YahooChart(
+                    result = listOf(
+                        YahooChartResult(
+                            meta = YahooMeta(currency = currency, regularMarketPrice = price, previousClose = previousClose),
+                            timestamps = null,
+                            indicators = null
+                        )
+                    ),
+                    error = null
+                )
+            )
+        )
+
+    @Test
+    fun `fetchQuote returns the previous close alongside the price`() = runTest {
+        coEvery { apiService.getQuote("TCS.NS") } returns chartResponse("INR", 3500.0, 3400.0)
+
+        val quote = (repository.fetchQuote("TCS", AssetType.STOCK_IN) as Resource.Success).data
+
+        assertEquals(3500.0, quote.priceInr, 0.0001)
+        assertEquals(3400.0, quote.previousCloseInr, 0.0001)
+    }
+
+    @Test
+    fun `fetchQuote converts price and previous close with the same USD rate`() = runTest {
+        coEvery { apiService.getQuote("AAPL") } returns chartResponse("USD", 200.0, 190.0)
+
+        val quote = (repository.fetchQuote("AAPL", AssetType.STOCK_US, usdInrRate = 80.0) as Resource.Success).data
+
+        assertEquals(16000.0, quote.priceInr, 0.0001)
+        assertEquals(15200.0, quote.previousCloseInr, 0.0001)
+    }
+
+    @Test
+    fun `fetchQuote treats USX cents the same way for both prices`() = runTest {
+        coEvery { apiService.getQuote("XYZ") } returns chartResponse("USX", 20000.0, 19000.0)
+
+        val quote = (repository.fetchQuote("XYZ", AssetType.STOCK_US, usdInrRate = 80.0) as Resource.Success).data
+
+        assertEquals(16000.0, quote.priceInr, 0.0001)
+        assertEquals(15200.0, quote.previousCloseInr, 0.0001)
+    }
+
+    @Test
+    fun `fetchQuote converts a pence quote with the GBP rate`() = runTest {
+        coEvery { apiService.getQuote("TSCO.L") } returns chartResponse("GBp", 480.5, 473.2)
+        coEvery { apiService.getQuote("GBPINR=X") } returns chartResponse("INR", 110.0)
+
+        val quote = (repository.fetchQuote("TSCO.L", AssetType.STOCK_US, usdInrRate = 80.0) as Resource.Success).data
+
+        assertEquals(528.55, quote.priceInr, 0.0001)            // £4.805 x 110
+        assertEquals(520.52, quote.previousCloseInr, 0.0001)    // £4.732 x 110
+    }
+
+    @Test
+    fun `fetchQuote is an error when a foreign currency has no rate, never pence counted as rupees`() = runTest {
+        coEvery { apiService.getQuote("TSLA.TO") } returns chartResponse("CAD", 32.19)
+        coEvery { apiService.getQuote("CADINR=X") } throws RuntimeException("network down")
+
+        val result = repository.fetchQuote("TSLA.TO", AssetType.STOCK_US, usdInrRate = 80.0)
+
+        assertTrue(result is Resource.Error)
+    }
+
+    @Test
+    fun `a missing previous close is reported as 0, not as an unchanged price`() = runTest {
+        coEvery { apiService.getQuote("TCS.NS") } returns chartResponse("INR", 3500.0)
+
+        val quote = (repository.fetchQuote("TCS", AssetType.STOCK_IN) as Resource.Success).data
+
+        assertEquals(0.0, quote.previousCloseInr, 0.0)
+    }
+
+    @Test
+    fun `fetchQuotesFor skips non-market holdings and holdings whose quote failed`() = runTest {
+        coEvery { apiService.getQuote("TCS.NS") } returns chartResponse("INR", 3500.0, 3400.0)
+        coEvery { apiService.getQuote("BAD.NS") } returns Response.error(404, okhttp3.ResponseBody.create(null, ""))
+        coEvery { apiService.getQuote("USDINR=X") } returns chartResponse("USD", 84.0)
+        val assets = listOf(
+            NetWorthAssetEntity(id = 1, name = "TCS", assetType = AssetType.STOCK_IN, currentValue = 0.0),
+            NetWorthAssetEntity(id = 2, name = "BAD", assetType = AssetType.STOCK_IN, currentValue = 0.0),
+            NetWorthAssetEntity(id = 3, name = "HDFC MF", assetType = AssetType.MF, currentValue = 1000.0)
+        )
+
+        val quotes = repository.fetchQuotesFor(assets)
+
+        assertEquals(setOf(1L), quotes.keys)
+    }
+
+    @Test
+    fun `fetchUsdInrRate caches a successful live rate for later fallback`() = runTest {
+        coEvery { apiService.getQuote("USDINR=X") } returns chartResponse("USD", 84.5)
+        val cachedValue = slot<Float>()
+        every { editor.putFloat(any(), capture(cachedValue)) } returns editor
+
+        val rate = repository.fetchUsdInrRate()
+
+        assertEquals(84.5, rate, 0.0001)
+        assertEquals(84.5f, cachedValue.captured, 0.0001f)
+    }
+
+    @Test
+    fun `fetchUsdInrRate falls back to the last cached rate when the live call fails`() = runTest {
+        every { sharedPreferences.getFloat(any(), any()) } returns 80.0f
+        coEvery { apiService.getQuote("USDINR=X") } throws RuntimeException("network down")
+
+        val rate = repository.fetchUsdInrRate()
+
+        assertEquals(80.0, rate, 0.0001)
+    }
+
+    // ── quotes the watchlist side already has ────────────────────────────────────────────────────
+
+    private fun savedQuote(symbol: String, currency: String, price: Double, previousClose: Double, ageMs: Long) {
+        savedQuotes[symbol] = StockEntity(
+            symbol = symbol, companyName = symbol, currentPrice = price, change = 0.0, changePercent = 0.0,
+            highPrice = price, lowPrice = price, openPrice = price, previousClose = previousClose,
+            currency = currency, lastUpdated = System.currentTimeMillis() - ageMs
+        )
+    }
+
+    @Test
+    fun `a saved quote that is still fresh is used instead of asking Yahoo again`() = runTest {
+        savedQuote("TCS.NS", "INR", 3500.0, 3400.0, ageMs = 60_000)
+
+        val quote = (repository.fetchQuote("TCS", AssetType.STOCK_IN, freshness = Freshness.PASSIVE) as Resource.Success).data
+
+        assertEquals(3500.0, quote.priceInr, 0.0001)
+        assertEquals(3400.0, quote.previousCloseInr, 0.0001)
+        coVerify(exactly = 0) { apiService.getQuote(any()) }
+    }
+
+    @Test
+    fun `a saved quote is converted exactly like a live one`() = runTest {
+        savedQuote("AAPL", "USD", 200.0, 190.0, ageMs = 60_000)
+
+        val quote = (repository.fetchQuote("AAPL", AssetType.STOCK_US, usdInrRate = 80.0, freshness = Freshness.PASSIVE) as Resource.Success).data
+
+        assertEquals(16000.0, quote.priceInr, 0.0001)
+        assertEquals(15200.0, quote.previousCloseInr, 0.0001)
+    }
+
+    @Test
+    fun `a saved quote that is too old is fetched again`() = runTest {
+        savedQuote("TCS.NS", "INR", 1.0, 1.0, ageMs = 10 * 60_000)
+        coEvery { apiService.getQuote("TCS.NS") } returns chartResponse("INR", 3600.0, 3500.0)
+
+        val quote = (repository.fetchQuote("TCS", AssetType.STOCK_IN, freshness = Freshness.PASSIVE) as Resource.Success).data
+
+        assertEquals(3600.0, quote.priceInr, 0.0001)
+    }
+
+    @Test
+    fun `a screen that needs the live price never settles for a saved one`() = runTest {
+        savedQuote("TCS.NS", "INR", 1.0, 1.0, ageMs = 1_000)
+        coEvery { apiService.getQuote("TCS.NS") } returns chartResponse("INR", 3600.0, 3500.0)
+
+        val quote = (repository.fetchQuote("TCS", AssetType.STOCK_IN) as Resource.Success).data
+
+        assertEquals(3600.0, quote.priceInr, 0.0001)
+    }
+
+    @Test
+    fun `a failed request is an error here even when an old quote is saved`() = runTest {
+        // A stale price written as if it were live would also stop the symbol repair from ever running.
+        savedQuote("TCS.NS", "INR", 1.0, 1.0, ageMs = 10 * 60_000)
+        coEvery { apiService.getQuote("TCS.NS") } returns Response.error(429, "".toResponseBody(null))
+
+        val result = repository.fetchQuote("TCS", AssetType.STOCK_IN, freshness = Freshness.PASSIVE)
+
+        assertTrue(result is Resource.Error)
+    }
+
+    @Test
+    fun `pricing a refresh only asks Yahoo for the holdings whose saved quote has gone stale`() = runTest {
+        savedQuote("FRESH.NS", "INR", 10.0, 9.0, ageMs = 60_000)
+        savedQuote("STALE.NS", "INR", 1.0, 1.0, ageMs = 10 * 60_000)
+        coEvery { apiService.getQuote("STALE.NS") } returns chartResponse("INR", 20.0, 19.0)
+
+        val priced = repository.priceHoldings(
+            listOf(holding("FRESH", 1), holding("STALE", 2)), usdInrRate = 80.0, freshness = Freshness.PASSIVE
+        )
+
+        assertEquals(listOf(10.0, 20.0), priced.updated.map { it.currentValue })
+        coVerify(exactly = 0) { apiService.getQuote("FRESH.NS") }
+        coVerify(exactly = 1) { apiService.getQuote("STALE.NS") }
+    }
+
+    @Test
+    fun `home and net worth asking for the same holding at once make one request`() = runTest {
+        val gate = CompletableDeferred<Unit>()
+        coEvery { apiService.getQuote("TCS.NS") } coAnswers { gate.await(); chartResponse("INR", 3500.0, 3400.0) }
+
+        val home = async { stockRepository.fetchAndCacheStock("TCS.NS", Freshness.PASSIVE) }
+        val netWorth = async { repository.fetchQuote("TCS", AssetType.STOCK_IN, freshness = Freshness.PASSIVE) }
+        withContext(Dispatchers.Default) { delay(300) }
+        gate.complete(Unit)
+        home.await(); netWorth.await()
+
+        coVerify(exactly = 1) { apiService.getQuote("TCS.NS") }
+    }
+
+    // ── pricing every holding in one refresh ─────────────────────────────────────────────────────
+
+    private fun holding(name: String, id: Long, qty: Double = 1.0) = NetWorthAssetEntity(
+        id = id, name = name, assetType = AssetType.STOCK_IN, quantity = qty, buyPrice = 1.0, currentValue = 1.0
+    )
+
+    @Test
+    fun `pricing keeps the holdings in their original order whichever quote answers first`() = runTest {
+        coEvery { apiService.getQuote("SLOW.NS") } coAnswers { delay(150); chartResponse("INR", 10.0) }
+        coEvery { apiService.getQuote("MID.NS") } coAnswers { delay(40); chartResponse("INR", 20.0) }
+        coEvery { apiService.getQuote("FAST.NS") } coAnswers { chartResponse("INR", 30.0) }
+
+        val priced = repository.priceHoldings(
+            listOf(holding("SLOW", 1), holding("MID", 2), holding("FAST", 3)), usdInrRate = 80.0
+        )
+
+        assertEquals(listOf("SLOW", "MID", "FAST"), priced.updated.map { it.name })
+        assertEquals(listOf(10.0, 20.0, 30.0), priced.updated.map { it.currentValue })
+        assertTrue(priced.failed.isEmpty())
+    }
+
+    @Test
+    fun `a holding that cannot be priced is reported and the rest still are`() = runTest {
+        coEvery { apiService.getQuote("OK.NS") } returns chartResponse("INR", 5.0)
+        coEvery { apiService.getQuote("BAD.NS") } returns Response.error(404, "".toResponseBody(null))
+        coEvery { apiService.getQuote("ALSO.NS") } returns chartResponse("INR", 7.0)
+
+        val priced = repository.priceHoldings(
+            listOf(holding("OK", 1), holding("BAD", 2), holding("ALSO", 3)), usdInrRate = 80.0
+        )
+
+        assertEquals(listOf("OK", "ALSO"), priced.updated.map { it.name })
+        assertEquals(listOf("BAD"), priced.failed.map { it.name })
+    }
+
+    private fun usHolding(name: String, id: Long, qty: Double, buyPrice: Double, currency: String) = NetWorthAssetEntity(
+        id = id, name = name, assetType = AssetType.STOCK_US, quantity = qty, buyPrice = buyPrice, currentValue = 1.0, currency = currency
+    )
+
+    @Test
+    fun `a US row labelled INR whose buy price is still in dollars gets it converted on refresh`() = runTest {
+        // The state a pre-fix re-import left behind, and a backup restores: INR label, USD buy price.
+        coEvery { apiService.getQuote("GOOGL") } returns chartResponse("USD", 352.0)
+
+        val priced = repository.priceHoldings(listOf(usHolding("GOOGL", 1, qty = 2.0, buyPrice = 177.62, currency = "INR")), usdInrRate = 90.0)
+
+        val googl = priced.updated.single()
+        assertEquals(63_360.0, googl.currentValue, 0.01)
+        assertEquals(177.62 * 90.0, googl.buyPrice, 0.01)
+        assertEquals("INR", googl.currency)
+    }
+
+    @Test
+    fun `a US row whose buy price is already in rupees is not converted again`() = runTest {
+        coEvery { apiService.getQuote("SOXX") } returns chartResponse("USD", 300.0)
+
+        val priced = repository.priceHoldings(listOf(usHolding("SOXX", 1, qty = 1.0, buyPrice = 20_000.0, currency = "INR")), usdInrRate = 90.0)
+
+        assertEquals(20_000.0, priced.updated.single().buyPrice, 0.01)
+    }
+
+    // ── symbol repairs: merging a duplicate, renaming a company name ─────────────────────────────
+
+    private fun repairingRepository(vararg plan: SymbolRepair): NetWorthRepository {
+        val repairer = mockk<SymbolRepairer>()
+        coEvery { repairer.findRepairs(any(), any(), any()) } returns plan.toList()
+        return NetWorthRepository(database, netWorthDao, apiService, stockRepository, repairer, context)
+    }
+
+    private fun etf(name: String, id: Long, qty: Double, buyPrice: Double, value: Double) = NetWorthAssetEntity(
+        id = id, name = name, assetType = AssetType.STOCK_IN, quantity = qty, buyPrice = buyPrice, currentValue = value
+    )
+
+    @Test
+    fun `a holding under a company name is merged into the row already priced, and its id is reported for deletion`() = runTest {
+        val named = etf("NIP IND ETF NIFTY BEES", 1, qty = 328.0, buyPrice = 266.01, value = 90_836.32)   // stale, unpriced
+        val bees = etf("NIFTYBEES", 2, qty = 273.0, buyPrice = 282.88, value = 273 * 258.80)
+        val updated = mutableListOf(bees.copy(currentValue = 273 * 258.80))
+        val repository = repairingRepository(SymbolRepair(1, named.name, "NIFTYBEES.NS", MatchBasis.NAME, named.name, mergeIntoId = 2))
+
+        val mergedAway = repository.applySymbolRepairs(listOf(named), listOf(named, bees), updated, usdInrRate = 90.0)
+
+        assertEquals(listOf(1L), mergedAway)
+        val merged = updated.single()
+        assertEquals(2L, merged.id)
+        assertEquals(601.0, merged.quantity, 0.0001)
+        assertEquals(273.67, merged.buyPrice, 0.005)
+        assertEquals(601 * 258.80, merged.currentValue, 0.01)
+    }
+
+    @Test
+    fun `merging into a row this refresh did not price still works, from the stored copy`() = runTest {
+        val named = etf("NIP IND ETF NIFTY BEES", 1, qty = 328.0, buyPrice = 266.01, value = 1.0)
+        val bees = etf("NIFTYBEES", 2, qty = 273.0, buyPrice = 282.88, value = 273 * 258.80)
+        val updated = mutableListOf<NetWorthAssetEntity>()
+        val repository = repairingRepository(SymbolRepair(1, named.name, "NIFTYBEES.NS", MatchBasis.NAME, named.name, mergeIntoId = 2))
+
+        val mergedAway = repository.applySymbolRepairs(listOf(named), listOf(named, bees), updated, usdInrRate = 90.0)
+
+        assertEquals(listOf(1L), mergedAway)
+        assertEquals(601.0, updated.single().quantity, 0.0001)
+    }
+
+    @Test
+    fun `a holding renamed to its ticker is priced straight away and nothing is deleted`() = runTest {
+        val named = etf("ITC HOTELS LIMITED", 1, qty = 10.0, buyPrice = 100.0, value = 1.0)
+        val other = etf("OTHER", 2, qty = 1.0, buyPrice = 5.0, value = 5.0)
+        val updated = mutableListOf(other)
+        coEvery { apiService.getQuote("ITCHOTELS.NS") } returns chartResponse("INR", 200.0)
+        val repository = repairingRepository(SymbolRepair(1, named.name, "ITCHOTELS", MatchBasis.ISIN, "ITC Hotels Limited"))
+
+        val mergedAway = repository.applySymbolRepairs(listOf(named), listOf(named, other), updated, usdInrRate = 90.0)
+
+        assertTrue(mergedAway.isEmpty())
+        val renamed = updated.last()
+        assertEquals("ITCHOTELS", renamed.name)
+        assertEquals(2_000.0, renamed.currentValue, 0.01)
+    }
+
+    @Test
+    fun `quotes are fetched in parallel but never more than four at once`() = runTest {
+        val inFlight = AtomicInteger(0)
+        val peak = AtomicInteger(0)
+        coEvery { apiService.getQuote(any()) } coAnswers {
+            val now = inFlight.incrementAndGet()
+            peak.updateAndGet { maxOf(it, now) }
+            delay(40)
+            inFlight.decrementAndGet()
+            chartResponse("INR", 1.0)
+        }
+
+        repository.priceHoldings((1..16).map { holding("S$it", it.toLong()) }, usdInrRate = 80.0)
+
+        assertTrue("never in parallel (peak ${peak.get()})", peak.get() > 1)
+        assertTrue("too many at once (peak ${peak.get()})", peak.get() <= 4)
+    }
+
+    @Test
+    fun `progress counts up to the number of holdings`() = runTest {
+        coEvery { apiService.getQuote(any()) } returns chartResponse("INR", 1.0)
+        val seen = java.util.Collections.synchronizedList(mutableListOf<Pair<Int, Int>>())
+
+        repository.priceHoldings((1..6).map { holding("S$it", it.toLong()) }, usdInrRate = 80.0) { done, total ->
+            seen.add(done to total)
+        }
+
+        assertEquals((1..6).map { it to 6 }, seen.sortedBy { it.first })
+    }
+
+    // The 30-second window is checked before any database work, so it can be covered without Room.
+
+    @Test
+    fun `a refresh straight after another is skipped, even a forced one such as pull-to-refresh`() = runTest {
+        repository.refreshNetWorthAssets(force = true)
+        repository.refreshNetWorthAssets(force = true)
+
+        coVerify(exactly = 1) { netWorthDao.getAllAssetsSync() }
+    }
+
+    @Test
+    fun `a refresh that changed the holdings, such as an import or a restore, ignores the window`() = runTest {
+        repository.refreshNetWorthAssets(force = true)
+        repository.refreshNetWorthAssets(force = true, ignoreWindow = true)
+
+        coVerify(exactly = 2) { netWorthDao.getAllAssetsSync() }
+    }
+
+    @Test
+    fun `a passive refresh straight after a forced one is still skipped`() = runTest {
+        repository.refreshNetWorthAssets(force = true)
+        repository.refreshNetWorthAssets()
+
+        coVerify(exactly = 1) { netWorthDao.getAllAssetsSync() }
+    }
+}

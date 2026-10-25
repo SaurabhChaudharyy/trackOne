@@ -1,0 +1,302 @@
+package app.trackone.data.repository
+
+import android.util.Log
+import androidx.room.withTransaction
+import com.google.firebase.firestore.DocumentReference
+import com.google.firebase.firestore.FirebaseFirestore
+import app.trackone.data.database.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withContext
+import javax.inject.Inject
+import javax.inject.Singleton
+
+/** Summary returned after a backup operation. */
+data class BackupStats(val watchlistGroups: Int, val watchlistItems: Int, val assets: Int)
+
+/** Summary returned after a restore operation. */
+data class RestoreStats(val watchlistGroups: Int, val watchlistItems: Int, val assets: Int)
+
+/**
+ * Reads data from Room and writes it to Cloud Firestore under the signed-in user's
+ * document tree, and vice-versa.
+ *
+ * Firestore document structure:
+ * ```
+ * users/{uid}/
+ *   metadata           → { lastSync, appVersion }
+ *   watchlist_groups/   → one doc per group
+ *   watchlist/          → one doc per (symbol_groupId) entry
+ *   networth_assets/    → one doc per asset id
+ * ```
+ */
+@Singleton
+class CloudBackupRepository @Inject constructor(
+    private val firestore: FirebaseFirestore,
+    private val authRepository: AuthRepository,
+    private val database: FinanceDatabase,
+    private val watchlistDao: WatchlistDao,
+    private val watchlistGroupDao: WatchlistGroupDao,
+    private val netWorthDao: NetWorthDao
+) {
+    companion object {
+        private const val TAG = "CloudBackup"
+        private const val COL_USERS = "users"
+        private const val COL_WATCHLIST_GROUPS = "watchlist_groups"
+        private const val COL_WATCHLIST = "watchlist"
+        private const val COL_NETWORTH = "networth_assets"
+
+        /** Firestore write batches are capped at 500 mutations. */
+        private const val BATCH_LIMIT = 450
+    }
+
+    // ──────────────────────────────────────────────────────────────────────
+    //  B A C K U P   (Room → Firestore)
+    // ──────────────────────────────────────────────────────────────────────
+
+    suspend fun backupToCloud(): Result<BackupStats> = withContext(Dispatchers.IO) {
+        val uid = authRepository.currentUserId
+            ?: return@withContext Result.failure(Exception("Not signed in"))
+        try {
+            val userDoc = firestore.collection(COL_USERS).document(uid)
+
+            // ── 1. Watchlist groups ──
+            val groups = watchlistGroupDao.getAllGroupsSync()
+            val groupsCol = userDoc.collection(COL_WATCHLIST_GROUPS)
+            val groupWrites = groups.associate { group ->
+                groupsCol.document(group.id.toString()) to mapOf(
+                    "name" to group.name,
+                    "position" to group.position,
+                    "createdAt" to group.createdAt
+                )
+            }
+            replaceCollection(groupsCol, groupWrites)
+
+            // ── 2. Watchlist items ──
+            val items = watchlistDao.getWatchlistSync()
+            val watchlistCol = userDoc.collection(COL_WATCHLIST)
+            val watchlistWrites = items.associate { item ->
+                watchlistCol.document("${item.symbol}_${item.groupId}") to mapOf(
+                    "symbol" to item.symbol,
+                    "displayName" to item.displayName,
+                    "position" to item.position,
+                    "groupId" to item.groupId,
+                    "addedAt" to item.addedAt
+                )
+            }
+            replaceCollection(watchlistCol, watchlistWrites)
+
+            // ── 3. Net worth assets ──
+            val assets = netWorthDao.getAllAssetsSync()
+            val assetsCol = userDoc.collection(COL_NETWORTH)
+            val assetWrites = assets.associate { asset ->
+                assetsCol.document(asset.id.toString()) to mapOf(
+                    "name" to asset.name,
+                    "assetType" to asset.assetType.name,
+                    "quantity" to asset.quantity,
+                    "buyPrice" to asset.buyPrice,
+                    "currentValue" to asset.currentValue,
+                    "currency" to asset.currency,
+                    "notes" to asset.notes,
+                    "addedAt" to asset.addedAt,
+                    "updatedAt" to asset.updatedAt
+                )
+            }
+            replaceCollection(assetsCol, assetWrites)
+
+            // ── 4. Metadata (written last, so a partial failure above never marks a backup as complete) ──
+            userDoc.set(
+                mapOf(
+                    "lastSync" to System.currentTimeMillis(),
+                    "appVersion" to "1.2"
+                )
+            ).await()
+
+            val stats = BackupStats(groups.size, items.size, assets.size)
+            Log.d(TAG, "backupToCloud: success – $stats")
+            Result.success(stats)
+        } catch (e: Exception) {
+            Log.e(TAG, "backupToCloud: failed", e)
+            Result.failure(e)
+        }
+    }
+
+    // ──────────────────────────────────────────────────────────────────────
+    //  R E S T O R E   (Firestore → Room)
+    // ──────────────────────────────────────────────────────────────────────
+
+    suspend fun restoreFromCloud(): Result<RestoreStats> = withContext(Dispatchers.IO) {
+        val uid = authRepository.currentUserId
+            ?: return@withContext Result.failure(Exception("Not signed in"))
+        try {
+            val userDoc = firestore.collection(COL_USERS).document(uid)
+
+            // Refuse to wipe local data for a backup that was never made — an empty
+            // cloud collection (e.g. first sign-in, before ever tapping "Backup") would
+            // otherwise be indistinguishable from a genuinely empty backup and would
+            // silently delete everything the user has locally.
+            val metadata = userDoc.get().await()
+            if (metadata.getLong("lastSync") == null) {
+                return@withContext Result.failure(
+                    Exception("No cloud backup found for this account yet. Back up first, then you can restore.")
+                )
+            }
+
+            // ── 1. Watchlist groups ──
+            val groupsDocs = userDoc.collection(COL_WATCHLIST_GROUPS).get().await()
+            val groups = groupsDocs.documents.mapNotNull { doc ->
+                try {
+                    WatchlistGroupEntity(
+                        id = doc.id.toLong(),
+                        name = doc.getString("name") ?: return@mapNotNull null,
+                        position = (doc.getLong("position") ?: 0).toInt(),
+                        createdAt = doc.getLong("createdAt") ?: System.currentTimeMillis()
+                    )
+                } catch (e: Exception) {
+                    Log.w(TAG, "Skipping invalid group doc: ${doc.id}", e)
+                    null
+                }
+            }
+
+            // ── 2. Watchlist items ──
+            val watchlistDocs = userDoc.collection(COL_WATCHLIST).get().await()
+            val watchlistItems = watchlistDocs.documents.mapNotNull { doc ->
+                try {
+                    WatchlistEntity(
+                        symbol = doc.getString("symbol") ?: return@mapNotNull null,
+                        displayName = doc.getString("displayName") ?: "",
+                        position = (doc.getLong("position") ?: 0).toInt(),
+                        groupId = doc.getLong("groupId") ?: 1L,
+                        addedAt = doc.getLong("addedAt") ?: System.currentTimeMillis()
+                    )
+                } catch (e: Exception) {
+                    Log.w(TAG, "Skipping invalid watchlist doc: ${doc.id}", e)
+                    null
+                }
+            }
+
+            // ── 3. Net worth assets ──
+            val assetsDocs = userDoc.collection(COL_NETWORTH).get().await()
+            val assets = assetsDocs.documents.mapNotNull { doc ->
+                try {
+                    val typeStr = doc.getString("assetType") ?: return@mapNotNull null
+                    val assetType = try { AssetType.valueOf(typeStr) } catch (_: Exception) { return@mapNotNull null }
+                    NetWorthAssetEntity(
+                        id = 0,   // Auto-generate new IDs on restore
+                        name = doc.getString("name") ?: return@mapNotNull null,
+                        assetType = assetType,
+                        quantity = doc.getDouble("quantity") ?: 1.0,
+                        buyPrice = doc.getDouble("buyPrice") ?: 0.0,
+                        currentValue = doc.getDouble("currentValue") ?: 0.0,
+                        currency = doc.getString("currency") ?: "INR",
+                        notes = doc.getString("notes") ?: "",
+                        addedAt = doc.getLong("addedAt") ?: System.currentTimeMillis(),
+                        updatedAt = doc.getLong("updatedAt") ?: System.currentTimeMillis()
+                    )
+                } catch (e: Exception) {
+                    Log.w(TAG, "Skipping invalid asset doc: ${doc.id}", e)
+                    null
+                }
+            }
+
+            // ── 4. Write to Room (replace all local data) ──
+            // Wrapped in a single DB transaction: if the app is killed or a write fails
+            // partway through, the whole restore rolls back instead of leaving the local
+            // DB cleared but only partially repopulated.
+            database.withTransaction {
+                watchlistDao.clearWatchlist()
+                // We can't easily "deleteAll" groups via current DAO, so delete them one-by-one
+                val existingGroups = watchlistGroupDao.getAllGroupsSync()
+                for (g in existingGroups) {
+                    watchlistGroupDao.deleteGroup(g.id)
+                }
+                netWorthDao.deleteAllAssets()
+
+                // Insert restored data
+                for (group in groups) {
+                    watchlistGroupDao.insertGroup(group)
+                }
+                if (watchlistItems.isNotEmpty()) {
+                    watchlistDao.insertWatchlistItems(watchlistItems)
+                }
+                if (assets.isNotEmpty()) {
+                    netWorthDao.insertAssets(assets)
+                }
+            }
+
+            val stats = RestoreStats(groups.size, watchlistItems.size, assets.size)
+            Log.d(TAG, "restoreFromCloud: success – $stats")
+            Result.success(stats)
+        } catch (e: Exception) {
+            Log.e(TAG, "restoreFromCloud: failed", e)
+            Result.failure(e)
+        }
+    }
+
+    // ──────────────────────────────────────────────────────────────────────
+    //  D E L E T E   (account deletion)
+    // ──────────────────────────────────────────────────────────────────────
+
+    /**
+     * Deletes everything stored in the cloud for the signed-in user: the three backup collections,
+     * then the user document itself. Safe to run again (an already-empty backup is simply skipped),
+     * which account deletion relies on when the user has to confirm their identity and retry.
+     * Throws if any step fails, so the caller can stop before deleting the account.
+     */
+    suspend fun deleteCloudData() = withContext(Dispatchers.IO) {
+        val uid = authRepository.currentUserId ?: return@withContext   // no account, nothing in the cloud
+        val userDoc = firestore.collection(COL_USERS).document(uid)
+        listOf(COL_WATCHLIST_GROUPS, COL_WATCHLIST, COL_NETWORTH).forEach { name ->
+            replaceCollection(userDoc.collection(name), emptyMap())      // "replace with nothing" = delete all
+        }
+        userDoc.delete().await()
+        Log.d(TAG, "deleteCloudData: success")
+    }
+
+    // ──────────────────────────────────────────────────────────────────────
+    //  L A S T   S Y N C   T I M E
+    // ──────────────────────────────────────────────────────────────────────
+
+    /**
+     * Reads the `lastSync` timestamp from the user's Firestore metadata document.
+     * Returns `null` if no backup has ever been made.
+     */
+    suspend fun getLastSyncTime(): Long? = withContext(Dispatchers.IO) {
+        val uid = authRepository.currentUserId ?: return@withContext null
+        try {
+            val doc = firestore.collection(COL_USERS).document(uid).get().await()
+            doc.getLong("lastSync")
+        } catch (e: Exception) {
+            Log.w(TAG, "getLastSyncTime: failed", e)
+            null
+        }
+    }
+
+    // ──────────────────────────────────────────────────────────────────────
+    //  H E L P E R S
+    // ──────────────────────────────────────────────────────────────────────
+
+    /**
+     * Replaces the contents of a Firestore collection with [writes], batching deletes of
+     * existing docs and sets of new docs into committed [WriteBatch]s (≤ [BATCH_LIMIT]
+     * mutations each) instead of one `await()` per document. Each batch commits atomically,
+     * shrinking the window in which a dropped connection could leave the collection cleared
+     * but only partially rewritten.
+     */
+    private suspend fun replaceCollection(
+        collection: com.google.firebase.firestore.CollectionReference,
+        writes: Map<DocumentReference, Map<String, Any?>>
+    ) {
+        val existing = collection.get().await().documents.map { it.reference }
+
+        val ops = mutableListOf<(com.google.firebase.firestore.WriteBatch) -> Unit>()
+        existing.forEach { ref -> ops.add { batch -> batch.delete(ref) } }
+        writes.forEach { (ref, data) -> ops.add { batch -> batch.set(ref, data) } }
+
+        ops.chunked(BATCH_LIMIT).forEach { chunk ->
+            val batch = firestore.batch()
+            chunk.forEach { op -> op(batch) }
+            batch.commit().await()
+        }
+    }
+}

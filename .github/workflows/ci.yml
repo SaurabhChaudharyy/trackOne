@@ -1,0 +1,71 @@
+name: Build & Test
+
+# Runs on every push/PR that isn't a release tag, so compile breaks and test failures are
+# caught before they reach a tagged release (release.yml only builds on 'v*'/'beta-*' tags).
+on:
+  push:
+    branches-ignore:
+      - 'v*'
+      - 'beta-*'
+  pull_request:
+
+jobs:
+  build-and-test:
+    name: Build & Unit Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Cache Gradle packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      # The Google Services Gradle plugin fails the build outright if this file is missing,
+      # even for a debug unit-test run — same secret release.yml already uses.
+      - name: Decode google-services.json
+        env:
+          GOOGLE_SERVICES_JSON_B64: ${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}
+        run: |
+          if [ -z "$GOOGLE_SERVICES_JSON_B64" ]; then
+            echo "Error: GOOGLE_SERVICES_JSON_BASE64 secret is empty or not found!"
+            exit 1
+          fi
+          if echo "$GOOGLE_SERVICES_JSON_B64" | grep -q '^{'; then
+            echo "$GOOGLE_SERVICES_JSON_B64" > app/google-services.json
+          else
+            echo "$GOOGLE_SERVICES_JSON_B64" | base64 -d > app/google-services.json
+          fi
+          if [ ! -s app/google-services.json ]; then
+            echo "Error: app/google-services.json is empty after decoding!"
+            exit 1
+          fi
+
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
+
+      - name: Run unit tests
+        run: ./gradlew testDebugUnitTest
+
+      - name: Lint
+        run: ./gradlew lintDebug
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: app/build/reports/tests/testDebugUnitTest/

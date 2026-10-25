@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Empty-state art: a torn-paper neon blob behind line art, drawn in the marker style (ink outline,
+     white fill). Colours are constant in both themes. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="160dp"
+    android:height="160dp"
+    android:viewportWidth="160"
+    android:viewportHeight="160">
+    <path android:fillColor="@color/marker" android:pathData="M26,36 L104,16 L148,46 L140,116 L92,146 L30,128 L12,80 Z"/>
+    <path android:fillColor="@color/marker" android:pathData="M40,24 L120,30 L146,84 L118,142 L52,146 L18,102 Z"/>
+    <path android:fillColor="#FFFFFF" android:strokeColor="@color/on_marker" android:strokeWidth="3.5" android:strokeLineJoin="round" android:strokeLineCap="round" android:pathData="M36,48 h70 a8,8 0 0,1 8,8 v58 a8,8 0 0,1 -8,8 h-70 a8,8 0 0,1 -8,-8 v-58 a8,8 0 0,1 8,-8 Z"/>
+    <path android:fillColor="#00000000" android:strokeColor="@color/on_marker" android:strokeWidth="3.5" android:strokeLineJoin="round" android:strokeLineCap="round" android:pathData="M38,114 H104"/>
+    <path android:fillColor="@color/on_marker" android:pathData="M42,92 h10 a2,2 0 0,1 2,2 v18 a2,2 0 0,1 -2,2 h-10 a2,2 0 0,1 -2,-2 v-18 a2,2 0 0,1 2,-2 Z"/>
+    <path android:fillColor="@color/on_marker" android:pathData="M64,78 h10 a2,2 0 0,1 2,2 v32 a2,2 0 0,1 -2,2 h-10 a2,2 0 0,1 -2,-2 v-32 a2,2 0 0,1 2,-2 Z"/>
+    <path android:fillColor="@color/on_marker" android:pathData="M86,62 h10 a2,2 0 0,1 2,2 v48 a2,2 0 0,1 -2,2 h-10 a2,2 0 0,1 -2,-2 v-48 a2,2 0 0,1 2,-2 Z"/>
+    <path android:fillColor="#FFFFFF" android:strokeColor="@color/on_marker" android:strokeWidth="3.5" android:strokeLineJoin="round" android:strokeLineCap="round" android:pathData="M97,50 a19,19 0 1,0 38,0 a19,19 0 1,0 -38,0 Z"/>
+    <path android:fillColor="#00000000" android:strokeColor="@color/on_marker" android:strokeWidth="3" android:strokeLineJoin="round" android:strokeLineCap="round" android:pathData="M108.0,40.0 H124.0 M108.0,47.0 H124.0 M109.0,40.0 C122.0,40.0 122.0,54.0 109.0,54.0 L122.0,66.0"/>
+</vector>

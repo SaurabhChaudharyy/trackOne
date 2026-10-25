@@ -1,0 +1,114 @@
+name: Build & Release Signed APK
+
+# Triggers only when you push a tag starting with 'v': vMAJOR.MINOR.PATCH (v1.0.0) for a release,
+# or with a suffix (v1.1.0-beta.1, v1.1.0-rc.1) for a pre-release.
+on:
+  push:
+    tags:
+      - 'v*'
+
+# Grant the GITHUB_TOKEN permission to create releases
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build Signed APK
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Download your repo code onto the cloud machine
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 2. Install Java 17 (required by the project)
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      # 3. Cache Gradle so subsequent builds are faster
+      - name: Cache Gradle packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      # 4. Decode the base64 keystore secret back into a real .jks file
+      - name: Decode keystore
+        run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > app/keystore.jks
+
+      # 4.5 Decode the base64 google-services.json secret back into a real file
+      - name: Decode google-services.json
+        env:
+          GOOGLE_SERVICES_JSON_B64: ${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}
+        run: |
+          if [ -z "$GOOGLE_SERVICES_JSON_B64" ]; then
+            echo "Error: GOOGLE_SERVICES_JSON_BASE64 secret is empty or not found!"
+            exit 1
+          fi
+          
+          # Check if the secret is raw JSON (starts with '{')
+          if echo "$GOOGLE_SERVICES_JSON_B64" | grep -q '^{'; then
+            echo "Secret appears to be raw JSON, writing directly..."
+            echo "$GOOGLE_SERVICES_JSON_B64" > app/google-services.json
+          else
+            echo "Secret appears to be Base64, decoding..."
+            echo "$GOOGLE_SERVICES_JSON_B64" | base64 -d > app/google-services.json
+          fi
+          
+          if [ ! -s app/google-services.json ]; then
+            echo "Error: app/google-services.json is empty after decoding!"
+            exit 1
+          fi
+
+      # 5. Ensure gradlew script is executable on Linux
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
+
+      # 6. Build the signed release APK — signing credentials injected via env vars
+      - name: Build signed release APK
+        run: ./gradlew assembleRelease
+        env:
+          SIGNING_STORE_FILE: keystore.jks
+          SIGNING_STORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          SIGNING_KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          SIGNING_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+
+      # 7. Rename the APK to include the version tag (e.g. trackOne-v1.0.apk)
+      - name: Rename APK
+        run: mv app/build/outputs/apk/release/app-release.apk app/build/outputs/apk/release/trackOne-${{ github.ref_name }}.apk
+
+      # 8. Create a GitHub Release and attach the signed APK
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "trackOne ${{ github.ref_name }}"
+          body: |
+            🎉 **Initial Release of trackOne**
+
+            A minimal finance app and home-screen widget to track your watchlist, net worth, stocks, crypto, and more — all stored locally on your device.
+
+            ### ✨ Features
+            - **Watchlist** — Live stock & crypto prices via Yahoo Finance
+            - **Net Worth** — Track Indian Stocks, US Stocks, Mutual Funds, Gold, Silver, Crypto, Cash & Bank Balance
+            - **Home Screen Widget** — Scrollable stock widget, updates in the background
+            - **Broker CSV Import** — Import holdings directly from HDFC Securities, Angel One, Zerodha, Groww, Vested, or Interactive Brokers
+            - **Optional Cloud Backup** — Sign in with Google or email/password to back up and restore via Firestore
+            - **Portfolio P&L** — Track your gain/loss per asset and overall
+
+            ### 📲 Installation
+            1. Download `trackOne-${{ github.ref_name }}.apk` below
+            2. On your Android device go to **Settings → Install unknown apps** and allow installs from your browser or file manager
+            3. Open the downloaded APK file and tap **Install**
+
+            > ⚠️ Requires Android 8.0 (Oreo / API 26) or higher
+          files: app/build/outputs/apk/release/trackOne-${{ github.ref_name }}.apk
+          # A tag with a suffix (v1.1.0-beta.1) is a pre-release and never becomes "latest".
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          make_latest: ${{ !contains(github.ref_name, '-') }}

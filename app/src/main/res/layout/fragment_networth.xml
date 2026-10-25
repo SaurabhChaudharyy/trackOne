@@ -1,0 +1,1104 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/page">
+
+    <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+        android:id="@+id/swipe_refresh_layout"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+    <androidx.core.widget.NestedScrollView
+        android:id="@+id/nested_scroll_view"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingBottom="16dp">
+
+        <!-- ── HEADER SHEET ─────────────────────────────────────────────── -->
+        <!-- Net worth + allocation share the toolbar's colour and end in a round bottom edge. -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@drawable/bg_sheet_bottom">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingHorizontal="16dp"
+            android:paddingTop="12dp"
+            android:paddingBottom="8dp">
+
+            <TextView
+                android:id="@+id/tv_total_networth_label"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Total Net Worth"
+                android:textColor="@color/text_secondary"
+                android:textSize="14sp"
+                android:letterSpacing="0.04"/>
+
+            <TextView
+                android:id="@+id/tv_total_networth"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:text="₹0"
+                android:textColor="@color/text_primary"
+                android:textSize="36sp"
+                android:fontFamily="@font/inter"
+                android:fontFeatureSettings="tnum"
+                android:letterSpacing="0.01"
+                tools:text="₹12,50,000"/>
+
+            <!-- P&L chip + spacer + Invested (right) -->
+            <LinearLayout
+                android:id="@+id/row_pnl_invested"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginTop="12dp">
+
+                <TextView
+                    android:id="@+id/tv_total_pnl"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textSize="15sp"
+                    android:fontFamily="@font/inter_bold"
+                    android:fontFeatureSettings="tnum"
+                    android:visibility="gone"
+                    tools:text="↗ +₹8,432 (0.68%)"
+                    tools:visibility="visible"
+                    tools:textColor="@color/gain"/>
+
+                <View
+                    android:layout_width="0dp"
+                    android:layout_height="1dp"
+                    android:layout_weight="1"/>
+
+                <LinearLayout
+                    android:id="@+id/ll_invested_row"
+                    android:tag="invested"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:visibility="gone"
+                    tools:visibility="visible">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Invested "
+                        android:textColor="@color/text_tertiary"
+                        android:textSize="11sp"
+                        android:fontFamily="@font/geist_mono"/>
+
+                    <TextView
+                        android:id="@+id/tv_total_invested"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="11sp"
+                        android:fontFamily="@font/geist_mono"
+                        tools:text="₹10,00,000"/>
+                </LinearLayout>
+            </LinearLayout>
+
+        </LinearLayout>
+
+        <!-- Net Worth Breakdown Module -->
+        <LinearLayout
+            android:id="@+id/ll_breakdown_container"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginTop="12dp"
+            android:layout_marginBottom="20dp"
+            android:visibility="gone"
+            tools:visibility="visible">
+
+            <!-- Title row -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="16dp"
+                android:text="Asset Allocation"
+                android:textColor="@color/text_secondary"
+                android:textSize="14sp"
+                android:fontFamily="@font/inter"/>
+
+            <!-- Horizontal filter chips -->
+            <HorizontalScrollView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:scrollbars="none"
+                android:fadeScrollbars="true">
+
+                <LinearLayout
+                    android:id="@+id/ll_allocation_tabs"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:paddingHorizontal="16dp"
+                    android:paddingVertical="2dp"
+                    android:gravity="center_vertical"/>
+            </HorizontalScrollView>
+
+            <!-- Slim segmented bar -->
+            <androidx.cardview.widget.CardView
+                android:layout_width="match_parent"
+                android:layout_height="8dp"
+                android:layout_marginHorizontal="16dp"
+                android:layout_marginTop="16dp"
+                app:cardCornerRadius="4dp"
+                app:cardElevation="0dp"
+                app:cardBackgroundColor="@android:color/transparent">
+
+                <LinearLayout
+                    android:id="@+id/ll_segmented_bar"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:orientation="horizontal"/>
+            </androidx.cardview.widget.CardView>
+
+            <LinearLayout
+                android:id="@+id/ll_breakdown_list"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_marginHorizontal="16dp"
+                android:layout_marginTop="8dp"/>
+        </LinearLayout>
+        </LinearLayout>
+
+        <!-- ── EMPTY PORTFOLIO ──────────────────────────────────────────── -->
+        <!-- Only while nothing at all is tracked; empty sections otherwise stay compact. -->
+        <LinearLayout
+            android:id="@+id/card_assets_empty"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="16dp"
+            android:layout_marginTop="12dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:padding="16dp"
+            android:background="@drawable/bg_card"
+            android:visibility="gone"
+            tools:visibility="visible">
+
+            <ImageView
+                android:layout_width="88dp"
+                android:layout_height="88dp"
+                android:src="@drawable/ill_empty_section"
+                android:importantForAccessibility="no"/>
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="14dp"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Nothing tracked yet"
+                    android:textColor="@color/text_primary"
+                    android:textSize="15sp"
+                    android:fontFamily="@font/inter_bold"/>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="Add your first holding to see your net worth here."
+                    android:textColor="@color/text_secondary"
+                    android:textSize="13sp"
+                    android:fontFamily="@font/inter"/>
+
+                <TextView
+                    android:id="@+id/btn_add_first_holding"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:minHeight="44dp"
+                    android:gravity="center"
+                    android:paddingHorizontal="16dp"
+                    android:background="@drawable/bg_marker_pill"
+                    android:text="Add a holding"
+                    android:textColor="@color/on_marker"
+                    android:textSize="13sp"
+                    android:fontFamily="@font/inter_semi_bold"
+                    android:clickable="true"
+                    android:focusable="true"/>
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- Orders every section's holdings; a tap steps Value → P&L % → Today. -->
+        <TextView
+            android:id="@+id/tv_sort"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="end"
+            android:layout_marginTop="4dp"
+            android:layout_marginEnd="16dp"
+            android:minHeight="44dp"
+            android:gravity="center_vertical"
+            android:paddingHorizontal="8dp"
+            android:textColor="@color/text_secondary"
+            android:textSize="12sp"
+            android:fontFamily="@font/geist_mono"
+            android:clickable="true"
+            android:focusable="true"
+            android:background="?attr/selectableItemBackground"
+            android:visibility="gone"
+            tools:text="Sort · Value"
+            tools:visibility="visible"/>
+
+        <LinearLayout
+            android:id="@+id/section_stock_in"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="16dp"
+            android:layout_marginTop="12dp"
+            android:background="@drawable/bg_card"
+            android:clipToOutline="true"
+            android:orientation="vertical">
+
+            <LinearLayout
+                android:id="@+id/header_stock_in"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:orientation="horizontal"
+                android:paddingHorizontal="16dp"
+                android:gravity="center_vertical"
+                android:background="?attr/selectableItemBackground">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <TextView
+                        android:id="@+id/tv_label_stock_in"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Indian Stocks"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="13sp"
+                        android:fontFamily="@font/inter_semi_bold"/>
+
+                    <TextView
+                        android:id="@+id/tv_count_stock_in"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="8dp"
+                        android:paddingHorizontal="6dp"
+                        android:paddingVertical="2dp"
+                        android:background="@drawable/bg_count_pill"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="10sp"
+                        android:fontFamily="@font/inter_semi_bold"
+                        android:visibility="gone"
+                        tools:text="3"
+                        tools:visibility="visible"/>
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/tv_view_all_stock_in"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="View all"
+                    android:textColor="@color/text_tertiary"
+                    android:textSize="11sp"
+                    android:fontFamily="@font/inter"
+                    android:paddingHorizontal="8dp"
+                    android:paddingVertical="3dp"
+                    android:background="@drawable/bg_view_all"
+                    android:layout_marginEnd="6dp"
+                    android:visibility="gone"
+                    tools:visibility="visible"/>
+
+                <TextView
+                    android:id="@+id/tv_total_stock_in"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="₹0"
+                    android:textColor="@color/text_primary"
+                    android:textSize="12sp"
+                    android:fontFamily="@font/geist_mono_bold"
+                    android:layout_marginEnd="8dp"
+                    tools:text="₹5,00,000"/>
+
+                <ImageButton
+                    android:id="@+id/btn_add_stock_in"
+                    style="@style/Widget.App.AddButton"
+                    android:contentDescription="Add Indian stock"/>
+            </LinearLayout>
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/rv_stock_in"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:nestedScrollingEnabled="false"
+                android:visibility="visible"
+                tools:listitem="@layout/item_networth_asset"/>
+
+            <include
+                android:id="@+id/empty_stock_in"
+                layout="@layout/include_empty_section"/>
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/section_stock_us"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="16dp"
+            android:layout_marginTop="12dp"
+            android:background="@drawable/bg_card"
+            android:clipToOutline="true"
+            android:orientation="vertical">
+
+            <LinearLayout
+                android:id="@+id/header_stock_us"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:orientation="horizontal"
+                android:paddingHorizontal="16dp"
+                android:gravity="center_vertical"
+                android:background="?attr/selectableItemBackground">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <TextView
+                        android:id="@+id/tv_label_stock_us"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="US Stocks"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="13sp"
+                        android:fontFamily="@font/inter_semi_bold"/>
+
+                    <TextView
+                        android:id="@+id/tv_count_stock_us"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="8dp"
+                        android:paddingHorizontal="6dp"
+                        android:paddingVertical="2dp"
+                        android:background="@drawable/bg_count_pill"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="10sp"
+                        android:fontFamily="@font/inter_semi_bold"
+                        android:visibility="gone"
+                        tools:text="3"
+                        tools:visibility="visible"/>
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/tv_view_all_stock_us"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="View all"
+                    android:textColor="@color/text_tertiary"
+                    android:textSize="11sp"
+                    android:fontFamily="@font/inter"
+                    android:paddingHorizontal="8dp"
+                    android:paddingVertical="3dp"
+                    android:background="@drawable/bg_view_all"
+                    android:layout_marginEnd="6dp"
+                    android:visibility="gone"
+                    tools:visibility="visible"/>
+
+                <TextView
+                    android:id="@+id/tv_total_stock_us"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="₹0"
+                    android:textColor="@color/text_primary"
+                    android:textSize="12sp"
+                    android:fontFamily="@font/geist_mono_bold"
+                    android:layout_marginEnd="8dp"/>
+
+                <ImageButton
+                    android:id="@+id/btn_add_stock_us"
+                    style="@style/Widget.App.AddButton"
+                    android:contentDescription="Add US stock"/>
+            </LinearLayout>
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/rv_stock_us"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:nestedScrollingEnabled="false"
+                android:visibility="visible"
+                tools:listitem="@layout/item_networth_asset"/>
+
+            <include
+                android:id="@+id/empty_stock_us"
+                layout="@layout/include_empty_section"/>
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/section_mf"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="16dp"
+            android:layout_marginTop="12dp"
+            android:background="@drawable/bg_card"
+            android:clipToOutline="true"
+            android:orientation="vertical">
+
+            <LinearLayout
+                android:id="@+id/header_mf"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:orientation="horizontal"
+                android:paddingHorizontal="16dp"
+                android:gravity="center_vertical"
+                android:background="?attr/selectableItemBackground">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <TextView
+                        android:id="@+id/tv_label_mf"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Mutual Funds"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="13sp"
+                        android:fontFamily="@font/inter_semi_bold"/>
+
+                    <TextView
+                        android:id="@+id/tv_count_mf"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="8dp"
+                        android:paddingHorizontal="6dp"
+                        android:paddingVertical="2dp"
+                        android:background="@drawable/bg_count_pill"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="10sp"
+                        android:fontFamily="@font/inter_semi_bold"
+                        android:visibility="gone"
+                        tools:text="3"
+                        tools:visibility="visible"/>
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/tv_view_all_mf"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="View all"
+                    android:textColor="@color/text_tertiary"
+                    android:textSize="11sp"
+                    android:fontFamily="@font/inter"
+                    android:paddingHorizontal="8dp"
+                    android:paddingVertical="3dp"
+                    android:background="@drawable/bg_view_all"
+                    android:layout_marginEnd="6dp"
+                    android:visibility="gone"
+                    tools:visibility="visible"/>
+
+                <TextView
+                    android:id="@+id/tv_total_mf"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="₹0"
+                    android:textColor="@color/text_primary"
+                    android:textSize="12sp"
+                    android:fontFamily="@font/geist_mono_bold"
+                    android:layout_marginEnd="8dp"/>
+
+                <ImageButton
+                    android:id="@+id/btn_add_mf"
+                    style="@style/Widget.App.AddButton"
+                    android:contentDescription="Add mutual fund"/>
+            </LinearLayout>
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/rv_mf"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:nestedScrollingEnabled="false"
+                android:visibility="visible"
+                tools:listitem="@layout/item_networth_asset"/>
+
+            <include
+                android:id="@+id/empty_mf"
+                layout="@layout/include_empty_section"/>
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/section_gold"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="16dp"
+            android:layout_marginTop="12dp"
+            android:background="@drawable/bg_card"
+            android:clipToOutline="true"
+            android:orientation="vertical">
+
+            <LinearLayout
+                android:id="@+id/header_gold"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:orientation="horizontal"
+                android:paddingHorizontal="16dp"
+                android:gravity="center_vertical"
+                android:background="?attr/selectableItemBackground">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <TextView
+                        android:id="@+id/tv_label_gold"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Gold"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="13sp"
+                        android:fontFamily="@font/inter_semi_bold"/>
+
+                    <TextView
+                        android:id="@+id/tv_count_gold"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="8dp"
+                        android:paddingHorizontal="6dp"
+                        android:paddingVertical="2dp"
+                        android:background="@drawable/bg_count_pill"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="10sp"
+                        android:fontFamily="@font/inter_semi_bold"
+                        android:visibility="gone"
+                        tools:text="3"
+                        tools:visibility="visible"/>
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/tv_view_all_gold"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="View all"
+                    android:textColor="@color/text_tertiary"
+                    android:textSize="11sp"
+                    android:fontFamily="@font/inter"
+                    android:paddingHorizontal="8dp"
+                    android:paddingVertical="3dp"
+                    android:background="@drawable/bg_view_all"
+                    android:layout_marginEnd="6dp"
+                    android:visibility="gone"
+                    tools:visibility="visible"/>
+
+                <TextView
+                    android:id="@+id/tv_total_gold"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="₹0"
+                    android:textColor="@color/text_primary"
+                    android:textSize="12sp"
+                    android:fontFamily="@font/geist_mono_bold"
+                    android:layout_marginEnd="8dp"/>
+
+                <ImageButton
+                    android:id="@+id/btn_add_gold"
+                    style="@style/Widget.App.AddButton"
+                    android:contentDescription="Add gold"/>
+            </LinearLayout>
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/rv_gold"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:nestedScrollingEnabled="false"
+                android:visibility="visible"
+                tools:listitem="@layout/item_networth_asset"/>
+
+            <include
+                android:id="@+id/empty_gold"
+                layout="@layout/include_empty_section"/>
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/section_silver"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="16dp"
+            android:layout_marginTop="12dp"
+            android:background="@drawable/bg_card"
+            android:clipToOutline="true"
+            android:orientation="vertical">
+
+            <LinearLayout
+                android:id="@+id/header_silver"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:orientation="horizontal"
+                android:paddingHorizontal="16dp"
+                android:gravity="center_vertical"
+                android:background="?attr/selectableItemBackground">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <TextView
+                        android:id="@+id/tv_label_silver"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Silver"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="13sp"
+                        android:fontFamily="@font/inter_semi_bold"/>
+
+                    <TextView
+                        android:id="@+id/tv_count_silver"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="8dp"
+                        android:paddingHorizontal="6dp"
+                        android:paddingVertical="2dp"
+                        android:background="@drawable/bg_count_pill"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="10sp"
+                        android:fontFamily="@font/inter_semi_bold"
+                        android:visibility="gone"
+                        tools:text="3"
+                        tools:visibility="visible"/>
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/tv_view_all_silver"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="View all"
+                    android:textColor="@color/text_tertiary"
+                    android:textSize="11sp"
+                    android:fontFamily="@font/inter"
+                    android:paddingHorizontal="8dp"
+                    android:paddingVertical="3dp"
+                    android:background="@drawable/bg_view_all"
+                    android:layout_marginEnd="6dp"
+                    android:visibility="gone"
+                    tools:visibility="visible"/>
+
+                <TextView
+                    android:id="@+id/tv_total_silver"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="₹0"
+                    android:textColor="@color/text_primary"
+                    android:textSize="12sp"
+                    android:fontFamily="@font/geist_mono_bold"
+                    android:layout_marginEnd="8dp"/>
+
+                <ImageButton
+                    android:id="@+id/btn_add_silver"
+                    style="@style/Widget.App.AddButton"
+                    android:contentDescription="Add silver"/>
+            </LinearLayout>
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/rv_silver"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:nestedScrollingEnabled="false"
+                android:visibility="visible"
+                tools:listitem="@layout/item_networth_asset"/>
+
+            <include
+                android:id="@+id/empty_silver"
+                layout="@layout/include_empty_section"/>
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/section_crypto"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="16dp"
+            android:layout_marginTop="12dp"
+            android:background="@drawable/bg_card"
+            android:clipToOutline="true"
+            android:orientation="vertical">
+
+            <LinearLayout
+                android:id="@+id/header_crypto"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:orientation="horizontal"
+                android:paddingHorizontal="16dp"
+                android:gravity="center_vertical"
+                android:background="?attr/selectableItemBackground">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <TextView
+                        android:id="@+id/tv_label_crypto"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Crypto"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="13sp"
+                        android:fontFamily="@font/inter_semi_bold"/>
+
+                    <TextView
+                        android:id="@+id/tv_count_crypto"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="8dp"
+                        android:paddingHorizontal="6dp"
+                        android:paddingVertical="2dp"
+                        android:background="@drawable/bg_count_pill"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="10sp"
+                        android:fontFamily="@font/inter_semi_bold"
+                        android:visibility="gone"
+                        tools:text="3"
+                        tools:visibility="visible"/>
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/tv_view_all_crypto"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="View all"
+                    android:textColor="@color/text_tertiary"
+                    android:textSize="11sp"
+                    android:fontFamily="@font/inter"
+                    android:paddingHorizontal="8dp"
+                    android:paddingVertical="3dp"
+                    android:background="@drawable/bg_view_all"
+                    android:layout_marginEnd="6dp"
+                    android:visibility="gone"
+                    tools:visibility="visible"/>
+
+                <TextView
+                    android:id="@+id/tv_total_crypto"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="₹0"
+                    android:textColor="@color/text_primary"
+                    android:textSize="12sp"
+                    android:fontFamily="@font/geist_mono_bold"
+                    android:layout_marginEnd="8dp"/>
+
+                <ImageButton
+                    android:id="@+id/btn_add_crypto"
+                    style="@style/Widget.App.AddButton"
+                    android:contentDescription="Add crypto"/>
+            </LinearLayout>
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/rv_crypto"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:nestedScrollingEnabled="false"
+                android:visibility="visible"
+                tools:listitem="@layout/item_networth_asset"/>
+
+            <include
+                android:id="@+id/empty_crypto"
+                layout="@layout/include_empty_section"/>
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/section_cash"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="16dp"
+            android:layout_marginTop="12dp"
+            android:background="@drawable/bg_card"
+            android:clipToOutline="true"
+            android:orientation="vertical">
+
+            <LinearLayout
+                android:id="@+id/header_cash"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:orientation="horizontal"
+                android:paddingHorizontal="16dp"
+                android:gravity="center_vertical"
+                android:background="?attr/selectableItemBackground">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <TextView
+                        android:id="@+id/tv_label_cash"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Cash on Hand"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="13sp"
+                        android:fontFamily="@font/inter_semi_bold"/>
+
+                    <TextView
+                        android:id="@+id/tv_count_cash"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="8dp"
+                        android:paddingHorizontal="6dp"
+                        android:paddingVertical="2dp"
+                        android:background="@drawable/bg_count_pill"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="10sp"
+                        android:fontFamily="@font/inter_semi_bold"
+                        android:visibility="gone"
+                        tools:text="3"
+                        tools:visibility="visible"/>
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/tv_view_all_cash"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="View all"
+                    android:textColor="@color/text_tertiary"
+                    android:textSize="11sp"
+                    android:fontFamily="@font/inter"
+                    android:paddingHorizontal="8dp"
+                    android:paddingVertical="3dp"
+                    android:background="@drawable/bg_view_all"
+                    android:layout_marginEnd="6dp"
+                    android:visibility="gone"
+                    tools:visibility="visible"/>
+
+                <TextView
+                    android:id="@+id/tv_total_cash"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="₹0"
+                    android:textColor="@color/text_primary"
+                    android:textSize="12sp"
+                    android:fontFamily="@font/geist_mono_bold"
+                    android:layout_marginEnd="8dp"/>
+
+                <ImageButton
+                    android:id="@+id/btn_add_cash"
+                    style="@style/Widget.App.AddButton"
+                    android:contentDescription="Add cash"/>
+            </LinearLayout>
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/rv_cash"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:nestedScrollingEnabled="false"
+                android:visibility="visible"
+                tools:listitem="@layout/item_networth_asset"/>
+
+            <include
+                android:id="@+id/empty_cash"
+                layout="@layout/include_empty_section"/>
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/section_bank"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="16dp"
+            android:layout_marginTop="12dp"
+            android:background="@drawable/bg_card"
+            android:clipToOutline="true"
+            android:orientation="vertical">
+
+            <LinearLayout
+                android:id="@+id/header_bank"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:orientation="horizontal"
+                android:paddingHorizontal="16dp"
+                android:gravity="center_vertical"
+                android:background="?attr/selectableItemBackground">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <TextView
+                        android:id="@+id/tv_label_bank"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Bank Balance"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="13sp"
+                        android:fontFamily="@font/inter_semi_bold"/>
+
+                    <TextView
+                        android:id="@+id/tv_count_bank"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="8dp"
+                        android:paddingHorizontal="6dp"
+                        android:paddingVertical="2dp"
+                        android:background="@drawable/bg_count_pill"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="10sp"
+                        android:fontFamily="@font/inter_semi_bold"
+                        android:visibility="gone"
+                        tools:text="3"
+                        tools:visibility="visible"/>
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/tv_view_all_bank"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="View all"
+                    android:textColor="@color/text_tertiary"
+                    android:textSize="11sp"
+                    android:fontFamily="@font/inter"
+                    android:paddingHorizontal="8dp"
+                    android:paddingVertical="3dp"
+                    android:background="@drawable/bg_view_all"
+                    android:layout_marginEnd="6dp"
+                    android:visibility="gone"
+                    tools:visibility="visible"/>
+
+                <TextView
+                    android:id="@+id/tv_total_bank"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="₹0"
+                    android:textColor="@color/text_primary"
+                    android:textSize="12sp"
+                    android:fontFamily="@font/geist_mono_bold"
+                    android:layout_marginEnd="8dp"/>
+
+                <ImageButton
+                    android:id="@+id/btn_add_bank"
+                    style="@style/Widget.App.AddButton"
+                    android:contentDescription="Add bank balance"/>
+            </LinearLayout>
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/rv_bank"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:nestedScrollingEnabled="false"
+                android:visibility="visible"
+                tools:listitem="@layout/item_networth_asset"/>
+
+            <include
+                android:id="@+id/empty_bank"
+                layout="@layout/include_empty_section"/>
+        </LinearLayout>
+
+    </LinearLayout>
+
+    </androidx.core.widget.NestedScrollView>
+
+    </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
+
+    <!-- Bulk-selection action bar: slides in from bottom when long-pressing any asset row -->
+    <LinearLayout
+        android:id="@+id/ll_selection_bar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingHorizontal="16dp"
+        android:paddingTop="12dp"
+        android:paddingBottom="12dp"
+        android:background="@color/background"
+        android:elevation="12dp"
+        android:visibility="gone"
+        tools:visibility="visible">
+
+        <!-- Cancel / exit selection mode -->
+        <TextView
+            android:id="@+id/tv_selection_cancel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Cancel"
+            android:textColor="@color/text_secondary"
+            android:textSize="13sp"
+            android:fontFamily="@font/inter"
+            android:paddingEnd="12dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:padding="8dp"/>
+
+        <!-- Selected count label -->
+        <TextView
+            android:id="@+id/tv_selection_count"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:textColor="@color/text_primary"
+            android:textSize="13sp"
+            android:fontFamily="@font/inter_semi_bold"
+            tools:text="3 selected"/>
+
+        <!-- Select All / Deselect All toggle -->
+        <TextView
+            android:id="@+id/tv_select_all"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Select All"
+            android:textColor="@color/text_secondary"
+            android:textSize="13sp"
+            android:fontFamily="@font/inter"
+            android:paddingEnd="16dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:padding="8dp"/>
+
+        <!-- Delete selected -->
+        <ImageButton
+            android:id="@+id/btn_delete_selected"
+            android:layout_width="28dp"
+            android:layout_height="28dp"
+            android:src="@drawable/ic_delete"
+            app:tint="@color/danger"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Delete selected"/>
+
+    </LinearLayout>
+
+</FrameLayout>

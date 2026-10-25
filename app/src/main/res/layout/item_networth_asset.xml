@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:paddingStart="28dp"
+    android:paddingEnd="12dp"
+    android:paddingTop="10dp"
+    android:paddingBottom="10dp"
+    android:gravity="center_vertical"
+    android:minHeight="52dp"
+    android:background="?attr/selectableItemBackground">
+
+    <View
+        android:layout_width="2dp"
+        android:layout_height="28dp"
+        android:layout_marginEnd="12dp"
+        android:background="@color/divider_color"/>
+
+    <!-- Left: who it is and what you hold. Right: what it's worth and how it's done. -->
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:id="@+id/tv_asset_name"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="@color/text_primary"
+                android:textSize="15sp"
+                android:fontFamily="@font/inter_bold"
+                android:maxLines="1"
+                android:ellipsize="end"
+                tools:text="NIFTYBEES"/>
+
+            <!-- Today's move: an arrow and a percent, coloured by direction. -->
+            <TextView
+                android:id="@+id/tv_asset_today"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:textSize="11sp"
+                android:fontFamily="@font/inter_semi_bold"
+                android:fontFeatureSettings="tnum"
+                android:visibility="gone"
+                tools:text="▾1.02%"/>
+        </LinearLayout>
+
+        <!-- qty · avg · ltp, plain numbers: the currency is already on the value. -->
+        <TextView
+            android:id="@+id/tv_asset_notes"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="1dp"
+            android:textColor="@color/text_tertiary"
+            android:textSize="12sp"
+            android:fontFamily="@font/inter"
+            android:fontFeatureSettings="tnum"
+            android:maxLines="2"
+            android:ellipsize="end"
+            android:visibility="gone"
+            tools:text="601 · avg 273.67 · ltp 261.20"/>
+
+        <TextView
+            android:id="@+id/tv_asset_label"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:textColor="@color/text_secondary"
+            android:textSize="11sp"
+            android:fontFamily="@font/inter"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:visibility="gone"
+            tools:text="Physical"/>
+
+        <TextView
+            android:id="@+id/tv_asset_warning"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:minHeight="36dp"
+            android:gravity="center_vertical"
+            android:textColor="@color/on_marker"
+            android:textSize="12sp"
+            android:lineSpacingExtra="3dp"
+            android:fontFamily="@font/inter_semi_bold"
+            android:foreground="?attr/selectableItemBackground"
+            android:visibility="gone"
+            tools:text="⚠ Price isn't updating · edit it to set the ticker"/>
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:gravity="end"
+        android:layout_marginStart="8dp"
+        android:layout_marginEnd="8dp">
+
+        <TextView
+            android:id="@+id/tv_asset_value"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@color/text_primary"
+            android:textSize="15sp"
+            android:fontFamily="@font/geist_mono_bold"
+            tools:text="₹1,56,981"/>
+
+        <TextView
+            android:id="@+id/tv_asset_pl"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="1dp"
+            android:textSize="12sp"
+            android:fontFamily="@font/inter_bold"
+            android:fontFeatureSettings="tnum"
+            android:visibility="gone"
+            tools:text="↘ -₹7,495 (-4.56%)"/>
+    </LinearLayout>
+
+
+    <!-- Shown only in bulk-selection mode; replaces the edit + delete buttons -->
+    <com.google.android.material.checkbox.MaterialCheckBox
+        android:id="@+id/checkbox_select"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="4dp"
+        android:visibility="gone"
+        android:clickable="false"
+        android:focusable="false"
+        app:useMaterialThemeColors="true"/>
+
+</LinearLayout>

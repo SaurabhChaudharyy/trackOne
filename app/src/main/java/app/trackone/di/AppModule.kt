@@ -1,0 +1,135 @@
+package app.trackone.di
+
+import android.content.Context
+import androidx.room.Room
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
+import app.trackone.data.api.YahooFinanceApiService
+import app.trackone.data.database.*
+import dagger.Module
+import dagger.Provides
+import dagger.hilt.InstallIn
+import dagger.hilt.android.qualifiers.ApplicationContext
+import dagger.hilt.components.SingletonComponent
+import okhttp3.OkHttpClient
+import android.os.SystemClock
+import app.trackone.data.api.BackoffInterceptor
+import app.trackone.data.api.RateLimitBackoff
+import okhttp3.logging.HttpLoggingInterceptor
+import retrofit2.Retrofit
+import retrofit2.converter.gson.GsonConverterFactory
+import java.util.concurrent.TimeUnit
+import javax.inject.Singleton
+
+@Module
+@InstallIn(SingletonComponent::class)
+object AppModule {
+
+    // One for the process, shared by the HTTP client (which records Yahoo's 429s) and the
+    // repositories (which tell the user why prices were not refreshed). elapsedRealtime keeps
+    // counting while the phone sleeps.
+    @Provides
+    @Singleton
+    fun provideRateLimitBackoff(): RateLimitBackoff = RateLimitBackoff(SystemClock::elapsedRealtime)
+
+    @Provides
+    @Singleton
+    fun provideOkHttpClient(backoff: RateLimitBackoff): OkHttpClient {
+        val loggingInterceptor = HttpLoggingInterceptor().apply {
+            level = if (app.trackone.BuildConfig.DEBUG) {
+                HttpLoggingInterceptor.Level.BODY
+            } else {
+                HttpLoggingInterceptor.Level.NONE
+            }
+        }
+
+        return OkHttpClient.Builder()
+            .addInterceptor(BackoffInterceptor(backoff))
+            .addInterceptor(loggingInterceptor)
+            .addInterceptor { chain ->
+                val original = chain.request()
+                val request = original.newBuilder()
+                    .header("User-Agent", "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36")
+                    .header("Accept", "application/json")
+                    .header("Accept-Language", "en-US,en;q=0.9")
+                    .header("Origin", "https://finance.yahoo.com")
+                    .header("Referer", "https://finance.yahoo.com/")
+                    .build()
+                chain.proceed(request)
+            }
+            // A quote is a few KB. Thirty seconds of silence per request let Yahoo's hanging (rather than
+            // 429) throttling hold every screen's spinner for minutes and never trip the backoff.
+            .connectTimeout(10, TimeUnit.SECONDS)
+            .readTimeout(15, TimeUnit.SECONDS)
+            .writeTimeout(10, TimeUnit.SECONDS)
+            .callTimeout(20, TimeUnit.SECONDS)
+            .retryOnConnectionFailure(true)
+            .build()
+    }
+
+    @Provides
+    @Singleton
+    fun provideRetrofit(okHttpClient: OkHttpClient): Retrofit {
+        return Retrofit.Builder()
+            .baseUrl("https://query1.finance.yahoo.com/")
+            .client(okHttpClient)
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+    }
+
+    @Provides
+    @Singleton
+    fun provideYahooFinanceApiService(retrofit: Retrofit): YahooFinanceApiService {
+        return retrofit.create(YahooFinanceApiService::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideDatabase(@ApplicationContext context: Context): FinanceDatabase {
+        return Room.databaseBuilder(
+            context,
+            FinanceDatabase::class.java,
+            "finance_widget_db"
+        )
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
+            .fallbackToDestructiveMigration()
+            .build()
+    }
+
+    @Provides
+    @Singleton
+    fun provideStockDao(database: FinanceDatabase): StockDao = database.stockDao()
+
+    @Provides
+    @Singleton
+    fun provideWatchlistGroupDao(database: FinanceDatabase): WatchlistGroupDao = database.watchlistGroupDao()
+
+    @Provides
+    @Singleton
+    fun provideWatchlistDao(database: FinanceDatabase): WatchlistDao = database.watchlistDao()
+
+    @Provides
+    @Singleton
+    fun providePriceHistoryDao(database: FinanceDatabase): PriceHistoryDao = database.priceHistoryDao()
+
+    @Provides
+    @Singleton
+    fun provideNetWorthDao(database: FinanceDatabase): NetWorthDao = database.netWorthDao()
+
+    @Provides
+    @Singleton
+    fun provideNetWorthTransactionDao(database: FinanceDatabase): NetWorthTransactionDao =
+        database.netWorthTransactionDao()
+
+    @Provides
+    @Singleton
+    fun provideExpenseDao(database: FinanceDatabase): ExpenseDao = database.expenseDao()
+
+    @Provides
+    @Singleton
+    fun provideFirebaseFirestore(): FirebaseFirestore = FirebaseFirestore.getInstance()
+
+    @Provides
+    @Singleton
+    fun provideFirebaseAuth(): FirebaseAuth = FirebaseAuth.getInstance()
+}

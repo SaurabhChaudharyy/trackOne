@@ -1,0 +1,168 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/page">
+
+    <!-- ── Watchlist tab strip ──────────────────────────────────────────────── -->
+    <LinearLayout
+        android:id="@+id/ll_tab_strip_container"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:background="@drawable/bg_sheet_bottom"
+        android:paddingTop="8dp"
+        android:paddingBottom="10dp">
+
+        <HorizontalScrollView
+            android:id="@+id/hsv_tabs"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:scrollbars="none"
+            android:fillViewport="false"
+            android:paddingStart="12dp">
+
+            <LinearLayout
+                android:id="@+id/ll_tabs"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"/>
+
+        </HorizontalScrollView>
+
+        <!-- Add new watchlist button -->
+        <ImageButton
+            android:id="@+id/btn_add_watchlist"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_marginEnd="8dp"
+            android:layout_marginStart="4dp"
+            android:layout_gravity="center_vertical"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Add watchlist"
+            android:src="@drawable/ic_add_watchlist"
+            android:tint="@color/text_secondary"/>
+
+    </LinearLayout>
+
+    <!-- ── Body: SwipeRefresh + list ───────────────────────────────────────── -->
+    <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+        android:id="@+id/swipe_refresh_layout"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/recycler_view_watchlist"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="16dp"
+                android:layout_marginTop="12dp"
+                android:layout_marginBottom="12dp"
+                android:background="@drawable/bg_card"
+                android:clipToOutline="true"
+                android:clipToPadding="false"
+                tools:listitem="@layout/item_stock"/>
+
+            <LinearLayout
+                android:id="@+id/empty_state_layout"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:layout_marginHorizontal="16dp"
+                android:layout_marginTop="12dp"
+                android:layout_marginBottom="12dp"
+                android:paddingHorizontal="24dp"
+                android:background="@drawable/bg_card"
+                android:visibility="gone">
+
+                <ImageView
+                    android:layout_width="200dp"
+                    android:layout_height="200dp"
+                    android:src="@drawable/ill_empty_list"
+                    android:importantForAccessibility="no"/>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="Your watchlist is empty"
+                    android:textColor="@color/text_primary"
+                    android:textSize="22sp"
+                    android:fontFamily="@font/inter_bold"/>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:gravity="center"
+                    android:text="Add stocks you follow but don’t own yet. Their prices refresh with the rest of your portfolio."
+                    android:textColor="@color/text_secondary"
+                    android:textSize="14sp"
+                    android:fontFamily="@font/inter"/>
+
+                <TextView
+                    android:id="@+id/btn_add_stock"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="24dp"
+                    android:minHeight="52dp"
+                    android:gravity="center"
+                    android:background="@drawable/bg_marker_pill"
+                    android:text="Add a stock"
+                    android:textColor="@color/on_marker"
+                    android:textSize="16sp"
+                    android:fontFamily="@font/inter_semi_bold"
+                    android:clickable="true"
+                    android:focusable="true"/>
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/error_view"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_gravity="top"
+                android:orientation="horizontal"
+                android:background="@color/error_background"
+                android:paddingHorizontal="16dp"
+                android:paddingVertical="10dp"
+                android:gravity="center_vertical"
+                android:visibility="gone">
+
+                <TextView
+                    android:id="@+id/error_text"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Failed to refresh"
+                    android:textColor="@color/danger"
+                    android:textSize="12sp"/>
+            </LinearLayout>
+
+            <!-- Floating Action Button for adding stocks -->
+            <com.google.android.material.floatingactionbutton.FloatingActionButton
+                android:id="@+id/fab_add_stock"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="bottom|end"
+                android:layout_margin="24dp"
+                android:src="@drawable/ic_add"
+                android:contentDescription="Add stock"
+                app:backgroundTint="@color/marker"
+                app:tint="@color/on_marker"
+                app:elevation="4dp"/>
+
+        </FrameLayout>
+    </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
+
+</LinearLayout>

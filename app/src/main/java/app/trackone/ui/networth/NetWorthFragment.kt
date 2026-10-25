@@ -1,0 +1,1412 @@
+package app.trackone.ui.networth
+
+import app.trackone.ui.util.announceAsButton
+import app.trackone.ui.util.LargeText
+import androidx.core.content.ContextCompat
+import app.trackone.ui.util.SelectionPillDrawable
+import app.trackone.ui.util.PillSelector
+import app.trackone.ui.util.MotionSpec
+import androidx.transition.TransitionManager
+import android.os.Bundle
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import android.view.inputmethod.EditorInfo
+import android.widget.ArrayAdapter
+import android.widget.AutoCompleteTextView
+import android.widget.Filter
+import android.widget.TextView
+import androidx.activity.OnBackPressedCallback
+import androidx.appcompat.app.AlertDialog
+import androidx.core.content.res.ResourcesCompat
+import androidx.core.view.isVisible
+import androidx.fragment.app.Fragment
+import androidx.fragment.app.viewModels
+import androidx.lifecycle.lifecycleScope
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
+import app.trackone.R
+import app.trackone.data.database.AssetType
+import app.trackone.data.database.NetWorthAssetEntity
+import app.trackone.databinding.DialogAddAssetBinding
+import app.trackone.databinding.FragmentNetworthBinding
+import app.trackone.ui.util.MoneyColor
+import app.trackone.data.repository.MatchBasis
+import app.trackone.data.repository.SymbolResolution
+import app.trackone.utils.HoldingIssue
+import app.trackone.utils.SymbolCheck
+import app.trackone.utils.AnimationUtils.animateNumberFromZero
+import app.trackone.utils.PortfolioGainLoss
+import app.trackone.utils.HoldingSort
+import app.trackone.utils.Resource
+import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.launch
+import java.text.NumberFormat
+import java.util.Locale
+
+@AndroidEntryPoint
+class NetWorthFragment : Fragment() {
+
+    private var _binding: FragmentNetworthBinding? = null
+    private val binding get() = _binding!!
+
+    private val viewModel: NetWorthViewModel by viewModels()
+    private val inrFormat = NumberFormat.getCurrencyInstance(Locale("en", "IN"))
+
+    private val adapters = mutableMapOf<AssetType, NetWorthAssetAdapter>()
+
+    /** Animated number ticker — only runs on the first emission. */
+    private var hasAnimatedTotal = false
+
+    /** Which section is currently in bulk-selection mode; null = normal mode. */
+    private var selectionModeType: AssetType? = null
+
+    // Tracks full data per section (before top-N trimming)
+    private val fullListCache = mutableMapOf<AssetType, List<NetWorthAssetEntity>>()
+
+    /** How every section orders its holdings; remembered across launches. */
+    private var holdingSort = HoldingSort.VALUE
+
+    // Tracks whether each section is expanded (showing all) or collapsed (top 3)
+    private val sectionShowAll = mutableMapOf(
+        AssetType.STOCK_IN to false,
+        AssetType.STOCK_US to false,
+        AssetType.MF       to false,
+        AssetType.GOLD     to false,
+        AssetType.SILVER   to false,
+        AssetType.CRYPTO   to false,
+        AssetType.CASH     to false,
+        AssetType.BANK     to false
+    )
+
+    private val sectionExpanded = mutableMapOf(
+        AssetType.STOCK_IN to false,
+        AssetType.STOCK_US to false,
+        AssetType.MF       to false,
+        AssetType.GOLD     to false,
+        AssetType.SILVER   to false,
+        AssetType.CRYPTO   to false,
+        AssetType.CASH     to false,
+        AssetType.BANK     to false
+    )
+
+    private val isFetchable = setOf(
+        AssetType.STOCK_IN, AssetType.STOCK_US, AssetType.CRYPTO, AssetType.GOLD, AssetType.SILVER
+    )
+
+    // Active allocation tab filter — null means "All"
+    private var activeFilter: AssetType? = null
+
+    // The chip TextView for "All" tab, kept for selected-state toggling
+    private val filterExpansion = FilterExpansion()
+    private var allChipView: TextView? = null
+    private val allChipKey = Any()   // the "All" chip's key in [allocationSelector]
+    private var allocationSelector: PillSelector<Any>? = null
+    // Map from AssetType → its chip TextView
+    private val typeChips = mutableMapOf<AssetType, TextView>()
+
+    private val indianStockSymbols = listOf(
+        "RELIANCE.NS", "TCS.NS", "HDFCBANK.NS", "INFY.NS", "ICICIBANK.NS",
+        "HINDUNILVR.NS", "ITC.NS", "SBIN.NS", "BAJFINANCE.NS", "LT.NS",
+        "KOTAKBANK.NS", "AXISBANK.NS", "BHARTIARTL.NS", "ASIANPAINT.NS",
+        "MARUTI.NS", "WIPRO.NS", "HCLTECH.NS", "TATAMOTORS.NS", "SUNPHARMA.NS",
+        "M&M.NS", "TITAN.NS", "ULTRACEMCO.NS", "NESTLEIND.NS", "POWERGRID.NS",
+        "TECHM.NS", "BAJAJFINSV.NS", "NTPC.NS", "ADANIPORTS.NS", "JSWSTEEL.NS",
+        "ONGC.NS", "COALINDIA.NS", "GRASIM.NS", "DIVISLAB.NS", "CIPLA.NS",
+        "HINDALCO.NS", "EICHERMOT.NS", "TATASTEEL.NS", "BPCL.NS", "BRITANNIA.NS",
+        "APOLLOHOSP.NS", "TRENT.NS", "ZOMATO.NS", "NAUKRI.NS", "PAYTM.NS",
+        "DMART.NS", "HAL.NS", "BEL.NS", "IRCTC.NS", "PIDILITIND.NS", "SIEMENS.NS",
+        "BAJAJ-AUTO.NS", "HEROMOTOCO.NS", "DRREDDY.NS", "LUPIN.NS", "TORNTPHARM.NS",
+        "VEDL.NS", "INDUSINDBK.NS", "BANDHANBNK.NS", "FEDERALBNK.NS", "PNB.NS"
+    )
+
+    private val usStockSymbols = listOf(
+        "AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", "META", "TSLA", "BRK-B",
+        "V", "JPM", "UNH", "XOM", "JNJ", "MA", "PG", "HD", "AVGO", "CVX",
+        "MRK", "ABBVIE", "COST", "PEP", "KO", "ADBE", "CRM", "NFLX", "AMD",
+        "ORCL", "ACN", "LIN", "MCD", "CSCO", "TMO", "ABT", "BAC", "INTC",
+        "WMT", "QCOM", "DIS", "NEE", "HON", "PFE", "GE", "PM"
+    )
+
+    companion object {
+        private const val TOP_N = 3 // items shown before "View all"
+        private const val PREF_SORT = "holding_sort"
+    }
+
+    override fun onCreateView(
+        inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
+    ): View {
+        _binding = FragmentNetworthBinding.inflate(inflater, container, false)
+        return binding.root
+    }
+
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+        setupRecyclerViews()
+        setupHeaders()
+        setupAddButtons()
+        setupEmptyCards()
+        LargeText.stackIfLarge(binding.rowPnlInvested, resources.configuration.fontScale)
+        setupViewAllButtons()
+        setupSortControl()
+        setupSelectionBar()
+        setupSwipeRefresh()
+        observeViewModel()
+
+        // Exit selection mode on back press instead of leaving the fragment
+        requireActivity().onBackPressedDispatcher.addCallback(
+            viewLifecycleOwner,
+            object : OnBackPressedCallback(true) {
+                override fun handleOnBackPressed() {
+                    if (selectionModeType != null) {
+                        exitSelectionMode()
+                    } else {
+                        isEnabled = false
+                        requireActivity().onBackPressedDispatcher.onBackPressed()
+                    }
+                }
+            }
+        )
+    }
+
+    /** Pull-to-refresh: re-fetches live prices for every asset (forced — bypasses the
+     *  passive-refresh throttle other screens' automatic refreshes are subject to). */
+    private fun setupSwipeRefresh() {
+        binding.swipeRefreshLayout.setOnRefreshListener { viewModel.refresh() }
+        // Constant black: the spinner's disc is always light, so ink would vanish in dark mode.
+        binding.swipeRefreshLayout.setColorSchemeResources(R.color.primary)
+        viewModel.isRefreshing.observe(viewLifecycleOwner) { isRefreshing ->
+            binding.swipeRefreshLayout.isRefreshing = isRefreshing
+        }
+    }
+
+    private fun setupRecyclerViews() {
+        val map = mapOf(
+            AssetType.STOCK_IN to binding.rvStockIn,
+            AssetType.STOCK_US to binding.rvStockUs,
+            AssetType.MF       to binding.rvMf,
+            AssetType.GOLD     to binding.rvGold,
+            AssetType.SILVER   to binding.rvSilver,
+            AssetType.CRYPTO   to binding.rvCrypto,
+            AssetType.CASH     to binding.rvCash,
+            AssetType.BANK     to binding.rvBank
+        )
+        for ((type, rv) in map) {
+            val adapter = NetWorthAssetAdapter(
+                onDeleteClick      = { asset -> confirmDelete(asset) },
+                onEditClick        = { asset -> showEditDialog(asset) },
+                onLongPress        = { asset -> enterSelectionMode(asset) },
+                onSelectionChanged = { count -> updateSelectionBar(type, count) },
+                onWarningClick     = { asset, issue -> showEditDialog(asset, issue) }
+            )
+            adapters[type] = adapter
+            rv.apply {
+                layoutManager = LinearLayoutManager(requireContext())
+                this.adapter = adapter
+                isNestedScrollingEnabled = false
+                isVisible = sectionExpanded[type] == true
+            }
+        }
+    }
+
+    private fun setupHeaders() {
+        fun wireHeader(header: View, rv: RecyclerView, type: AssetType) {
+            header.setOnClickListener {
+                animateSections()
+                filterExpansion.userChanged(type)
+                val nowExpanded = !(sectionExpanded[type] ?: true)
+                sectionExpanded[type] = nowExpanded
+                rv.isVisible = nowExpanded
+                // Show "View all" button only when expanded AND section has more than TOP_N items
+                val full = fullListCache[type] ?: emptyList()
+                viewAllButtonFor(type)?.isVisible = nowExpanded && full.size > TOP_N
+                refreshEmptyCards()
+            }
+        }
+
+        wireHeader(binding.headerStockIn, binding.rvStockIn, AssetType.STOCK_IN)
+        wireHeader(binding.headerStockUs, binding.rvStockUs, AssetType.STOCK_US)
+        wireHeader(binding.headerMf,      binding.rvMf,      AssetType.MF)
+        wireHeader(binding.headerGold,    binding.rvGold,    AssetType.GOLD)
+        wireHeader(binding.headerSilver,  binding.rvSilver,  AssetType.SILVER)
+        wireHeader(binding.headerCrypto,  binding.rvCrypto,  AssetType.CRYPTO)
+        wireHeader(binding.headerCash,    binding.rvCash,    AssetType.CASH)
+        wireHeader(binding.headerBank,    binding.rvBank,    AssetType.BANK)
+    }
+
+    private fun setupAddButtons() {
+        binding.btnAddStockIn.setOnClickListener { showAddDialog(AssetType.STOCK_IN, "Add Indian Stock") }
+        binding.btnAddStockUs.setOnClickListener { showAddDialog(AssetType.STOCK_US, "Add US Stock") }
+        binding.btnAddMf.setOnClickListener      { showAddDialog(AssetType.MF,       "Add Mutual Fund") }
+        binding.btnAddGold.setOnClickListener    { showAddDialog(AssetType.GOLD,     "Add Gold") }
+        binding.btnAddSilver.setOnClickListener  { showAddDialog(AssetType.SILVER,   "Add Silver") }
+        binding.btnAddCrypto.setOnClickListener  { showAddDialog(AssetType.CRYPTO,   "Add Crypto") }
+        binding.btnAddCash.setOnClickListener    { showAddDialog(AssetType.CASH,     "Add Cash on Hand") }
+        binding.btnAddBank.setOnClickListener    { showAddDialog(AssetType.BANK,     "Add Bank Balance") }
+        binding.btnAddFirstHolding.setOnClickListener { showAddDialog(AssetType.STOCK_IN, "Add Indian Stock") }
+        binding.btnAddFirstHolding.announceAsButton()
+    }
+
+    /**
+     * Each category's own explanation, shown only when the user opens an empty one. The action is
+     * the section's "+" button, so it opens exactly the dialog that button does.
+     */
+    private fun emptyCards() = mapOf(
+        AssetType.STOCK_IN to (binding.emptyStockIn to binding.btnAddStockIn),
+        AssetType.STOCK_US to (binding.emptyStockUs to binding.btnAddStockUs),
+        AssetType.MF       to (binding.emptyMf      to binding.btnAddMf),
+        AssetType.GOLD     to (binding.emptyGold    to binding.btnAddGold),
+        AssetType.SILVER   to (binding.emptySilver  to binding.btnAddSilver),
+        AssetType.CRYPTO   to (binding.emptyCrypto  to binding.btnAddCrypto),
+        AssetType.CASH     to (binding.emptyCash    to binding.btnAddCash),
+        AssetType.BANK     to (binding.emptyBank    to binding.btnAddBank)
+    )
+
+    private fun setupEmptyCards() {
+        emptyCards().forEach { (type, pair) ->
+            val (card, addButton) = pair
+            val copy = emptySectionCopy(type)
+            card.ivEmptyArt.setImageResource(emptySectionArt(type))
+            card.tvEmptyTitle.text = copy.title
+            card.tvEmptyBody.text = copy.body
+            card.btnEmptyAction.text = copy.action
+            card.btnEmptyAction.setOnClickListener { addButton.performClick() }
+            card.btnEmptyAction.announceAsButton()
+        }
+    }
+
+    private fun refreshEmptyCards() {
+        if (_binding == null) return
+        emptyCards().forEach { (type, pair) ->
+            pair.first.root.isVisible = showEmptyCard(
+                expanded = sectionExpanded[type] == true,
+                holdings = fullListCache[type]?.size ?: 0
+            )
+        }
+    }
+
+    private val uiPrefs by lazy { requireContext().getSharedPreferences("networth_ui", android.content.Context.MODE_PRIVATE) }
+
+    /** The sort control: a tap steps Value → P&L % → Today and re-orders every section in place. */
+    private fun setupSortControl() {
+        holdingSort = HoldingSort.fromName(uiPrefs.getString(PREF_SORT, null))
+        showSortLabel()
+        binding.tvSort.setOnClickListener {
+            holdingSort = holdingSort.next()
+            uiPrefs.edit().putString(PREF_SORT, holdingSort.name).apply()
+            showSortLabel()
+            for ((type, adapter) in adapters) {
+                val sorted = holdingSort.sort(fullListCache[type] ?: continue)
+                fullListCache[type] = sorted
+                adapter.submitList(if (sectionShowAll[type] == true) sorted else sorted.take(TOP_N))
+            }
+        }
+    }
+
+    private fun showSortLabel() {
+        binding.tvSort.text = "Sort \u00b7 ${holdingSort.label}"
+        binding.tvSort.contentDescription = "Sort holdings by ${holdingSort.label}. Tap to change."
+    }
+
+    /** Wire up each "View all" / "View less" button */
+    private fun setupViewAllButtons() {
+        val viewAllMap = mapOf(
+            AssetType.STOCK_IN to binding.tvViewAllStockIn,
+            AssetType.STOCK_US to binding.tvViewAllStockUs,
+            AssetType.MF       to binding.tvViewAllMf,
+            AssetType.GOLD     to binding.tvViewAllGold,
+            AssetType.SILVER   to binding.tvViewAllSilver,
+            AssetType.CRYPTO   to binding.tvViewAllCrypto,
+            AssetType.CASH     to binding.tvViewAllCash,
+            AssetType.BANK     to binding.tvViewAllBank
+        )
+        for ((type, btn) in viewAllMap) {
+            btn.setOnClickListener {
+                filterExpansion.userChanged(type)
+                val nowAll = !(sectionShowAll[type] ?: false)
+                sectionShowAll[type] = nowAll
+                btn.text = if (nowAll) "View less" else "View all"
+                // Re-submit the (possibly trimmed) list
+                val full = fullListCache[type] ?: emptyList()
+                val displayed = if (nowAll) full else full.take(TOP_N)
+                adapters[type]?.submitList(displayed)
+            }
+        }
+    }
+
+    /** Picks the allocation filter (null is All): the header, the chips and which sections show follow. */
+    private fun applyFilter(newFilter: AssetType?) {
+        animateSections()
+        activeFilter = newFilter
+        // Opening a section for the filter is borrowed: All, or another category, puts it back.
+        val states = AssetType.entries.associateWith {
+            SectionState(expanded = sectionExpanded[it] == true, showAll = sectionShowAll[it] == true)
+        }
+        filterExpansion.onFilterChanged(newFilter, states).forEach { (type, state) -> setSectionState(type, state) }
+        updateMainHeaderStats()
+        viewModel.assetSummary.value?.let { updateBreakdownUI(it) }
+        refreshChipStates()
+        updateSectionVisibility()
+    }
+
+    /** Shows [type]'s section as [state]: open or closed, and all its rows or just the top few. */
+    private fun setSectionState(type: AssetType, state: SectionState) {
+        sectionExpanded[type] = state.expanded
+        sectionShowAll[type] = state.showAll
+        rvForType(type)?.isVisible = state.expanded
+
+        val full = fullListCache[type] ?: emptyList()
+        adapters[type]?.submitList(if (state.showAll) full else full.take(TOP_N))
+
+        viewAllButtonFor(type)?.apply {
+            isVisible = state.expanded && full.size > TOP_N
+            text = if (state.showAll) "View less" else "View all"
+        }
+        refreshEmptyCards()
+    }
+
+    private fun updateMainHeaderStats() {
+        val allAssets = viewModel.allAssets.value ?: emptyList()
+        val filtered = if (activeFilter == null) allAssets else allAssets.filter { it.assetType == activeFilter }
+        
+        val gainLoss = PortfolioGainLoss.compute(filtered)
+        val totalInvested = gainLoss.invested
+        val totalCurrent  = gainLoss.current
+        val absChange     = gainLoss.absChange
+        val pct           = gainLoss.pctChange
+
+        // update current amount text
+        if (!hasAnimatedTotal && totalCurrent > 0.0) {
+            binding.tvTotalNetworth.animateNumberFromZero(totalCurrent) { inrFormat.format(it) }
+            hasAnimatedTotal = true
+        } else {
+            binding.tvTotalNetworth.text = inrFormat.format(totalCurrent)
+        }
+        
+        // The label stays and names what the figures below are, so a filter leaves no gap above them.
+        binding.tvTotalNetworthLabel.text = activeFilter?.let { getCategoryName(it) } ?: "Total Net Worth"
+        
+        // update invested amount text
+        if (totalInvested > 0.0) {
+            binding.llInvestedRow.isVisible = true
+            binding.tvTotalInvested.text = inrFormat.format(totalInvested)
+        } else {
+            binding.llInvestedRow.isVisible = false
+        }
+        
+        // update pnl chip
+        val chip = binding.tvTotalPnl
+        if (absChange == 0.0 && pct == 0.0) {
+            chip.isVisible = false
+        } else {
+            val isGain = absChange >= 0
+            val arrow = if (isGain) "↗" else "↘"
+            val sign = if (isGain) "+" else "-"
+            chip.text = "$arrow $sign${inrFormat.format(kotlin.math.abs(absChange))} (${"%.2f".format(kotlin.math.abs(pct))}%)"
+            // The move is coloured text; money direction never gets a filled pill.
+            chip.setTextColor(requireContext().getColor(MoneyColor.forChange(absChange)))
+            chip.setTypeface(
+                androidx.core.content.res.ResourcesCompat.getFont(requireContext(), R.font.inter_bold),
+                android.graphics.Typeface.NORMAL
+            )
+            chip.background = null
+            chip.isVisible = true
+        }
+    }
+
+    private fun observeViewModel() {
+        viewModel.allAssets.observe(viewLifecycleOwner) { all ->
+            updateMainHeaderStats()
+            val grouped = all.groupBy { it.assetType }
+            binding.tvSort.isVisible = all.isNotEmpty()
+            for ((type, adapter) in adapters) {
+                val list = grouped[type] ?: emptyList()
+                val sorted = holdingSort.sort(list)
+                fullListCache[type] = sorted
+
+                val showAll = sectionShowAll[type] == true
+                val displayed = if (showAll) sorted else sorted.take(TOP_N)
+                adapter.submitList(displayed)
+
+                // Show/hide "View all" button
+                val viewAllBtn = viewAllButtonFor(type)
+                if (sorted.size > TOP_N) {
+                    viewAllBtn?.isVisible = sectionExpanded[type] == true
+                    viewAllBtn?.text = if (showAll) "View less" else "View all"
+                } else {
+                    viewAllBtn?.isVisible = false
+                }
+            }
+            refreshEmptyCards()
+
+            fun updateCount(countView: android.widget.TextView, addButton: android.widget.ImageButton, type: AssetType) {
+                val count = grouped[type]?.size ?: 0
+                if (count > 0) {
+                    countView.text = count.toString()
+                    countView.isVisible = true
+                } else {
+                    countView.isVisible = false
+                }
+                styleAddButton(addButton, sectionEmpty = count == 0)
+            }
+            updateCount(binding.tvCountStockIn, binding.btnAddStockIn, AssetType.STOCK_IN)
+            updateCount(binding.tvCountStockUs, binding.btnAddStockUs, AssetType.STOCK_US)
+            updateCount(binding.tvCountMf,      binding.btnAddMf,      AssetType.MF)
+            updateCount(binding.tvCountGold,    binding.btnAddGold,    AssetType.GOLD)
+            updateCount(binding.tvCountSilver,  binding.btnAddSilver,  AssetType.SILVER)
+            updateCount(binding.tvCountCrypto,  binding.btnAddCrypto,  AssetType.CRYPTO)
+            updateCount(binding.tvCountCash,    binding.btnAddCash,    AssetType.CASH)
+            updateCount(binding.tvCountBank,    binding.btnAddBank,    AssetType.BANK)
+
+            // The illustrated card only greets a portfolio with nothing in it; once there is one
+            // holding, empty sections fall back to their compact header with the neon "+".
+            binding.cardAssetsEmpty.isVisible = grouped.values.all { it.isEmpty() }
+        }
+
+        viewModel.assetSummary.observe(viewLifecycleOwner) { summary ->
+            binding.tvTotalStockIn.text = inrFormat.format(summary[AssetType.STOCK_IN] ?: 0.0)
+            binding.tvTotalStockUs.text = inrFormat.format(summary[AssetType.STOCK_US] ?: 0.0)
+            binding.tvTotalMf.text      = inrFormat.format(summary[AssetType.MF]       ?: 0.0)
+            binding.tvTotalGold.text    = inrFormat.format(summary[AssetType.GOLD]     ?: 0.0)
+            binding.tvTotalSilver.text  = inrFormat.format(summary[AssetType.SILVER]   ?: 0.0)
+            binding.tvTotalCrypto.text  = inrFormat.format(summary[AssetType.CRYPTO]   ?: 0.0)
+            binding.tvTotalCash.text    = inrFormat.format(summary[AssetType.CASH]     ?: 0.0)
+            binding.tvTotalBank.text    = inrFormat.format(summary[AssetType.BANK]     ?: 0.0)
+
+            updateBreakdownUI(summary)
+        }
+    }
+
+    // ─── View All toggle helper ───────────────────────────────────────────────
+
+    /** The neon marks an empty section's "+", the one thing to do there; a section with holdings
+     *  keeps the quiet ink "+" of Widget.App.AddButton. */
+    private fun styleAddButton(button: android.widget.ImageButton, sectionEmpty: Boolean) {
+        button.background =
+            if (sectionEmpty) androidx.core.content.ContextCompat.getDrawable(requireContext(), R.drawable.bg_marker_add) else null
+        button.imageTintList = android.content.res.ColorStateList.valueOf(
+            requireContext().getColor(if (sectionEmpty) R.color.on_marker else R.color.ink)
+        )
+        // On the 30dp neon square the plus shrinks to 14dp so it sits inside with room around it.
+        val pad = ((if (sectionEmpty) 15 else 13) * resources.displayMetrics.density).toInt()
+        button.setPadding(pad, pad, pad, pad)
+    }
+
+    private fun viewAllButtonFor(type: AssetType): TextView? = when (type) {
+        AssetType.STOCK_IN -> binding.tvViewAllStockIn
+        AssetType.STOCK_US -> binding.tvViewAllStockUs
+        AssetType.MF       -> binding.tvViewAllMf
+        AssetType.GOLD     -> binding.tvViewAllGold
+        AssetType.SILVER   -> binding.tvViewAllSilver
+        AssetType.CRYPTO   -> binding.tvViewAllCrypto
+        AssetType.CASH     -> binding.tvViewAllCash
+        AssetType.BANK     -> binding.tvViewAllBank
+    }
+
+    // ─── Breakdown + Allocation Tabs ─────────────────────────────────────────
+
+    private fun updateBreakdownUI(summary: Map<AssetType, Double>) {
+        val total = summary.values.sum()
+        if (total <= 0) {
+            binding.llBreakdownContainer.isVisible = false
+            return
+        }
+
+        binding.llBreakdownContainer.isVisible = true
+        binding.llSegmentedBar.removeAllViews()
+        binding.llBreakdownList.removeAllViews()
+
+        val sorted = summary.entries.filter { it.value > 0 }.sortedByDescending { it.value }
+
+        // ── Allocation chip tabs ──────────────────────────────────────────────
+        binding.llAllocationTabs.removeAllViews()
+        typeChips.clear()
+        allocationSelector?.release()
+        val selector = PillSelector<Any>(
+            requireContext(),
+            labelOff = requireContext().getColor(R.color.text_secondary),
+            labelOn = requireContext().getColor(R.color.on_ink)
+        ) {
+            SelectionPillDrawable(
+                ContextCompat.getDrawable(requireContext(), R.drawable.bg_range_chip)!!,
+                requireContext().getColor(R.color.ink)
+            )
+        }
+        allocationSelector = selector
+
+        // "All" chip
+        val allChip = buildChip("All · ${inrFormat.format(total)}", null, isAll = true)
+        allChipView = allChip
+        binding.llAllocationTabs.addView(allChip)
+        selector.add(allChipKey, allChip, allChip)
+
+        for (entry in sorted) {
+            val type  = entry.key
+            val value = entry.value
+            val chip  = buildChip(
+                "${getCategoryName(type)} · ${inrFormat.format(value)}",
+                type,
+                isAll = false
+            )
+            typeChips[type] = chip
+            binding.llAllocationTabs.addView(chip)
+            selector.add(type, chip, chip)
+        }
+
+        // Apply current filter selection state
+        refreshChipStates()
+
+        // ── Segmented bar ─────────────────────────────────────────────────────
+        sorted.forEachIndexed { index, entry ->
+            val type  = entry.key
+            val value = entry.value
+            val color = getCategoryColor(type)
+
+            val segment = View(requireContext()).apply {
+                layoutParams = android.widget.LinearLayout.LayoutParams(
+                    0, android.widget.LinearLayout.LayoutParams.MATCH_PARENT, value.toFloat()
+                ).apply {
+                    if (index < sorted.size - 1) {
+                        marginEnd = (2 * resources.displayMetrics.density).toInt()
+                    }
+                }
+                // Each segment is its own rounded pill (the design), not a flat block clipped by the bar.
+                background = android.graphics.drawable.GradientDrawable().apply {
+                    setColor(color)
+                    cornerRadius = 4 * resources.displayMetrics.density
+                }
+            }
+            binding.llSegmentedBar.addView(segment)
+        }
+
+        // ── Breakdown list ────────────────────────────────────────────────────
+        val displayList = if (activeFilter == null) sorted
+                          else sorted.filter { it.key == activeFilter }
+
+        displayList.forEach { (type, value) ->
+            val pct = (value / total) * 100.0
+            val color = getCategoryColor(type)
+
+            val itemBinding = app.trackone.databinding.ItemBreakdownCategoryBinding.inflate(
+                layoutInflater, binding.llBreakdownList, false
+            )
+            itemBinding.vColorIndicator.setCardBackgroundColor(color)
+            itemBinding.tvCategoryName.text = getCategoryName(type)
+            itemBinding.tvCategoryAmount.text = inrFormat.format(value)
+            itemBinding.tvCategoryPercentage.text = "%.1f%%".format(pct)
+
+            // Clicking the row acts as a filter tab
+            itemBinding.root.setOnClickListener {
+                applyFilter(if (activeFilter == type) null else type)
+            }
+
+            binding.llBreakdownList.addView(itemBinding.root)
+        }
+    }
+
+    /** Creates a single allocation chip TextView */
+    private fun buildChip(
+        label: String,
+        type: AssetType?,
+        isAll: Boolean
+    ): TextView {
+        val density  = resources.displayMetrics.density
+        val hPadPx   = (12 * density).toInt()
+        val vPadPx   = (6  * density).toInt()
+        val marginPx = (6  * density).toInt()
+
+        return TextView(requireContext()).apply {
+            text = label
+            textSize = 12f
+
+            // Inter font — explicitly NORMAL style to prevent system italic
+            try {
+                val typeface = ResourcesCompat.getFont(context, R.font.inter_semi_bold)
+                setTypeface(typeface, android.graphics.Typeface.NORMAL)
+            } catch (_: Exception) {}
+
+            setPadding(hPadPx, vPadPx, hPadPx, vPadPx)
+            layoutParams = android.widget.LinearLayout.LayoutParams(
+                android.widget.LinearLayout.LayoutParams.WRAP_CONTENT,
+                android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { marginEnd = marginPx }
+
+            setTextColor(requireContext().getColor(R.color.text_secondary))
+
+            setOnClickListener { applyFilter(if (isAll) null else type) }
+        }
+    }
+
+    /** Moves the ink pill to the chip of the active filter, the way the bottom tabs move theirs. */
+    private fun refreshChipStates() {
+        allocationSelector?.select(activeFilter ?: allChipKey)
+    }
+
+    /**
+     * Call just before sections open, close, or are filtered in or out: they fade and shift to
+     * their new places with the app's one motion (see [MotionSpec]) instead of popping.
+     */
+    private fun animateSections() {
+        val parent = binding.sectionStockIn.parent as? ViewGroup ?: return
+        TransitionManager.beginDelayedTransition(parent, MotionSpec.transition(requireContext()))
+    }
+
+    /** Show only the section(s) that match the active filter; show all when filter is null */
+    private fun updateSectionVisibility() {
+        val sectionMap = mapOf(
+            AssetType.STOCK_IN to binding.sectionStockIn,
+            AssetType.STOCK_US to binding.sectionStockUs,
+            AssetType.MF       to binding.sectionMf,
+            AssetType.GOLD     to binding.sectionGold,
+            AssetType.SILVER   to binding.sectionSilver,
+            AssetType.CRYPTO   to binding.sectionCrypto,
+            AssetType.CASH     to binding.sectionCash,
+            AssetType.BANK     to binding.sectionBank
+        )
+        val filter = activeFilter
+        for ((type, container) in sectionMap) {
+            container.isVisible = (filter == null || filter == type)
+        }
+    }
+
+    // ─── Colour + Name helpers ────────────────────────────────────────────────
+
+    private fun getCategoryColor(type: AssetType): Int {
+        val colorRes = when (type) {
+            AssetType.STOCK_IN -> R.color.cat_stock_in
+            AssetType.STOCK_US -> R.color.cat_stock_us
+            AssetType.MF       -> R.color.cat_mf
+            AssetType.GOLD     -> R.color.cat_gold
+            AssetType.SILVER   -> R.color.cat_silver
+            AssetType.CRYPTO   -> R.color.cat_crypto
+            AssetType.CASH     -> R.color.cat_cash
+            AssetType.BANK     -> R.color.cat_bank
+        }
+        return requireContext().getColor(colorRes)
+    }
+
+    private fun getCategoryName(type: AssetType): String {
+        return when (type) {
+            AssetType.STOCK_IN -> "Indian Stocks"
+            AssetType.STOCK_US -> "US Stocks"
+            AssetType.MF       -> "Mutual Funds"
+            AssetType.GOLD     -> "Gold"
+            AssetType.SILVER   -> "Silver"
+            AssetType.CRYPTO   -> "Crypto"
+            AssetType.CASH     -> "Cash on Hand"
+            AssetType.BANK     -> "Bank Balance"
+        }
+    }
+
+    // ─── Add Dialog ──────────────────────────────────────────────────────────
+
+    private fun showAddDialog(type: AssetType, title: String) {
+        val d = DialogAddAssetBinding.inflate(layoutInflater)
+        val fetchable = type in isFetchable
+
+        d.tilSymbol.isVisible    = fetchable
+        d.llPriceCard.isVisible  = false
+        d.tilQuantity.isVisible  = false   
+        d.tilName.isVisible      = !fetchable
+        d.llFetchRow.isVisible   = false   
+
+        d.tilValue.isVisible = !fetchable
+
+        var fetchedPricePerUnit = 0.0
+
+        if (fetchable) {
+            when (type) {
+                AssetType.STOCK_IN -> {
+                    d.tilSymbol.hint   = "Search NSE symbol (e.g. RELIANCE, TCS)"
+                    d.tilQuantity.hint = "Number of shares"
+                    wireSymbolDropdown(d, indianStockSymbols, type) { price ->
+                        fetchedPricePerUnit = price
+                    }
+                }
+                AssetType.STOCK_US -> {
+                    d.tilSymbol.hint   = "Search US ticker (e.g. AAPL, NVDA)"
+                    d.tilQuantity.hint = "Number of shares"
+                    wireSymbolDropdown(d, usStockSymbols, type) { price ->
+                        fetchedPricePerUnit = price
+                    }
+                }
+                AssetType.GOLD -> {
+
+                    d.tilSymbol.isVisible  = false
+                    d.tilQuantity.hint = "Quantity in grams"
+
+                    d.tilNotes.isVisible = true
+
+                    triggerFetch(d, "GC=F", type) { price -> fetchedPricePerUnit = price }
+                }
+                AssetType.SILVER -> {
+
+                    d.tilSymbol.isVisible  = false
+                    d.tilQuantity.hint = "Quantity in grams"
+
+                    d.tilNotes.isVisible = true
+
+                    triggerFetch(d, "SI=F", type) { price -> fetchedPricePerUnit = price }
+                }
+                AssetType.CRYPTO -> {
+                    d.tilSymbol.hint   = "Pair (e.g. BTC-INR, ETH-INR)"
+                    d.tilQuantity.hint = "Quantity of coins"
+                    val ac = d.etSymbol as? AutoCompleteTextView
+
+                    ac?.setOnFocusChangeListener { _, hasFocus ->
+                        if (!hasFocus) {
+                            val sym = ac.text?.toString()?.trim() ?: return@setOnFocusChangeListener
+                            if (sym.isNotBlank()) triggerFetch(d, sym, type) { price -> fetchedPricePerUnit = price }
+                        }
+                    }
+
+                    ac?.setOnEditorActionListener { _, actionId, _ ->
+                        if (actionId == EditorInfo.IME_ACTION_DONE ||
+                            actionId == EditorInfo.IME_ACTION_SEARCH ||
+                            actionId == EditorInfo.IME_ACTION_GO) {
+                            val sym = ac.text?.toString()?.trim() ?: ""
+                            if (sym.isNotBlank()) {
+                                d.tilSymbol.error = null
+                                triggerFetch(d, sym, type) { price -> fetchedPricePerUnit = price }
+                            }
+                            true
+                        } else false
+                    }
+                }
+                else -> {}
+            }
+        }
+
+        var isAutoUpdating = false
+
+        d.etQuantity.addTextChangedListener(object : android.text.TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+            override fun afterTextChanged(s: android.text.Editable?) {
+                if (isAutoUpdating || !d.etQuantity.hasFocus()) return
+                if (fetchedPricePerUnit > 0) {
+                    val qty = s?.toString()?.toDoubleOrNull()
+                    isAutoUpdating = true
+                    if (qty != null) {
+                        d.etValue.setText("%.2f".format(fetchedPricePerUnit * qty))
+                    } else if (s.isNullOrEmpty()) {
+                        d.etValue.text?.clear()
+                    }
+                    isAutoUpdating = false
+                }
+            }
+        })
+
+        d.etValue.addTextChangedListener(object : android.text.TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+            override fun afterTextChanged(s: android.text.Editable?) {
+                if (isAutoUpdating || !d.etValue.hasFocus()) return
+                if (fetchedPricePerUnit > 0) {
+                    val value = s?.toString()?.toDoubleOrNull()
+                    isAutoUpdating = true
+                    if (value != null) {
+                        val fmt = if (type == AssetType.CRYPTO) "%.8f" else "%.4f"
+                        val calcQty = value / fetchedPricePerUnit
+
+                        d.etQuantity.setText(fmt.format(calcQty))
+                    } else if (s.isNullOrEmpty()) {
+                        d.etQuantity.text?.clear()
+                    }
+                    isAutoUpdating = false
+                }
+            }
+        })
+
+        val dialog = AlertDialog.Builder(requireContext(), R.style.ThemeOverlay_App_MaterialAlertDialog)
+            .setTitle(title)
+            .setView(d.root)
+            .setPositiveButton("Add", null)
+            .setNegativeButton("Cancel", null)
+            .create()
+
+        dialog.setOnShowListener {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                val value = d.etValue.text?.toString()?.toDoubleOrNull()
+
+                val name = when {
+                    type == AssetType.GOLD   -> "GOLD"
+                    type == AssetType.SILVER -> "SILVER"
+                    fetchable -> {
+                        (d.etSymbol as? AutoCompleteTextView)?.text?.toString()?.trim()?.uppercase()
+                            ?.ifBlank { "" } ?: ""
+                    }
+                    else -> d.etName.text?.toString()?.trim() ?: ""
+                }
+
+                val qty = if (fetchable) d.etQuantity.text?.toString()?.toDoubleOrNull() ?: 1.0 else 1.0
+
+                if (name.isBlank() && type != AssetType.GOLD && type != AssetType.SILVER) {
+                    if (fetchable) {
+                        d.tilSymbol.error = "Select a symbol first"
+                    } else {
+                        d.tilName.error = "Enter a label"
+                    }
+                    return@setOnClickListener
+                }
+                if (value == null || value <= 0) {
+                    d.tilValue.error = "Enter a valid amount"
+                    return@setOnClickListener
+                }
+
+                viewModel.addOrMergeAsset(
+                    NetWorthAssetEntity(
+                        name = name.ifBlank { if (type == AssetType.GOLD) "GOLD" else name },
+                        assetType = type,
+                        quantity = qty,
+                        buyPrice = d.etBuyPrice.text?.toString()?.toDoubleOrNull() ?: 0.0,
+                        currentValue = value,
+                        notes = d.etNotes.text?.toString()?.trim() ?: ""
+                    )
+                )
+
+                if (sectionExpanded[type] == false) {
+                    sectionExpanded[type] = true
+                    rvForType(type)?.isVisible = true
+                }
+
+                dialog.dismiss()
+            }
+        }
+
+        dialog.show()
+    }
+
+    private fun wireSymbolDropdown(
+        d: DialogAddAssetBinding,
+        symbols: List<String>,
+        type: AssetType,
+        onPriceFetched: (Double) -> Unit
+    ) {
+        val autoComplete = d.etSymbol as? AutoCompleteTextView ?: return
+
+        val adapter = object : ArrayAdapter<String>(
+            requireContext(),
+            android.R.layout.simple_dropdown_item_1line,
+            symbols.toMutableList()
+        ) {
+            private val allItems = symbols.toList()
+            private val containsFilter = object : Filter() {
+                override fun performFiltering(constraint: CharSequence?): FilterResults {
+                    val results = FilterResults()
+                    if (constraint.isNullOrBlank()) {
+                        results.values = allItems
+                        results.count = allItems.size
+                    } else {
+                        val query = constraint.toString().uppercase()
+                        val filtered = allItems.filter { it.contains(query, ignoreCase = true) }
+                        results.values = filtered
+                        results.count = filtered.size
+                    }
+                    return results
+                }
+
+                @Suppress("UNCHECKED_CAST")
+                override fun publishResults(constraint: CharSequence?, results: FilterResults?) {
+                    clear()
+                    addAll(results?.values as? List<String> ?: emptyList())
+                    if ((results?.count ?: 0) > 0) notifyDataSetChanged()
+                    else notifyDataSetInvalidated()
+                }
+            }
+            override fun getFilter(): Filter = containsFilter
+        }
+
+        autoComplete.setAdapter(adapter)
+        autoComplete.threshold = 1
+
+        autoComplete.setOnItemClickListener { _, _, _, _ ->
+            val selected = autoComplete.text?.toString()?.trim()?.uppercase() ?: return@setOnItemClickListener
+            if (selected.isNotBlank()) {
+                val normalised = normaliseSymbol(selected, type)
+
+                autoComplete.setText(normalised)
+                autoComplete.setSelection(normalised.length)
+                d.tilSymbol.error = null
+                triggerFetch(d, normalised, type, onPriceFetched)
+            }
+        }
+
+        autoComplete.setOnEditorActionListener { _, actionId, _ ->
+            if (actionId == EditorInfo.IME_ACTION_DONE ||
+                actionId == EditorInfo.IME_ACTION_SEARCH ||
+                actionId == EditorInfo.IME_ACTION_GO) {
+                val typed = autoComplete.text?.toString()?.trim()?.uppercase() ?: ""
+                if (typed.isNotBlank()) {
+                    val normalised = normaliseSymbol(typed, type)
+
+                    autoComplete.setText(normalised)
+                    autoComplete.setSelection(normalised.length)
+                    d.tilSymbol.error = null
+                    triggerFetch(d, normalised, type, onPriceFetched)
+                }
+                true
+            } else false
+        }
+    }
+
+    private fun triggerFetch(
+        d: DialogAddAssetBinding,
+        symbol: String,
+        type: AssetType,
+        onPriceFetched: (Double) -> Unit
+    ) {
+
+        d.llPriceCard.isVisible    = true
+        d.llPriceLoading.isVisible = true
+        d.tvFetchStatus.isVisible  = false
+        d.tvPriceError.isVisible   = false
+
+        d.tilQuantity.isVisible  = false
+        d.tilBuyPrice.isVisible  = false
+        d.tilValue.isVisible     = false
+
+        lifecycleScope.launch {
+            val result = viewModel.fetchLivePrice(symbol, type)
+            d.llPriceLoading.isVisible = false
+            when (result) {
+                is Resource.Success -> {
+                    val price = result.data
+                    onPriceFetched(price)
+                    val unitLabel = when (type) {
+                        AssetType.GOLD   -> "/gram"
+                        AssetType.SILVER -> "/gram"
+                        AssetType.CRYPTO -> "/coin"
+                        else             -> "/share"
+                    }
+                    d.tvFetchStatus.text = inrFormat.format(price) + unitLabel
+                    d.tvFetchStatus.setTextColor(requireContext().getColor(R.color.text_primary))
+                    d.tvFetchStatus.isVisible = true
+                    d.tvPriceError.isVisible  = false
+
+                    d.tilQuantity.isVisible = true
+                    d.tilValue.isVisible    = true
+
+                    val buyHint = when (type) {
+                        AssetType.GOLD, AssetType.SILVER -> "Avg Buy Price (₹/gram) — optional"
+                        AssetType.CRYPTO                 -> "Avg Buy Price (₹/coin) — optional"
+                        else                             -> "Avg Buy Price (₹/share) — optional"
+                    }
+                    d.tilBuyPrice.hint    = buyHint
+                    d.tilBuyPrice.isVisible = true
+
+                    val qty = d.etQuantity.text?.toString()?.toDoubleOrNull()
+                    val prefilledValue = d.etValue.text?.toString()?.toDoubleOrNull()
+                    if (qty != null && qty > 0) {
+                        d.etValue.setText("%.2f".format(price * qty))
+                    } else if (prefilledValue != null && prefilledValue > 0) {
+                        val fmt = if (type == AssetType.CRYPTO) "%.8f" else "%.4f"
+                        d.etQuantity.setText(fmt.format(prefilledValue / price))
+                    }
+                }
+                is Resource.Error -> {
+                    d.tvPriceError.text    = "✗ ${result.message}"
+                    d.tvPriceError.isVisible  = true
+                    d.tvFetchStatus.isVisible = false
+
+                    d.tilQuantity.isVisible  = true
+                    d.tilBuyPrice.isVisible  = true
+                    d.tilValue.isVisible     = true
+                }
+                else -> {}
+            }
+        }
+    }
+
+    private fun normaliseSymbol(symbol: String, type: AssetType): String {
+        if (type == AssetType.STOCK_IN && !symbol.contains('.')) {
+            return "$symbol.NS"
+        }
+        return symbol
+    }
+
+    private fun confirmDelete(asset: NetWorthAssetEntity) {
+        val bottomSheet = com.google.android.material.bottomsheet.BottomSheetDialog(requireContext())
+        val view = layoutInflater.inflate(R.layout.bottom_sheet_confirm, null)
+        
+        view.findViewById<android.widget.TextView>(R.id.tv_confirm_title).text = "Remove ${asset.name}?"
+        view.findViewById<android.widget.TextView>(R.id.tv_confirm_message).text = "This will be removed from your net worth."
+        
+        view.findViewById<android.widget.Button>(R.id.btn_cancel).setOnClickListener { bottomSheet.dismiss() }
+        view.findViewById<android.widget.Button>(R.id.btn_confirm).setOnClickListener { 
+            viewModel.deleteAsset(asset)
+            bottomSheet.dismiss() 
+        }
+        
+        bottomSheet.setContentView(view)
+        bottomSheet.show()
+    }
+
+    /**
+     * @param focusIssue set when opened from a holding's warning: puts the cursor on the field that
+     * fixes it — and, for a price that won't update, looks up the ticker and suggests it.
+     */
+    private fun showEditDialog(asset: NetWorthAssetEntity, focusIssue: HoldingIssue? = null) {
+        val type = asset.assetType
+        val d = DialogAddAssetBinding.inflate(layoutInflater)
+        val fetchable = type in isFetchable
+
+        val isMetalType = type == AssetType.GOLD || type == AssetType.SILVER
+        d.tilSymbol.isVisible   = fetchable && !isMetalType
+        d.llPriceCard.isVisible = false
+        d.tilQuantity.isVisible = fetchable
+        d.tilName.isVisible     = !fetchable
+        d.llFetchRow.isVisible  = false
+        d.tilValue.isVisible    = true
+        d.tilBuyPrice.isVisible = asset.buyPrice > 0 || fetchable
+
+        d.tilNotes.isVisible    = isMetalType
+
+        if (fetchable) {
+            if (!isMetalType) {
+                (d.etSymbol as? AutoCompleteTextView)?.setText(asset.name)
+            }
+            d.etQuantity.setText(
+                if (asset.quantity % 1.0 == 0.0) asset.quantity.toInt().toString()
+                else "%.4f".format(asset.quantity)
+            )
+        } else {
+            d.etName.setText(asset.name)
+        }
+        d.etValue.setText("%.2f".format(asset.currentValue))
+        if (asset.buyPrice > 0) d.etBuyPrice.setText("%.2f".format(asset.buyPrice))
+
+        if (isMetalType && asset.notes.isNotBlank()) d.etNotes.setText(asset.notes)
+
+        val buyHint = when (type) {
+            AssetType.GOLD, AssetType.SILVER -> "Avg Buy Price (₹/gram) — optional"
+            AssetType.CRYPTO                 -> "Avg Buy Price (₹/coin) — optional"
+            else                             -> "Avg Buy Price (₹/share) — optional"
+        }
+        d.tilBuyPrice.hint = buyHint
+
+        // Derive price per unit from existing data initially
+        var pricePerUnit = if (asset.quantity > 0) asset.currentValue / asset.quantity else 0.0
+        var isAutoUpdating = false
+
+        // Fetches and shows the live price for [symbol]: on open, and again when a suggested symbol is filled in.
+        val loadPrice: (String) -> Unit = { symbol ->
+            d.llPriceCard.isVisible = true
+            d.llPriceLoading.isVisible = true
+            d.tvFetchStatus.isVisible = false
+            d.tvPriceError.isVisible = false
+            lifecycleScope.launch {
+                val result = viewModel.fetchLivePrice(symbol, type)
+                d.llPriceLoading.isVisible = false
+                if (result is Resource.Success) {
+                    pricePerUnit = result.data
+                    val unitLabel = when (type) {
+                        AssetType.GOLD, AssetType.SILVER -> "/gram"
+                        AssetType.CRYPTO -> "/coin"
+                        else -> "/share"
+                    }
+                    d.tvFetchStatus.text = "Live price: ${inrFormat.format(pricePerUnit)}$unitLabel"
+                    d.tvFetchStatus.setTextColor(requireContext().getColor(R.color.text_secondary))
+                    d.tvFetchStatus.isVisible = true
+
+                    if (!isAutoUpdating && !d.etValue.hasFocus()) {
+                        isAutoUpdating = true
+                        val qty = d.etQuantity.text?.toString()?.toDoubleOrNull() ?: asset.quantity
+                        d.etValue.setText("%.2f".format(pricePerUnit * qty))
+                        isAutoUpdating = false
+                    }
+                } else if (result is Resource.Error) {
+                    // This used to just hide the card, leaving no hint that the symbol was the problem.
+                    d.tvPriceError.text = if (SymbolCheck.isNotFound(result.message))
+                        "✗ No live price found for $symbol — check the ticker"
+                    else
+                        "✗ Couldn't fetch the live price right now"
+                    d.tvPriceError.isVisible = true
+                }
+            }
+        }
+
+        if (fetchable) {
+            loadPrice(
+                when (type) {
+                    AssetType.GOLD -> "GC=F"
+                    AssetType.SILVER -> "SI=F"
+                    else -> asset.name
+                }
+            )
+        }
+
+        d.etQuantity.addTextChangedListener(object : android.text.TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+            override fun afterTextChanged(s: android.text.Editable?) {
+                if (isAutoUpdating || !d.etQuantity.hasFocus()) return
+                if (pricePerUnit > 0) {
+                    val qty = s?.toString()?.toDoubleOrNull()
+                    isAutoUpdating = true
+                    if (qty != null) {
+                        d.etValue.setText("%.2f".format(pricePerUnit * qty))
+                    } else if (s.isNullOrEmpty()) {
+                        d.etValue.text?.clear()
+                    }
+                    isAutoUpdating = false
+                }
+            }
+        })
+
+        d.etValue.addTextChangedListener(object : android.text.TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+            override fun afterTextChanged(s: android.text.Editable?) {
+                if (isAutoUpdating || !d.etValue.hasFocus()) return
+                if (pricePerUnit > 0) {
+                    val value = s?.toString()?.toDoubleOrNull()
+                    isAutoUpdating = true
+                    if (value != null) {
+                        val fmt = if (type == AssetType.CRYPTO) "%.8f" else "%.4f"
+                        val calcQty = value / pricePerUnit
+                        d.etQuantity.setText(fmt.format(calcQty))
+                    } else if (s.isNullOrEmpty()) {
+                        d.etQuantity.text?.clear()
+                    }
+                    isAutoUpdating = false
+                }
+            }
+        })
+
+        val dialog = AlertDialog.Builder(requireContext(), R.style.ThemeOverlay_App_MaterialAlertDialog)
+            .setTitle("Edit ${asset.name}")
+            .setView(d.root)
+            .setPositiveButton("Save", null)
+            .setNegativeButton("Cancel", null)
+            .create()
+
+        dialog.setOnShowListener {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                val value = d.etValue.text?.toString()?.toDoubleOrNull()
+                if (value == null || value <= 0) {
+                    d.tilValue.error = "Enter a valid amount"
+                    return@setOnClickListener
+                }
+
+                val qty = if (fetchable)
+                    d.etQuantity.text?.toString()?.toDoubleOrNull() ?: asset.quantity
+                else
+                    asset.quantity
+
+                val name = when {
+                    type == AssetType.GOLD   -> "GOLD"
+                    type == AssetType.SILVER -> "SILVER"
+                    fetchable -> {
+                        (d.etSymbol as? AutoCompleteTextView)?.text?.toString()?.trim()?.uppercase()
+                            ?.ifBlank { asset.name } ?: asset.name
+                    }
+                    else -> d.etName.text?.toString()?.trim()?.ifBlank { asset.name } ?: asset.name
+                }
+
+                val saveEdit = {
+                    viewModel.updateAsset(
+                        asset.copy(
+                            name         = name,
+                            quantity     = qty,
+                            buyPrice     = d.etBuyPrice.text?.toString()?.toDoubleOrNull() ?: 0.0,
+                            currentValue = value,
+                            notes        = if (isMetalType) d.etNotes.text?.toString()?.trim() ?: asset.notes else asset.notes,
+                            updatedAt    = System.currentTimeMillis()
+                        )
+                    )
+                    dialog.dismiss()
+                }
+
+                // A symbol that was typed in must actually exist: this used to save whatever text was
+                // there, which is how a company name ends up as an unpriceable "symbol". Only a definite
+                // "no such symbol" blocks it — being offline or rate-limited never stops a save.
+                if (fetchable && !isMetalType && name != asset.name) {
+                    val saveButton = dialog.getButton(AlertDialog.BUTTON_POSITIVE)
+                    saveButton.isEnabled = false
+                    lifecycleScope.launch {
+                        val check = viewModel.fetchLivePrice(name, type)
+                        saveButton.isEnabled = true
+                        if (check is Resource.Error && SymbolCheck.isNotFound(check.message)) {
+                            d.tilSymbol.error = "No price found for “$name”. Use the ticker (e.g. RELIANCE), not the company name."
+                        } else {
+                            d.tilSymbol.error = null
+                            saveEdit()
+                        }
+                    }
+                } else {
+                    saveEdit()
+                }
+            }
+        }
+        if (focusIssue != null) dialog.window?.setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE)
+        dialog.show()
+
+        when (focusIssue) {
+            HoldingIssue.NO_LIVE_PRICE -> if (fetchable && !isMetalType) {
+                val field = d.etSymbol as? AutoCompleteTextView
+                field?.requestFocus()
+                field?.selectAll()
+                d.tilSymbol.helperText = "Looking for a match…"
+                lifecycleScope.launch {
+                    when (val match = viewModel.resolveSymbol(asset)) {
+                        is SymbolResolution.Confident -> {
+                            field?.setText(match.symbol, false)
+                            field?.setSelection(match.symbol.length)
+                            val via = if (match.basis == MatchBasis.ISIN) "ISIN" else "name"
+                            d.tilSymbol.helperText = "Matched “${match.matchedName}” by $via — check it, then Save"
+                            loadPrice(match.symbol)
+                        }
+                        is SymbolResolution.Ambiguous ->
+                            d.tilSymbol.helperText = "Could be ${match.symbols.joinToString(" or ")} — type the one you hold"
+                        SymbolResolution.Unavailable ->
+                            d.tilSymbol.helperText = "Couldn't look this up right now — enter the ticker, e.g. RELIANCE"
+                        SymbolResolution.NotFound ->
+                            d.tilSymbol.helperText = "No match found — enter the ticker (e.g. RELIANCE), not the company name"
+                    }
+                }
+            }
+            HoldingIssue.IMPLAUSIBLE_GAIN -> {
+                d.etBuyPrice.requestFocus()
+                d.etBuyPrice.selectAll()
+                d.tilBuyPrice.helperText = "Cost per unit in ₹ — this is far from today's price"
+            }
+            else -> Unit
+        }
+    }
+
+    private fun rvForType(type: AssetType): RecyclerView? = when (type) {
+        AssetType.STOCK_IN -> binding.rvStockIn
+        AssetType.STOCK_US -> binding.rvStockUs
+        AssetType.MF       -> binding.rvMf
+        AssetType.GOLD     -> binding.rvGold
+        AssetType.SILVER   -> binding.rvSilver
+        AssetType.CRYPTO   -> binding.rvCrypto
+        AssetType.CASH     -> binding.rvCash
+        AssetType.BANK     -> binding.rvBank
+    }
+
+    // ─── Bulk Selection Mode ──────────────────────────────────────────────────
+
+    /**
+     * Enter bulk-selection mode for the section containing [asset].
+     * - Exits any currently-active selection in another section.
+     * - Auto-expands the section and shows all its items (so the user can select any).
+     * - Pre-selects the item that was long-pressed.
+     */
+    private fun enterSelectionMode(asset: NetWorthAssetEntity) {
+        val type = asset.assetType
+
+        // Exit any other active selection mode first
+        if (selectionModeType != null && selectionModeType != type) exitSelectionMode()
+
+        selectionModeType = type
+
+        // Expand the section and show ALL items
+        if (sectionExpanded[type] == false) {
+            sectionExpanded[type] = true
+            rvForType(type)?.isVisible = true
+        }
+        sectionShowAll[type] = true
+        val full = fullListCache[type] ?: emptyList()
+        adapters[type]?.submitList(full)
+        viewAllButtonFor(type)?.isVisible = false   // hide during selection mode
+
+        adapters[type]?.enterSelectionMode(asset.id)
+    }
+
+    /** Exit bulk-selection mode, restore normal state and hide the action bar. */
+    private fun exitSelectionMode() {
+        val type = selectionModeType ?: return
+        adapters[type]?.exitSelectionMode()
+        selectionModeType = null
+        binding.llSelectionBar.isVisible = false
+
+        // Restore view-all button if section has more items than TOP_N
+        val full = fullListCache[type] ?: emptyList()
+        if (full.size > TOP_N) {
+            viewAllButtonFor(type)?.isVisible = sectionExpanded[type] == true
+        }
+
+        // Trim back to TOP_N if the user hadn't already expanded
+        if (sectionShowAll[type] == false) {
+            adapters[type]?.submitList(full.take(TOP_N))
+        }
+    }
+
+    /**
+     * Called by each adapter's [onSelectionChanged] lambda whenever its selection set changes.
+     * Ignored for adapters that are not the currently-active selection section.
+     */
+    private fun updateSelectionBar(type: AssetType, count: Int) {
+        if (type != selectionModeType) return
+
+        val bar = binding.llSelectionBar
+        bar.isVisible = true
+
+        val sectionName = getCategoryName(type)
+        binding.tvSelectionCount.text = when (count) {
+            0    -> "$sectionName — none selected"
+            1    -> "1 selected · $sectionName"
+            else -> "$count selected · $sectionName"
+        }
+
+        val adapter   = adapters[type]
+        val allSelected = adapter?.areAllSelected() == true
+        binding.tvSelectAll.text = if (allSelected) "Deselect All" else "Select All"
+
+        binding.btnDeleteSelected.alpha     = if (count > 0) 1.0f else 0.38f
+        binding.btnDeleteSelected.isEnabled = count > 0
+    }
+
+    /** Wire up the selection bar's Cancel / Select All / Delete buttons. */
+    private fun setupSelectionBar() {
+        binding.tvSelectionCancel.setOnClickListener {
+            it.performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY)
+            exitSelectionMode()
+        }
+
+        binding.tvSelectAll.setOnClickListener {
+            val type    = selectionModeType ?: return@setOnClickListener
+            val adapter = adapters[type] ?: return@setOnClickListener
+            if (adapter.areAllSelected()) adapter.deselectAll() else adapter.selectAll()
+        }
+
+        binding.btnDeleteSelected.setOnClickListener {
+            it.performHapticFeedback(android.view.HapticFeedbackConstants.CONFIRM)
+            confirmDeleteSelected()
+        }
+    }
+
+    private fun confirmDeleteSelected() {
+        val type    = selectionModeType ?: return
+        val adapter = adapters[type] ?: return
+        val ids     = adapter.getSelectedIds()
+        if (ids.isEmpty()) return
+
+        val sectionName = getCategoryName(type)
+        val bottomSheet = com.google.android.material.bottomsheet.BottomSheetDialog(requireContext())
+        val view = layoutInflater.inflate(R.layout.bottom_sheet_confirm, null)
+        
+        view.findViewById<android.widget.TextView>(R.id.tv_confirm_title).text = "Remove ${ids.size} ${sectionName.lowercase()}?"
+        view.findViewById<android.widget.TextView>(R.id.tv_confirm_message).text = "${ids.size} holding(s) will be permanently removed from your net worth."
+        
+        view.findViewById<android.widget.Button>(R.id.btn_cancel).setOnClickListener { bottomSheet.dismiss() }
+        view.findViewById<android.widget.Button>(R.id.btn_confirm).setOnClickListener { 
+            viewModel.deleteAssets(ids)
+            exitSelectionMode()
+            bottomSheet.dismiss() 
+        }
+        
+        bottomSheet.setContentView(view)
+        bottomSheet.show()
+    }
+
+    override fun onDestroyView() {
+        super.onDestroyView()
+        allocationSelector?.release()
+        allocationSelector = null
+        _binding = null
+    }
+}
+
