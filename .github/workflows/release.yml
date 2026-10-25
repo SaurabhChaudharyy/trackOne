@@ -90,7 +90,7 @@ jobs:
         with:
           name: "trackOne ${{ github.ref_name }}"
           body: |
-            🎉 **Initial Release of trackOne**
+            **trackOne ${{ github.ref_name }}**
 
             A minimal finance app and home-screen widget to track your watchlist, net worth, stocks, crypto, and more — all stored locally on your device.
 
@@ -109,6 +109,8 @@ jobs:
 
             > ⚠️ Requires Android 8.0 (Oreo / API 26) or higher
           files: app/build/outputs/apk/release/trackOne-${{ github.ref_name }}.apk
+          # Adds a "What's Changed" list (the commits since the previous release) under the text above.
+          generate_release_notes: true
           # A tag with a suffix (v1.1.0-beta.1) is a pre-release and never becomes "latest".
           prerelease: ${{ contains(github.ref_name, '-') }}
           make_latest: ${{ !contains(github.ref_name, '-') }}
