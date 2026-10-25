@@ -32,7 +32,7 @@
         app:boxCornerRadiusBottomStart="8dp"
         app:boxCornerRadiusBottomEnd="8dp"
         app:hintTextColor="@color/text_tertiary"
-        app:boxStrokeColor="@color/border_color"
+        app:boxStrokeColor="@color/text_field_stroke"
         app:boxStrokeWidth="1dp"
         app:hintEnabled="false"
         style="@style/Widget.Material3.TextInputLayout.FilledBox">

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Outline of an outlined text field. A plain colour given to boxStrokeColor only styles the focused
+     state, and the resting outline then fell back to a theme colour that nearly vanished in dark mode
+     (the sign-in and edit-holding fields had no visible border). -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:color="@color/ink" android:state_focused="true"/>
+    <item android:color="@color/field_stroke"/>
+</selector>

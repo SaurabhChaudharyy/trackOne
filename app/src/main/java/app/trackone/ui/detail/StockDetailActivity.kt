@@ -340,7 +340,7 @@ class StockDetailActivity : AppCompatActivity() {
         }
 
         if (stock.exchange.isNotEmpty()) {
-            binding.tvDetailExchange.text = " · ${stock.exchange}"
+            binding.tvDetailExchange.text = " · ${FormatUtils.exchangeName(stock.exchange)}"
             binding.tvDetailExchange.visibility = View.VISIBLE
         }
 

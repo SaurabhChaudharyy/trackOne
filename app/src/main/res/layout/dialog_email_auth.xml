@@ -1,7 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout
+<!-- Scrolls so a short window (landscape, a keyboard up) shows every row instead of squashing the links. -->
+<ScrollView
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:scrollbars="none">
+
+<LinearLayout
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
@@ -13,7 +19,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:hint="Email"
-        app:boxStrokeColor="@color/border_color"
+        app:boxStrokeColor="@color/text_field_stroke"
         app:hintTextColor="@color/text_tertiary"
         app:startIconDrawable="@drawable/ic_email"
         app:startIconTint="@color/text_tertiary">
@@ -35,7 +41,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="12dp"
         android:hint="Password"
-        app:boxStrokeColor="@color/border_color"
+        app:boxStrokeColor="@color/text_field_stroke"
         app:hintTextColor="@color/text_tertiary"
         app:endIconMode="password_toggle"
         app:endIconTint="@color/text_tertiary">
@@ -87,3 +93,4 @@
         android:padding="2dp"/>
 
 </LinearLayout>
+</ScrollView>

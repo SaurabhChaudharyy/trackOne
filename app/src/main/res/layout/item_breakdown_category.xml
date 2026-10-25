@@ -31,11 +31,14 @@
         android:fontFamily="@font/inter"
         tools:text="Indian Stocks"/>
 
-    <!-- Percentage — fixed width, right-aligned so all values end at the same x -->
+    <!-- Percentage — a minimum width in sp, right-aligned so all values end at the same x. In sp so the
+         column grows with the text size; fixed dp made large text wrap "64.1" and "%" apart. -->
     <TextView
         android:id="@+id/tv_category_percentage"
-        android:layout_width="52dp"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:minWidth="44sp"
+        android:maxLines="1"
         android:gravity="end"
         android:textColor="@color/text_tertiary"
         android:textSize="12sp"
@@ -44,11 +47,15 @@
 
 
 
-    <!-- Amount — fixed width, right-aligned. 124dp fits ₹13,26,951.73 comfortably -->
+    <!-- Amount — a minimum width in sp, right-aligned. 112sp fits ₹13,26,951.73 at any text size, and
+         the figure stays on one line (it would otherwise break after the decimal point). -->
     <TextView
         android:id="@+id/tv_category_amount"
-        android:layout_width="124dp"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:minWidth="112sp"
+        android:maxLines="1"
+        android:layout_marginStart="8dp"
         android:gravity="end"
         android:textColor="@color/text_primary"
         android:textSize="13sp"

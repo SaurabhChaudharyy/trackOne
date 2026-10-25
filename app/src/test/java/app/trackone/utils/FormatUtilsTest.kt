@@ -123,4 +123,19 @@ class FormatUtilsTest {
     fun `compact INR keeps the sign of a negative value`() {
         assertEquals("-₹2.5L", FormatUtils.formatCompactInr(-250_000.0))
     }
+
+    @Test
+    fun `Yahoo exchange codes read as exchange names`() {
+        assertEquals("NSE", FormatUtils.exchangeName("NSI"))
+        assertEquals("BSE", FormatUtils.exchangeName("BSE"))
+        assertEquals("NASDAQ", FormatUtils.exchangeName("NMS"))
+        assertEquals("NASDAQ", FormatUtils.exchangeName("NGM"))
+        assertEquals("NYSE", FormatUtils.exchangeName("NYQ"))
+    }
+
+    @Test
+    fun `an exchange code with no name is shown as Yahoo sent it`() {
+        assertEquals("XYZ", FormatUtils.exchangeName("XYZ"))
+        assertEquals("", FormatUtils.exchangeName(""))
+    }
 }

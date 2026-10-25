@@ -4,6 +4,7 @@ import android.content.Context
 import app.trackone.R
 import android.view.animation.PathInterpolator
 import android.animation.TimeInterpolator
+import androidx.recyclerview.widget.RecyclerView
 import androidx.transition.ChangeBounds
 import androidx.transition.Fade
 import androidx.transition.Transition
@@ -29,10 +30,20 @@ object MotionSpec {
         PathInterpolator(0.2f, 0f, 0f, 1f)
     )
 
-    /** What views do when they appear, disappear or shift: they fade, and move to their new bounds. */
+    /**
+     * What views do when they appear, disappear or shift: they fade, and move to their new bounds.
+     *
+     * A RecyclerView is not a target. A transition that animates the list itself interferes with its
+     * item animator: when a section opens or closes while the list is gaining rows, the add animation
+     * finishes on a row that is no longer attached and the app crashes ("Tmp detached view should be
+     * removed from RecyclerView before it can be recycled"). Tapping the Assets filter chips quickly
+     * did it every time. Excluding the list's rows from the transition did not stop it; excluding the
+     * list itself does. The rows still animate through the list's item animator, and the section
+     * headers and neighbours still fade and move.
+     */
     fun transition(context: Context): Transition = TransitionSet()
-        .addTransition(Fade())
-        .addTransition(ChangeBounds())
+        .addTransition(Fade().excludeTarget(RecyclerView::class.java, true))
+        .addTransition(ChangeBounds().excludeTarget(RecyclerView::class.java, true))
         .setOrdering(TransitionSet.ORDERING_TOGETHER)
         .setDuration(layoutDuration(context))
         .setInterpolator(interpolator(context))

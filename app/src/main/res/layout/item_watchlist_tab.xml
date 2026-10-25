@@ -1,10 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Inflated dynamically for each watchlist group tab -->
+<!-- Inflated dynamically for each watchlist group tab. The label's width cap is generous because large
+     text needs the room (140dp cut "My Watchlist" to "My Watc..." at 1.5x); an sp cap would not help,
+     since Android 14's non-linear font scaling leaves sp values over 100 unscaled. -->
 <LinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/ll_watchlist_tab"
     android:layout_width="wrap_content"
-    android:layout_height="44dp"
+    android:layout_height="wrap_content"
+    android:minHeight="44dp"
     android:orientation="vertical"
     android:layout_marginEnd="4dp"
     android:gravity="center">
@@ -19,7 +22,7 @@
         android:fontFamily="@font/inter_semi_bold"
         android:textColor="@color/text_tertiary"
         android:singleLine="true"
-        android:maxWidth="140dp"
+        android:maxWidth="220dp"
         android:ellipsize="end"
         android:text="Watchlist"/>
 

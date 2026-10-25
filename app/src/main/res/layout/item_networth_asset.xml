@@ -27,11 +27,11 @@
         android:layout_weight="1"
         android:orientation="vertical">
 
-        <LinearLayout
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical">
+        <!-- The name gives way (ellipsizes) before the tag does: in a plain horizontal row, a narrower
+             column (the checkbox in selection mode) squeezed the tag until it wrapped per character. -->
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
 
             <TextView
                 android:id="@+id/tv_asset_name"
@@ -42,6 +42,13 @@
                 android:fontFamily="@font/inter_bold"
                 android:maxLines="1"
                 android:ellipsize="end"
+                app:layout_constrainedWidth="true"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toStartOf="@id/tv_asset_today"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintHorizontal_chainStyle="packed"
+                app:layout_constraintHorizontal_bias="0"
                 tools:text="NIFTYBEES"/>
 
             <!-- Today's move: an arrow and a percent, coloured by direction. -->
@@ -53,9 +60,14 @@
                 android:textSize="11sp"
                 android:fontFamily="@font/inter_semi_bold"
                 android:fontFeatureSettings="tnum"
+                android:maxLines="1"
                 android:visibility="gone"
+                app:layout_constraintStart_toEndOf="@id/tv_asset_name"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintBottom_toBottomOf="parent"
                 tools:text="▾1.02%"/>
-        </LinearLayout>
+        </androidx.constraintlayout.widget.ConstraintLayout>
 
         <!-- qty · avg · ltp, plain numbers: the currency is already on the value. -->
         <TextView

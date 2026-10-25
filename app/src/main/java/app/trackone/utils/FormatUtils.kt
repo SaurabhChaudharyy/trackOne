@@ -76,6 +76,17 @@ object FormatUtils {
     fun formatMovePercent(changePercent: Double): String =
         "${if (changePercent >= 0) "↗" else "↘"} ${formatChangePercent(changePercent)}"
 
+    /** Yahoo's own exchange codes, as they read to people. Anything not listed is shown as Yahoo sent it. */
+    private val EXCHANGE_NAMES = mapOf(
+        "NSI" to "NSE", "BSE" to "BSE",
+        "NMS" to "NASDAQ", "NGM" to "NASDAQ", "NCM" to "NASDAQ", "NIM" to "NASDAQ",
+        "NYQ" to "NYSE", "ASE" to "NYSE American", "PCX" to "NYSE Arca", "BTS" to "Cboe BZX",
+        "TOR" to "TSX", "LSE" to "LSE", "CCC" to "Crypto", "CMX" to "COMEX", "NYM" to "NYMEX"
+    )
+
+    /** "NSI" reads as "NSE", "NMS" as "NASDAQ": the detail screen names the exchange, not Yahoo's code for it. */
+    fun exchangeName(code: String): String = EXCHANGE_NAMES[code] ?: code
+
     fun formatVolume(volume: Long): String {
         return when {
             volume >= 1_000_000_000 -> "${String.format("%.2f", volume / 1_000_000_000.0)}B"

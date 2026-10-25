@@ -15,6 +15,8 @@
 
     <color name="divider_color">#27272A</color>
     <color name="border_color">#27272A</color>
+    <!-- Resting outline of a text field: 3.7:1 on the dialog surface. -->
+    <color name="field_stroke">#71717A</color>
 
     <color name="text_primary">#FAFAFA</color>
     <color name="text_secondary">#A1A1AA</color>

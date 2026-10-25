@@ -15,7 +15,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:hint="Watchlist name"
-        app:boxStrokeColor="@color/text_primary"
+        app:boxStrokeColor="@color/text_field_stroke"
         app:hintTextColor="@color/text_secondary">
 
         <com.google.android.material.textfield.TextInputEditText

@@ -177,7 +177,9 @@
     </style>
 
     <style name="ThemeOverlay.App.MaterialAlertDialog" parent="ThemeOverlay.Material3.MaterialAlertDialog">
-        <item name="android:background">@color/background</item>
+        <!-- The surface, not the page colour: in dark mode they differ, and a dialog the same colour as
+             the page behind its scrim has no visible edge. They are both white in light mode. -->
+        <item name="android:background">@color/surface_color</item>
         <item name="android:fontFamily">@font/inter</item>
         <!-- Dialog titles bold, like every other title. Set on the view style, not only its text
              appearance: this overlay's own android:fontFamily would otherwise win. -->
